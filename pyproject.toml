@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aavso-anomaly-scout"
+version = "0.1.0"
+description = "Jersey City observing queue generator for under-reviewed VSX variable stars."
+requires-python = ">=3.11"
+dependencies = [
+  "matplotlib>=3.8",
+  "PyYAML>=6.0",
+  "requests>=2.31",
+  "scipy>=1.11",
+  "tzdata>=2025.2",
+]
+
+[project.scripts]
+anomaly-scout = "anomaly_scout.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

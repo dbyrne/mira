@@ -1,0 +1,86 @@
+observer:
+  name: Jersey City
+  latitude_deg: 40.7178
+  longitude_deg: -74.0431
+  timezone: America/New_York
+
+observing_window:
+  start_hour_local: 20
+  end_hour_local: 1
+  nights: 14
+  sample_minutes: 30
+  min_altitude_deg: 45
+
+vsx_query:
+  row_limit: 500
+  ra_bin_degrees: 30
+  min_declination_deg: -10
+  max_bright_mag: 15.0
+  require_period: false
+  include_types:
+    - SR
+    - SRS
+    - L
+    - LB
+    - M
+    - EA
+    - EB
+    - EW
+    - RR
+    - DSCT
+    - VAR
+    - ROT
+    - "?"
+
+filters:
+  min_galactic_latitude_abs_deg: 12
+  min_catalog_amplitude_mag: 0.12
+  prefer_amplitude_mag: 0.25
+  prefer_max_mag: 14.0
+  reject_saturated_brighter_than_mag: 7.0
+
+scoring:
+  uncertain_type_bonus: 20
+  survey_name_bonus: 6
+  sparse_aavso_bonus: 15
+  well_observed_aavso_penalty: 18
+  high_amplitude_bonus: 14
+  moderate_amplitude_bonus: 8
+  bright_target_bonus: 10
+  long_period_bonus: 8
+  time_series_bonus: 5
+  clean_field_bonus: 8
+
+aavso:
+  enabled: true
+  enrich_top: 50
+  recent_days: 730
+  sparse_recent_threshold: 5
+  timeout_seconds: 20
+  bands:
+    - V
+    - Vis.
+    - CV
+    - TG
+    - B
+    - R
+    - I
+
+simbad:
+  enabled: true
+  enrich_top: 20
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
+ztf:
+  enabled: true
+  search_radius_arcsec: 5
+  timeout_seconds: 45
+  bad_catflags_mask: 32768
+  bands:
+    - g
+    - r
+
+output:
+  directory: output
+  top_packets: 20

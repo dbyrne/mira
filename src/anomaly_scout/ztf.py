@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+import csv
+import io
+from pathlib import Path
+from urllib.parse import urlencode
+
+import matplotlib.pyplot as plt
+import requests
+
+from .cache import cached_get
+from .config import ZtfConfig
+from .models import Candidate, ZtfStats
+
+ZTF_LIGHT_CURVE_URL = "https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves"
+
+
+def enrich_with_ztf(candidate: Candidate, config: ZtfConfig, packet_dir: Path) -> ZtfStats:
+    rows: list[dict[str, str]] = []
+    errors: list[str] = []
+    for band in config.bands:
+        try:
+            rows.extend(fetch_ztf_light_curve(candidate.target.ra_deg, candidate.target.dec_deg, band, config))
+        except Exception as exc:  # ZTF is an enrichment, not a pipeline blocker.
+            errors.append(f"{band}: {exc}")
+
+    if not rows:
+        note = "; ".join(errors) if errors else "no ZTF rows returned"
+        return ZtfStats(status="unavailable", note=note)
+
+    mags = [_parse_float(row.get("mag") or row.get("MAG")) for row in rows]
+    mags = [mag for mag in mags if mag is not None]
+    bands = sorted({(row.get("filtercode") or row.get("band") or row.get("BAND") or "").strip() for row in rows})
+    if not mags:
+        return ZtfStats(status="parsed-no-magnitudes", observations=len(rows), bands=tuple(bands))
+
+    sorted_mags = sorted(mags)
+    median_mag = sorted_mags[len(sorted_mags) // 2]
+    amplitude = percentile(sorted_mags, 95) - percentile(sorted_mags, 5)
+    plot_path = plot_light_curve(candidate, rows, packet_dir)
+    return ZtfStats(
+        status="ok",
+        observations=len(rows),
+        bands=tuple(bands),
+        median_mag=median_mag,
+        amplitude_mag=amplitude,
+        plot_path=str(plot_path) if plot_path else None,
+    )
+
+
+def fetch_ztf_light_curve(ra_deg: float, dec_deg: float, band: str, config: ZtfConfig) -> list[dict[str, str]]:
+    radius_deg = config.search_radius_arcsec / 3600.0
+    params = {
+        "POS": f"CIRCLE {ra_deg:.6f} {dec_deg:.6f} {radius_deg:.7f}",
+        "BANDNAME": band,
+        "BAD_CATFLAGS_MASK": str(config.bad_catflags_mask),
+        "FORMAT": "csv",
+    }
+    url = f"{ZTF_LIGHT_CURVE_URL}?{urlencode(params)}"
+    response = cached_get(ZTF_LIGHT_CURVE_URL, params=params, timeout=config.timeout_seconds, namespace="ztf")
+    response.raise_for_status()
+    return parse_light_curve_table(response.text)
+
+
+def parse_light_curve_table(text: str) -> list[dict[str, str]]:
+    stripped = text.lstrip()
+    if not stripped:
+        return []
+    if "," in stripped.splitlines()[0]:
+        return list(csv.DictReader(io.StringIO(text)))
+    return parse_ipac_table(text)
+
+
+def parse_ipac_table(text: str) -> list[dict[str, str]]:
+    lines = [line.rstrip("\n") for line in text.splitlines() if line.strip()]
+    header_index = next((index for index, line in enumerate(lines) if line.startswith("|")), None)
+    if header_index is None:
+        return []
+    header = [part.strip() for part in lines[header_index].strip("|").split("|")]
+    data_start = header_index + 4
+    rows: list[dict[str, str]] = []
+    for line in lines[data_start:]:
+        if line.startswith("\\") or line.startswith("|"):
+            continue
+        parts = line.split()
+        if len(parts) < len(header):
+            continue
+        rows.append(dict(zip(header, parts, strict=False)))
+    return rows
+
+
+def plot_light_curve(candidate: Candidate, rows: list[dict[str, str]], packet_dir: Path) -> Path | None:
+    points: dict[str, list[tuple[float, float]]] = {}
+    for row in rows:
+        mjd = _parse_float(row.get("mjd") or row.get("MJD") or row.get("hmjd") or row.get("HJD"))
+        mag = _parse_float(row.get("mag") or row.get("MAG"))
+        if mjd is None or mag is None:
+            continue
+        band = (row.get("filtercode") or row.get("band") or row.get("BAND") or "ZTF").strip()
+        points.setdefault(band, []).append((mjd, mag))
+
+    if not points:
+        return None
+
+    packet_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = safe_file_stem(candidate.target.name)
+    path = packet_dir / f"{safe_name}_ztf.png"
+    plt.figure(figsize=(8, 4.5))
+    for band, values in sorted(points.items()):
+        values.sort()
+        x = [item[0] for item in values]
+        y = [item[1] for item in values]
+        plt.scatter(x, y, s=10, label=band, alpha=0.75)
+    plt.gca().invert_yaxis()
+    plt.xlabel("MJD")
+    plt.ylabel("Magnitude")
+    plt.title(candidate.target.name)
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def percentile(values: list[float], pct: float) -> float:
+    if not values:
+        raise ValueError("percentile requires values")
+    if len(values) == 1:
+        return values[0]
+    index = (len(values) - 1) * pct / 100.0
+    lower = int(index)
+    upper = min(lower + 1, len(values) - 1)
+    fraction = index - lower
+    return values[lower] * (1 - fraction) + values[upper] * fraction
+
+
+def safe_file_stem(name: str) -> str:
+    return "".join(char if char.isalnum() else "_" for char in name).strip("_")[:80] or "target"
+
+
+def _parse_float(value: str | None) -> float | None:
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None

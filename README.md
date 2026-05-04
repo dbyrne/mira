@@ -10,6 +10,9 @@ The project intentionally produces a short observing queue rather than a giant
 catalog. The useful artifact is a candidate packet that another observer can
 inspect, challenge, or follow up.
 
+For a clean continuation in a fresh thread or on another computer, start with
+[`HANDOFF.md`](HANDOFF.md).
+
 ## What It Does
 
 - Queries the public AAVSO VSX catalog via VizieR (`B/vsx/vsx`).

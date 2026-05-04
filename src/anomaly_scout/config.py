@@ -9,7 +9,6 @@ import yaml
 
 @dataclass(frozen=True)
 class ObserverConfig:
-    name: str
     latitude_deg: float
     longitude_deg: float
     timezone: str
@@ -22,12 +21,16 @@ class WindowConfig:
     nights: int
     sample_minutes: int
     min_altitude_deg: float
+    max_sun_altitude_deg: float
+    max_moon_altitude_deg: float
+    max_moon_illumination: float
 
 
 @dataclass(frozen=True)
 class VsxQueryConfig:
     row_limit: int
     ra_bin_degrees: float
+    oversample_factor: int
     min_declination_deg: float
     max_bright_mag: float
     require_period: bool
@@ -44,9 +47,18 @@ class FilterConfig:
 
 
 @dataclass(frozen=True)
+class SiteConfig:
+    name: str
+    observer: ObserverConfig
+    observing_window: WindowConfig
+    filters: FilterConfig
+
+
+@dataclass(frozen=True)
 class ScoringConfig:
     uncertain_type_bonus: int
     survey_name_bonus: int
+    classical_name_bonus: int
     sparse_aavso_bonus: int
     well_observed_aavso_penalty: int
     high_amplitude_bonus: int
@@ -55,6 +67,10 @@ class ScoringConfig:
     long_period_bonus: int
     time_series_bonus: int
     clean_field_bonus: int
+    period_disagreement_bonus: int
+    period_discovered_bonus: int
+    gaia_color_anomaly_bonus: int
+    gaia_crowding_penalty: int
 
 
 @dataclass(frozen=True)
@@ -65,10 +81,19 @@ class AavsoConfig:
     sparse_recent_threshold: int
     timeout_seconds: int
     bands: tuple[str, ...]
+    period_min_peak_power: float
 
 
 @dataclass(frozen=True)
 class SimbadConfig:
+    enabled: bool
+    enrich_top: int
+    search_radius_arcsec: float
+    timeout_seconds: int
+
+
+@dataclass(frozen=True)
+class GaiaConfig:
     enabled: bool
     enrich_top: int
     search_radius_arcsec: float
@@ -82,6 +107,7 @@ class ZtfConfig:
     timeout_seconds: int
     bad_catflags_mask: int
     bands: tuple[str, ...]
+    period_min_peak_power: float
 
 
 @dataclass(frozen=True)
@@ -92,13 +118,12 @@ class OutputConfig:
 
 @dataclass(frozen=True)
 class ScoutConfig:
-    observer: ObserverConfig
-    observing_window: WindowConfig
+    sites: tuple[SiteConfig, ...]
     vsx_query: VsxQueryConfig
-    filters: FilterConfig
     scoring: ScoringConfig
     aavso: AavsoConfig
     simbad: SimbadConfig
+    gaia: GaiaConfig
     ztf: ZtfConfig
     output: OutputConfig
 
@@ -107,18 +132,21 @@ def load_config(path: str | Path) -> ScoutConfig:
     with Path(path).open("r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
 
+    sites = tuple(_parse_site(item) for item in raw["sites"])
+    if not sites:
+        raise ValueError("config must list at least one site under 'sites'")
+
     return ScoutConfig(
-        observer=ObserverConfig(**raw["observer"]),
-        observing_window=WindowConfig(**raw["observing_window"]),
+        sites=sites,
         vsx_query=VsxQueryConfig(
             row_limit=int(raw["vsx_query"]["row_limit"]),
             ra_bin_degrees=float(raw["vsx_query"].get("ra_bin_degrees", 15)),
+            oversample_factor=int(raw["vsx_query"].get("oversample_factor", 3)),
             min_declination_deg=float(raw["vsx_query"]["min_declination_deg"]),
             max_bright_mag=float(raw["vsx_query"]["max_bright_mag"]),
             require_period=bool(raw["vsx_query"].get("require_period", False)),
             include_types=tuple(str(item) for item in raw["vsx_query"]["include_types"]),
         ),
-        filters=FilterConfig(**_coerce_numbers(raw["filters"])),
         scoring=ScoringConfig(**_coerce_numbers(raw["scoring"])),
         aavso=AavsoConfig(
             enabled=bool(raw.get("aavso", {}).get("enabled", True)),
@@ -127,6 +155,7 @@ def load_config(path: str | Path) -> ScoutConfig:
             sparse_recent_threshold=int(raw.get("aavso", {}).get("sparse_recent_threshold", 5)),
             timeout_seconds=int(raw.get("aavso", {}).get("timeout_seconds", 20)),
             bands=tuple(str(item) for item in raw.get("aavso", {}).get("bands", ["V", "Vis."])),
+            period_min_peak_power=float(raw.get("aavso", {}).get("period_min_peak_power", 0.3)),
         ),
         simbad=SimbadConfig(
             enabled=bool(raw.get("simbad", {}).get("enabled", True)),
@@ -134,17 +163,41 @@ def load_config(path: str | Path) -> ScoutConfig:
             search_radius_arcsec=float(raw.get("simbad", {}).get("search_radius_arcsec", 5)),
             timeout_seconds=int(raw.get("simbad", {}).get("timeout_seconds", 20)),
         ),
+        gaia=GaiaConfig(
+            enabled=bool(raw.get("gaia", {}).get("enabled", True)),
+            enrich_top=int(raw.get("gaia", {}).get("enrich_top", 0)),
+            search_radius_arcsec=float(raw.get("gaia", {}).get("search_radius_arcsec", 3)),
+            timeout_seconds=int(raw.get("gaia", {}).get("timeout_seconds", 30)),
+        ),
         ztf=ZtfConfig(
             enabled=bool(raw["ztf"].get("enabled", True)),
             search_radius_arcsec=float(raw["ztf"]["search_radius_arcsec"]),
             timeout_seconds=int(raw["ztf"]["timeout_seconds"]),
             bad_catflags_mask=int(raw["ztf"]["bad_catflags_mask"]),
             bands=tuple(str(item) for item in raw["ztf"]["bands"]),
+            period_min_peak_power=float(raw["ztf"].get("period_min_peak_power", 0.3)),
         ),
         output=OutputConfig(
             directory=Path(raw["output"]["directory"]),
             top_packets=int(raw["output"]["top_packets"]),
         ),
+    )
+
+
+def _parse_site(raw: dict[str, Any]) -> SiteConfig:
+    window_raw = dict(_coerce_numbers(raw["observing_window"]))
+    window_raw.setdefault("max_sun_altitude_deg", -12.0)
+    window_raw.setdefault("max_moon_altitude_deg", 30.0)
+    window_raw.setdefault("max_moon_illumination", 0.7)
+    return SiteConfig(
+        name=str(raw["name"]),
+        observer=ObserverConfig(
+            latitude_deg=float(raw["observer"]["latitude_deg"]),
+            longitude_deg=float(raw["observer"]["longitude_deg"]),
+            timezone=str(raw["observer"]["timezone"]),
+        ),
+        observing_window=WindowConfig(**window_raw),
+        filters=FilterConfig(**_coerce_numbers(raw["filters"])),
     )
 
 

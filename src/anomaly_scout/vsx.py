@@ -3,6 +3,8 @@ from __future__ import annotations
 import csv
 import io
 import math
+import random
+import re
 import time
 from typing import Iterable
 
@@ -33,22 +35,47 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
     targets: dict[int, VsxTarget] = {}
     bin_degrees = max(1.0, min(180.0, config.ra_bin_degrees))
     bins = math.ceil(360.0 / bin_degrees)
-    per_bin_limit = max(1, math.ceil(config.row_limit / bins))
+    per_bin_target = max(1, math.ceil(config.row_limit / bins))
+    oversample = max(1, int(config.oversample_factor))
+    per_bin_request = per_bin_target * oversample
+    half_request = max(1, per_bin_request // 2)
 
     for index in range(bins):
         ra_min = index * bin_degrees
         ra_max = min(360.0, ra_min + bin_degrees)
-        params = _base_query_params(config, per_bin_limit)
-        params["RAJ2000"] = f"{ra_min:.6f}..{ra_max:.6f}"
-        response = _get_with_retries(params, timeout_seconds)
-        if response is None:
+        ra_range = f"{ra_min:.6f}..{ra_max:.6f}"
+
+        bin_rows: dict[int, VsxTarget] = {}
+        # Pull from both ends of the OID range so the per-bin pool covers
+        # GCVS-era classical names AND newer survey discoveries. Either alone
+        # would bias the queue toward one population; the other end then
+        # disappears from the final sample.
+        for sort_value in ("OID", "-OID"):
+            params = _base_query_params(config, half_request)
+            params["RAJ2000"] = ra_range
+            params["-sort"] = sort_value
+            response = _get_with_retries(params, timeout_seconds)
+            if response is None:
+                continue
+            for target in parse_vsx_tsv(response.text):
+                bin_rows.setdefault(target.oid, target)
+
+        if not bin_rows:
             continue
-        for target in parse_vsx_tsv(response.text):
+        sampled = _sample_bin(list(bin_rows.values()), per_bin_target, seed=index)
+        for target in sampled:
             targets[target.oid] = target
         if len(targets) >= config.row_limit:
             break
 
     return list(targets.values())[: config.row_limit]
+
+
+def _sample_bin(rows: list[VsxTarget], target_count: int, seed: int) -> list[VsxTarget]:
+    if len(rows) <= target_count:
+        return rows
+    rng = random.Random(seed)
+    return rng.sample(rows, target_count)
 
 
 def _get_with_retries(params: dict[str, str], timeout_seconds: int, attempts: int = 3) -> requests.Response | None:
@@ -62,6 +89,26 @@ def _get_with_retries(params: dict[str, str], timeout_seconds: int, attempts: in
                 return None
             time.sleep(1.5 * attempt)
     return None
+
+
+def fetch_vsx_target_by_name(name: str, timeout_seconds: int = 30) -> VsxTarget | None:
+    params = {
+        "-source": "B/vsx/vsx",
+        "-out.max": "10",
+        "-out": ",".join(VSX_COLUMNS),
+        "Name": name,
+    }
+    response = _get_with_retries(params, timeout_seconds)
+    if response is None:
+        return None
+    targets = list(parse_vsx_tsv(response.text))
+    if not targets:
+        return None
+    needle = name.strip().lower()
+    for target in targets:
+        if target.name.strip().lower() == needle:
+            return target
+    return targets[0]
 
 
 def _base_query_params(config: VsxQueryConfig, row_limit: int) -> dict[str, str]:
@@ -112,11 +159,38 @@ def parse_vsx_tsv(text: str) -> Iterable[VsxTarget]:
     return targets
 
 
-def type_matches(var_type: str, include_patterns: tuple[str, ...]) -> bool:
-    normalized = var_type.upper()
+_TOKEN_SPLIT_RE = re.compile(r"[/|]")
+_UNCERTAINTY_TRAILERS = ":?"
+
+
+def tokenize_var_type(var_type: str) -> list[str]:
+    normalized = (var_type or "").upper().strip()
     if not normalized:
-        return True
-    return any(pattern.upper() in normalized for pattern in include_patterns)
+        return []
+    tokens: list[str] = []
+    for raw in _TOKEN_SPLIT_RE.split(normalized):
+        cleaned = raw.strip().rstrip(_UNCERTAINTY_TRAILERS).strip()
+        if cleaned:
+            tokens.append(cleaned)
+    return tokens
+
+
+def type_matches(var_type: str, include_patterns: tuple[str, ...]) -> bool:
+    tokens = tokenize_var_type(var_type)
+    if not tokens:
+        return any(pattern.strip() == "?" for pattern in include_patterns)
+    for token in tokens:
+        for pattern in include_patterns:
+            pat = pattern.upper().strip()
+            if not pat or pat == "?":
+                continue
+            if pat.endswith("*"):
+                prefix = pat[:-1]
+                if prefix and token.startswith(prefix):
+                    return True
+            elif token == pat:
+                return True
+    return False
 
 
 def _parse_float(value: str | None) -> float | None:

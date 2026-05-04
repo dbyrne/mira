@@ -14,15 +14,27 @@ SIMBAD_TAP_SYNC_URL = "https://simbad.cds.unistra.fr/simbad/sim-tap/sync"
 SIMBAD_COO_URL = "https://simbad.cds.unistra.fr/simbad/sim-coo"
 
 
-def enrich_candidates_with_simbad(candidates: list[Candidate], config: ScoutConfig, limit: int | None = None) -> None:
+def enrich_candidates_with_simbad(
+    candidates: list[Candidate],
+    config: ScoutConfig,
+    limit: int | None = None,
+    extra_oids: set[int] | None = None,
+) -> int:
     if not config.simbad.enabled:
-        return
+        return 0
     enrich_limit = config.simbad.enrich_top if limit is None else limit
-    if enrich_limit <= 0:
-        return
+    extra_oids = extra_oids or set()
+    targets = [
+        candidate
+        for index, candidate in enumerate(candidates)
+        if index < enrich_limit or candidate.target.oid in extra_oids
+    ]
+    if not targets:
+        return 0
 
-    for candidate in candidates[:enrich_limit]:
+    for candidate in targets:
         candidate.simbad = fetch_simbad_match(candidate.target.ra_deg, candidate.target.dec_deg, config.simbad)
+    return len(targets)
 
 
 def fetch_simbad_match(ra_deg: float, dec_deg: float, config: SimbadConfig) -> SimbadStats:

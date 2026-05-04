@@ -1,0 +1,153 @@
+sites:
+  - name: Jersey City
+    observer:
+      latitude_deg: 40.7178
+      longitude_deg: -74.0431
+      timezone: America/New_York
+    observing_window:
+      start_hour_local: 20
+      end_hour_local: 1
+      nights: 14
+      sample_minutes: 30
+      min_altitude_deg: 45
+      # Sun-altitude ceiling per sample. -12 = nautical twilight (usable for
+      # photometry); -18 = astronomical (strict); 0 = sun-on-horizon (effectively
+      # disables the filter).
+      max_sun_altitude_deg: -12
+      # Moon filter: a sample is excluded only when both conditions hold:
+      # the moon is above max_moon_altitude_deg AND illumination is above
+      # max_moon_illumination. Set max_moon_altitude_deg: 90 to disable.
+      max_moon_altitude_deg: 30
+      max_moon_illumination: 0.7
+    filters:
+      min_galactic_latitude_abs_deg: 12
+      min_catalog_amplitude_mag: 0.12
+      prefer_amplitude_mag: 0.25
+      prefer_max_mag: 14.0
+      reject_saturated_brighter_than_mag: 7.0
+  - name: Fairbanks
+    observer:
+      latitude_deg: 64.8378
+      longitude_deg: -147.7164
+      timezone: America/Anchorage
+    observing_window:
+      start_hour_local: 22
+      end_hour_local: 5
+      nights: 14
+      sample_minutes: 30
+      min_altitude_deg: 25
+      # See Jersey City window above for what max_sun_altitude_deg means. At
+      # 64.84N there is no nautical darkness from roughly early May through
+      # early August — pick --start-date accordingly or relax this to 0.
+      max_sun_altitude_deg: -12
+      max_moon_altitude_deg: 30
+      max_moon_illumination: 0.7
+    filters:
+      min_galactic_latitude_abs_deg: 5
+      min_catalog_amplitude_mag: 0.10
+      prefer_amplitude_mag: 0.20
+      prefer_max_mag: 16.5
+      reject_saturated_brighter_than_mag: 5.0
+
+vsx_query:
+  row_limit: 1500
+  ra_bin_degrees: 30
+  oversample_factor: 3
+  min_declination_deg: -10
+  max_bright_mag: 17.0
+  require_period: false
+  include_types:
+    - "SR*"
+    - "L*"
+    - M
+    - EA
+    - EB
+    - EW
+    - "RR*"
+    - DSCT
+    - VAR
+    - ROT
+    - "?"
+
+scoring:
+  uncertain_type_bonus: 20
+  # survey_name_bonus vs classical_name_bonus: bias the queue toward novelty or
+  # practice. novelty=12/0, classical=0/12, mixed=6/6 (default).
+  survey_name_bonus: 6
+  classical_name_bonus: 6
+  sparse_aavso_bonus: 15
+  well_observed_aavso_penalty: 18
+  high_amplitude_bonus: 14
+  moderate_amplitude_bonus: 8
+  bright_target_bonus: 10
+  long_period_bonus: 8
+  time_series_bonus: 5
+  clean_field_bonus: 8
+  # Applied when ZTF Lomb-Scargle period disagrees with the VSX catalog period
+  # (after checking 1/2x and 2x harmonics). A real anomaly signal.
+  period_disagreement_bonus: 18
+  # Applied when Gaia DR3 BP-RP color disagrees with the VSX type family
+  # (e.g., M-Mira but BP-RP < 1.5). A weaker, probabilistic anomaly signal.
+  gaia_color_anomaly_bonus: 8
+  # Applied (as a penalty) when Gaia ipd_frac_multi_peak > 0.1 (PSF appears
+  # blended). Comp-star photometry will be unreliable; demote target.
+  gaia_crowding_penalty: 6
+  # Applied when ZTF or AAVSO finds a high-confidence period and the VSX
+  # catalog has no period_days listed. Smaller than the disagreement bonus
+  # because "we found something the catalog lacks" is less specific than
+  # "the data and catalog disagree."
+  period_discovered_bonus: 10
+
+aavso:
+  enabled: true
+  # AAVSO enrichment can swing a score by sparse_aavso_bonus (+15) or
+  # -well_observed_aavso_penalty (-18), a 33-point range. Enriching only the
+  # top N pre-AAVSO can hide candidates ranked just outside that window that
+  # would jump in after enrichment, so keep enrich_top generous (>> top_packets).
+  enrich_top: 200
+  recent_days: 730
+  sparse_recent_threshold: 5
+  timeout_seconds: 20
+  bands:
+    - V
+    - Vis.
+    - CV
+    - TG
+    - B
+    - R
+    - I
+  # Same shape as ztf.period_min_peak_power - threshold for trusting an
+  # AAVSO-derived Lomb-Scargle period. AAVSO photometry is heterogeneous
+  # (multiple observers/bands), so 0.3 is reasonable for bright variables.
+  period_min_peak_power: 0.3
+
+simbad:
+  enabled: true
+  enrich_top: 20
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
+gaia:
+  enabled: true
+  # gaia_color_anomaly_bonus is +8, smaller than the AAVSO swing but still
+  # only able to fire on enriched candidates. Keep enrich_top generous so
+  # candidates that would jump after a color anomaly are reachable.
+  enrich_top: 200
+  search_radius_arcsec: 3
+  timeout_seconds: 30
+
+ztf:
+  enabled: true
+  search_radius_arcsec: 5
+  timeout_seconds: 45
+  bad_catflags_mask: 32768
+  bands:
+    - g
+    - r
+  # Lomb-Scargle peak power below this threshold is treated as no signal -
+  # period_disagreement_bonus will not fire. 0.3 = "barely above noise floor."
+  period_min_peak_power: 0.3
+
+output:
+  directory: output
+  top_packets: 20

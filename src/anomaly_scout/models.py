@@ -40,6 +40,7 @@ class VsxTarget:
 
 @dataclass
 class Observability:
+    site_name: str
     max_altitude_deg: float
     minutes_above_minimum: int
     best_local_time: datetime | None
@@ -54,7 +55,11 @@ class ZtfStats:
     bands: tuple[str, ...] = ()
     median_mag: float | None = None
     amplitude_mag: float | None = None
+    derived_period_days: float | None = None
+    period_power: float | None = None
+    period_disagrees: bool | None = None
     plot_path: str | None = None
+    folded_plot_path: str | None = None
     note: str = ""
 
 
@@ -64,7 +69,12 @@ class AavsoStats:
     recent_observations: int = 0
     from_jd: float | None = None
     to_jd: float | None = None
+    last_observation_jd: float | None = None
     note: str = ""
+    derived_period_days: float | None = None
+    period_power: float | None = None
+    period_disagrees: bool | None = None
+    period_note: str = ""
 
 
 @dataclass
@@ -81,11 +91,43 @@ class SimbadStats:
 
 
 @dataclass
+class GaiaStats:
+    status: str
+    source_id: str = ""
+    g_mag: float | None = None
+    bp_rp: float | None = None
+    parallax_mas: float | None = None
+    parallax_error_mas: float | None = None
+    ruwe: float | None = None
+    photometric_variable: bool = False
+    separation_arcsec: float | None = None
+    ipd_frac_multi_peak: float | None = None
+    color_anomaly: str = ""
+    note: str = ""
+
+
+@dataclass
 class Candidate:
     target: VsxTarget
-    observability: Observability
+    observabilities: list[Observability]
     score: float
     reasons: list[str] = field(default_factory=list)
+    best_site_name: str = ""
+    site_scores: dict[str, float] = field(default_factory=dict)
+    site_reasons: dict[str, list[str]] = field(default_factory=dict)
     aavso: AavsoStats | None = None
     simbad: SimbadStats | None = None
+    gaia: GaiaStats | None = None
     ztf: ZtfStats | None = None
+
+    @property
+    def best_observability(self) -> Observability:
+        if self.best_site_name:
+            for obs in self.observabilities:
+                if obs.site_name == self.best_site_name:
+                    return obs
+        return self.observabilities[0]
+
+    @property
+    def observable_site_names(self) -> tuple[str, ...]:
+        return tuple(observation.site_name for observation in self.observabilities)

@@ -11,6 +11,13 @@ import requests
 from .cache import cached_get
 from .config import ZtfConfig
 from .models import Candidate, ZtfStats
+from .period_analysis import (
+    PERIOD_MAX_DAYS,
+    PERIOD_MIN_DAYS,
+    assess_period_disagreement,
+    estimate_period,
+    period_disagreement,
+)
 
 ZTF_LIGHT_CURVE_URL = "https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves"
 
@@ -38,14 +45,94 @@ def enrich_with_ztf(candidate: Candidate, config: ZtfConfig, packet_dir: Path) -
     median_mag = sorted_mags[len(sorted_mags) // 2]
     amplitude = percentile(sorted_mags, 95) - percentile(sorted_mags, 5)
     plot_path = plot_light_curve(candidate, rows, packet_dir)
+
+    derived_period, peak_power, time_span = estimate_period_from_rows(rows)
+    catalog_period = candidate.target.period_days
+    period_disagrees, gating_note = assess_period_disagreement(
+        catalog_period=catalog_period,
+        derived_period=derived_period,
+        peak_power=peak_power,
+        time_span_days=time_span,
+        period_min=PERIOD_MIN_DAYS,
+        period_max=PERIOD_MAX_DAYS,
+        min_peak_power=config.period_min_peak_power,
+    )
+    folded_plot_path = None
+    if derived_period is not None:
+        folded_plot_path = plot_folded_light_curve(candidate, rows, derived_period, packet_dir)
+
     return ZtfStats(
         status="ok",
         observations=len(rows),
         bands=tuple(bands),
         median_mag=median_mag,
         amplitude_mag=amplitude,
+        derived_period_days=derived_period,
+        period_power=peak_power,
+        period_disagrees=period_disagrees,
         plot_path=str(plot_path) if plot_path else None,
+        folded_plot_path=str(folded_plot_path) if folded_plot_path else None,
+        note=gating_note,
     )
+
+
+def estimate_period_from_rows(
+    rows: list[dict[str, str]],
+    period_min: float = PERIOD_MIN_DAYS,
+    period_max: float = PERIOD_MAX_DAYS,
+    freq_count: int = 5000,
+) -> tuple[float | None, float | None, float | None]:
+    times: list[float] = []
+    mags: list[float] = []
+    bands: list[str] = []
+    for row in rows:
+        mjd = _parse_float(row.get("mjd") or row.get("MJD") or row.get("hmjd") or row.get("HJD"))
+        mag = _parse_float(row.get("mag") or row.get("MAG"))
+        if mjd is None or mag is None:
+            continue
+        band = (row.get("filtercode") or row.get("band") or row.get("BAND") or "ZTF").strip()
+        times.append(mjd)
+        mags.append(mag)
+        bands.append(band)
+    return estimate_period(times, mags, bands, period_min=period_min, period_max=period_max, freq_count=freq_count)
+
+
+def plot_folded_light_curve(
+    candidate: Candidate,
+    rows: list[dict[str, str]],
+    period_days: float,
+    packet_dir: Path,
+) -> Path | None:
+    points: dict[str, list[tuple[float, float]]] = {}
+    for row in rows:
+        mjd = _parse_float(row.get("mjd") or row.get("MJD") or row.get("hmjd") or row.get("HJD"))
+        mag = _parse_float(row.get("mag") or row.get("MAG"))
+        if mjd is None or mag is None:
+            continue
+        band = (row.get("filtercode") or row.get("band") or row.get("BAND") or "ZTF").strip()
+        phase = (mjd / period_days) % 1.0
+        points.setdefault(band, []).append((phase, mag))
+
+    if not points:
+        return None
+
+    packet_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = safe_file_stem(candidate.target.name)
+    path = packet_dir / f"{safe_name}_ztf_folded.png"
+    plt.figure(figsize=(8, 4.5))
+    for band, values in sorted(points.items()):
+        x = [item[0] for item in values] + [item[0] + 1.0 for item in values]  # plot two cycles
+        y = [item[1] for item in values] * 2
+        plt.scatter(x, y, s=10, label=band, alpha=0.6)
+    plt.gca().invert_yaxis()
+    plt.xlabel(f"Phase (period = {period_days:.4f} d)")
+    plt.ylabel("Magnitude")
+    plt.title(f"{candidate.target.name} folded")
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
 
 
 def fetch_ztf_light_curve(ra_deg: float, dec_deg: float, band: str, config: ZtfConfig) -> list[dict[str, str]]:

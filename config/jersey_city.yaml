@@ -72,6 +72,12 @@ simbad:
   search_radius_arcsec: 5
   timeout_seconds: 20
 
+gaia:
+  enabled: true
+  enrich_top: 20
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
 ztf:
   enabled: true
   search_radius_arcsec: 5

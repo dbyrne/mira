@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .aavso import enrich_candidates_with_aavso
 from .config import load_config
+from .gaia import enrich_candidates_with_gaia
 from .report import clean_previous_outputs, write_outputs
 from .scoring import build_candidates
 from .simbad import enrich_candidates_with_simbad
@@ -24,6 +25,7 @@ def main() -> None:
     run_parser.add_argument("--start-date", default=None, help="Local observing start date, YYYY-MM-DD.")
     run_parser.add_argument("--aavso-top", type=int, default=None, help="Check AAVSO recent coverage for top N candidates.")
     run_parser.add_argument("--simbad-top", type=int, default=None, help="Fetch SIMBAD context for top N candidates.")
+    run_parser.add_argument("--gaia-top", type=int, default=None, help="Fetch Gaia DR3 context for top N candidates.")
     run_parser.add_argument("--ztf-top", type=int, default=0, help="Fetch ZTF light curves for the top N candidates.")
 
     args = parser.parse_args()
@@ -59,6 +61,12 @@ def run(args: argparse.Namespace) -> None:
         checked = min(simbad_top, len(candidates))
         print(f"Fetching SIMBAD context for top {checked} candidates...")
         enrich_candidates_with_simbad(candidates, config, limit=simbad_top)
+
+    gaia_top = config.gaia.enrich_top if args.gaia_top is None else max(0, int(args.gaia_top))
+    if config.gaia.enabled and gaia_top:
+        checked = min(gaia_top, len(candidates))
+        print(f"Fetching Gaia DR3 context for top {checked} candidates...")
+        enrich_candidates_with_gaia(candidates, config, limit=gaia_top)
 
     ztf_top = max(0, int(args.ztf_top or 0))
     if config.ztf.enabled and ztf_top:

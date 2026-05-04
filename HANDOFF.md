@@ -38,23 +38,27 @@ If the editable install fails, check that Python 3.11+ is active.
 Fast smoke test:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0 --start-date 2026-05-04
+anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --gaia-top 5 --ztf-top 0 --start-date 2026-05-04
 ```
 
 Current useful run:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --ztf-top 0 --start-date 2026-05-04
+anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --gaia-top 20 --ztf-top 0 --start-date 2026-05-04
 ```
 
 Selective ZTF enrichment:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --ztf-top 3 --start-date 2026-05-04
+anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --gaia-top 20 --ztf-top 3 --start-date 2026-05-04
 ```
 
 ZTF/IRSA calls are often slow or unavailable. The tool should keep running and
 mark the packet with an unavailable status when ZTF does not cooperate.
+
+AAVSO recent-coverage checks can also be flaky. The current code falls back to
+matching cached AAVSO responses when a live request fails, and marks those rows
+as `ok-cached`.
 
 ## Outputs To Read First
 
@@ -105,6 +109,7 @@ charts, comparison stars, field crowding, and recent literature before observing
 - `src/anomaly_scout/scoring.py`: candidate filtering and score reasons
 - `src/anomaly_scout/aavso.py`: recent AAVSO observation count
 - `src/anomaly_scout/simbad.py`: SIMBAD TAP context and cross-identifiers
+- `src/anomaly_scout/gaia.py`: Gaia DR3 color, parallax, and RUWE context
 - `src/anomaly_scout/ztf.py`: optional ZTF light-curve enrichment
 - `src/anomaly_scout/report.py`: CSV, research notes, and packets
 - `src/anomaly_scout/cache.py`: simple HTTP response cache
@@ -117,8 +122,12 @@ charts, comparison stars, field crowding, and recent literature before observing
   floor, not a sum across all configured nights.
 - VSX rows are sampled in RA bins so the query is not biased toward RA 0.
 - SIMBAD and AAVSO enrichment are intentionally shallow but useful for triage.
+- Gaia enrichment adds color/parallax/RUWE metadata for sanity-checking object
+  type and possible red-giant behavior.
 - AAVSO coverage affects ranking: sparse targets get a bonus; heavily covered
   targets receive a penalty.
+- If AAVSO live coverage is unavailable, cached successful responses can still
+  preserve the previous coverage counts for repeat local runs.
 - AAVSO finder-chart links are generated in packets and research notes.
 - ZTF is optional because IRSA calls can time out; do not make it mandatory for
   the main queue.
@@ -129,7 +138,8 @@ charts, comparison stars, field crowding, and recent literature before observing
 - It does not yet check field crowding from images.
 - It does not yet verify AAVSO comparison-star availability beyond linking VSP.
 - It does not perform period analysis or folded light-curve fitting yet.
-- It does not query Gaia DR3 directly yet; SIMBAD often exposes Gaia IDs.
+- Gaia DR3 context is basic; it is not yet used for full color-magnitude
+  classification or distance-quality filtering.
 - It does not yet create observing-night schedules by weather or moon phase.
 
 ## Recommended Next Work
@@ -163,4 +173,3 @@ git push
 ```
 
 On the new machine, clone the private repo and run the setup commands above.
-

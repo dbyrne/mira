@@ -36,9 +36,10 @@ Score: **79.0**
 
 ## AAVSO Recent Coverage
 
-- Status: `ok`
+- Status: `ok-cached`
 - Recent observations: `0`
-- JD range: `2460434.92-2461164.92`
+- JD range: `2460434.50-2461164.50`
+- Note: used cached AAVSO response after live request failed: 405 Client Error: Not Allowed for url: https://vsx.aavso.org/index.php?view=api.object&ident=VX+CrB&data=50000&fromjd=2460434.50000&tojd=2461164.50000&csv=&band=V%2CVis.%2CCV%2CTG%2CB%2CR%2CI&mtype=std
 
 ## SIMBAD Context
 
@@ -48,6 +49,19 @@ Score: **79.0**
 - Match separation: `0.010` arcsec
 - Search: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=240.014420+34.972460&Radius=5.0&Radius.unit=arcsec
 - Other IDs: `TIC 458490426`, `ATO J240.0143+34.9724`, `ZTF J160003.44+345820.9`, `Gaia DR3 1372000918724474240`, `NSVS   7847696`, `Antipin V22`, `GSC 02576-00466`, `V* VX CrB`
+
+## Gaia DR3 Context
+
+- Status: `ok`
+- Source ID: `1372000918724474240`
+- G mag: `14.066`
+- BP-RP: `0.628`
+- Parallax: `0.200` mas
+- Parallax error: `0.018` mas
+- RUWE: `1.410`
+- Absolute G estimate: `0.566`
+- Match separation: `0.143` arcsec
+- VizieR query: https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=I%2F355%2Fgaiadr3&-out=Source%2CRA_ICRS%2CDE_ICRS%2CGmag%2CBP-RP%2CPlx%2Ce_Plx%2CRUWE&-c=240.014420+34.972460&-c.rs=5.0
 
 ## ZTF Enrichment
 

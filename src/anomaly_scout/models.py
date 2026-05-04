@@ -81,6 +81,21 @@ class SimbadStats:
 
 
 @dataclass
+class GaiaStats:
+    status: str
+    source_id: str = ""
+    g_mag: float | None = None
+    bp_rp: float | None = None
+    parallax_mas: float | None = None
+    parallax_error_mas: float | None = None
+    ruwe: float | None = None
+    absolute_g_mag: float | None = None
+    separation_arcsec: float | None = None
+    url: str = ""
+    note: str = ""
+
+
+@dataclass
 class Candidate:
     target: VsxTarget
     observability: Observability
@@ -88,4 +103,5 @@ class Candidate:
     reasons: list[str] = field(default_factory=list)
     aavso: AavsoStats | None = None
     simbad: SimbadStats | None = None
+    gaia: GaiaStats | None = None
     ztf: ZtfStats | None = None

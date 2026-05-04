@@ -9,10 +9,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `118.0`
 - VSX/SIMBAD type: `SR` / `S*?`
 - SIMBAD main ID: `2MASS J16000234+4538488`
+- Gaia: source `1398447265748971008`, G=11.71, BP-RP=2.47, plx=0.126 mas, RUWE=1.13
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-17`, `240 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; SIMBAD object type is uncertain (S*?); amplitude is large enough to measure from an urban site (0.29 mag)
+- Why it matters: sparse recent AAVSO coverage; SIMBAD object type is uncertain (S*?); amplitude is large enough to measure from an urban site (0.29 mag); Gaia color is very red (BP-RP=2.47)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=2286558
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=ASASSN-V+J160002.35%2B453848.8&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=240.009780+45.646910&Radius=5.0&Radius.unit=arcsec
@@ -22,6 +23,7 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `106.3`
 - VSX/SIMBAD type: `EW|EA` / `EB*`
 - SIMBAD main ID: `TYC 4157-625-1`
+- Gaia: source `1583015204597408000`, G=12.36, BP-RP=0.37, plx=0.821 mas, RUWE=1.10
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-05`, `330 min` above altitude floor
 - Observing plan: Time-series follow-up: run continuously for 2-4 hours when the target is high, then compare the folded light curve against the VSX period.
@@ -35,10 +37,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `105.7`
 - VSX/SIMBAD type: `SR` / `*`
 - SIMBAD main ID: `TYC 2633-490-1`
+- Gaia: source `4609436314557759232`, G=9.87, BP-RP=2.16, plx=0.377 mas, RUWE=1.11
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-17`, `120 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.27 mag)
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.27 mag); Gaia color is very red (BP-RP=2.16)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=2306732
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=ASASSN-V+J180001.26%2B355054.1&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=270.005250+35.848410&Radius=5.0&Radius.unit=arcsec
@@ -48,10 +51,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `105.4`
 - VSX/SIMBAD type: `SRS` / `*`
 - SIMBAD main ID: `IRAS 07557+6048`
+- Gaia: source `1084505737894798336`, G=9.28, BP-RP=2.69, plx=0.642 mas, RUWE=1.08
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-04`, `180 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.29 mag)
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.29 mag); Gaia color is very red (BP-RP=2.69)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=844456
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=IRAS+07557%2B6048&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=120.007460+60.673030&Radius=5.0&Radius.unit=arcsec
@@ -61,6 +65,7 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `84.2`
 - VSX/SIMBAD type: `EB` / `EB*`
 - SIMBAD main ID: `ASAS J120005+1552.4`
+- Gaia: source `3925312968506481408`, G=11.59, BP-RP=0.56, plx=1.740 mas, RUWE=1.24
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-05`, `300 min` above altitude floor
 - Observing plan: Time-series follow-up: run continuously for 2-4 hours when the target is high, then compare the folded light curve against the VSX period.
@@ -74,10 +79,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `81.3`
 - VSX/SIMBAD type: `EW` / `EB*`
 - SIMBAD main ID: `CRTS J080001.0+474500`
+- Gaia: source `933103605224602112`, G=13.80, BP-RP=0.82, plx=1.248 mas, RUWE=2.65
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-04`, `150 min` above altitude floor
 - Observing plan: Time-series follow-up: run continuously for 2-4 hours when the target is high, then compare the folded light curve against the VSX period.
-- Why it matters: sparse recent AAVSO coverage
+- Why it matters: sparse recent AAVSO coverage; Gaia RUWE is elevated (2.65)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=375472
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=CSS_J080001.0%2B474500&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=120.004460+47.750320&Radius=5.0&Radius.unit=arcsec
@@ -87,10 +93,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `79.0`
 - VSX/SIMBAD type: `RRAB` / `RR*`
 - SIMBAD main ID: `V* VX CrB`
+- Gaia: source `1372000918724474240`, G=14.07, BP-RP=0.63, plx=0.200 mas, RUWE=1.41
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-17`, `240 min` above altitude floor
 - Observing plan: Time-series follow-up: run continuously for 2-4 hours when the target is high, then compare the folded light curve against the VSX period.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (1.09 mag)
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (1.09 mag); Gaia RUWE is elevated (1.41)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=10641
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=VX+CrB&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=240.014420+34.972460&Radius=5.0&Radius.unit=arcsec
@@ -100,10 +107,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `77.5`
 - VSX/SIMBAD type: `EW` / `EB*`
 - SIMBAD main ID: `CRTS J100002.7+091420`
+- Gaia: source `3878454974090400128`, G=13.94, BP-RP=0.91, plx=1.206 mas, RUWE=2.57
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-05`, `150 min` above altitude floor
 - Observing plan: Time-series follow-up: run continuously for 2-4 hours when the target is high, then compare the folded light curve against the VSX period.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.33 mag)
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.33 mag); Gaia RUWE is elevated (2.57)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=379472
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=CSS_J100002.7%2B091420&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=150.011830+9.238970&Radius=5.0&Radius.unit=arcsec
@@ -113,10 +121,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `71.7`
 - VSX/SIMBAD type: `L` / `LP?`
 - SIMBAD main ID: `2MASS J18000072+1806044`
+- Gaia: source `4503175632500692480`, G=12.20, BP-RP=2.77, plx=0.107 mas, RUWE=1.18
 - Recent AAVSO observations: `0`
 - Best Jersey City window: `2026-05-17`, `60 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; SIMBAD object type is uncertain (LP?); no VSX period listed
+- Why it matters: sparse recent AAVSO coverage; SIMBAD object type is uncertain (LP?); no VSX period listed; Gaia color is very red (BP-RP=2.77)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=6732539
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+4503175632500692480&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=270.003050+18.101240&Radius=5.0&Radius.unit=arcsec
@@ -126,10 +135,11 @@ These notes summarize the current ranked queue. They are triage notes for human 
 - Score: `59.0`
 - VSX/SIMBAD type: `M` / `Mi*`
 - SIMBAD main ID: `V* V Leo`
+- Gaia: source `629454777516193152`, G=9.13, BP-RP=4.97, plx=0.830 mas, RUWE=1.21
 - Recent AAVSO observations: `119`
 - Best Jersey City window: `2026-05-05`, `210 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: amplitude is large enough to measure from an urban site (6.30 mag)
+- Why it matters: amplitude is large enough to measure from an urban site (6.30 mag); Gaia color is very red (BP-RP=4.97)
 - VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=17036
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=V+Leo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=150.008000+21.262330&Radius=5.0&Radius.unit=arcsec

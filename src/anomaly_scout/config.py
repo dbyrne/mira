@@ -76,6 +76,14 @@ class SimbadConfig:
 
 
 @dataclass(frozen=True)
+class GaiaConfig:
+    enabled: bool
+    enrich_top: int
+    search_radius_arcsec: float
+    timeout_seconds: int
+
+
+@dataclass(frozen=True)
 class ZtfConfig:
     enabled: bool
     search_radius_arcsec: float
@@ -99,6 +107,7 @@ class ScoutConfig:
     scoring: ScoringConfig
     aavso: AavsoConfig
     simbad: SimbadConfig
+    gaia: GaiaConfig
     ztf: ZtfConfig
     output: OutputConfig
 
@@ -133,6 +142,12 @@ def load_config(path: str | Path) -> ScoutConfig:
             enrich_top=int(raw.get("simbad", {}).get("enrich_top", 0)),
             search_radius_arcsec=float(raw.get("simbad", {}).get("search_radius_arcsec", 5)),
             timeout_seconds=int(raw.get("simbad", {}).get("timeout_seconds", 20)),
+        ),
+        gaia=GaiaConfig(
+            enabled=bool(raw.get("gaia", {}).get("enabled", True)),
+            enrich_top=int(raw.get("gaia", {}).get("enrich_top", 0)),
+            search_radius_arcsec=float(raw.get("gaia", {}).get("search_radius_arcsec", 5)),
+            timeout_seconds=int(raw.get("gaia", {}).get("timeout_seconds", 20)),
         ),
         ztf=ZtfConfig(
             enabled=bool(raw["ztf"].get("enabled", True)),

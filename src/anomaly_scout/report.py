@@ -53,6 +53,13 @@ def write_queue_csv(candidates: list[Candidate], path: Path) -> None:
         "simbad_main_id",
         "simbad_object_type",
         "simbad_separation_arcsec",
+        "gaia_status",
+        "gaia_source_id",
+        "gaia_g_mag",
+        "gaia_bp_rp",
+        "gaia_parallax_mas",
+        "gaia_ruwe",
+        "gaia_absolute_g_mag",
         "ztf_status",
         "ztf_observations",
         "ztf_amplitude_mag",
@@ -67,6 +74,7 @@ def write_queue_csv(candidates: list[Candidate], path: Path) -> None:
             obs = candidate.observability
             aavso = candidate.aavso
             simbad = candidate.simbad
+            gaia = candidate.gaia
             ztf = candidate.ztf
             writer.writerow(
                 {
@@ -92,6 +100,13 @@ def write_queue_csv(candidates: list[Candidate], path: Path) -> None:
                     "simbad_main_id": simbad.main_id if simbad else "",
                     "simbad_object_type": simbad.object_type if simbad else "",
                     "simbad_separation_arcsec": _format_optional(simbad.separation_arcsec if simbad else None),
+                    "gaia_status": gaia.status if gaia else "",
+                    "gaia_source_id": gaia.source_id if gaia else "",
+                    "gaia_g_mag": _format_optional(gaia.g_mag if gaia else None),
+                    "gaia_bp_rp": _format_optional(gaia.bp_rp if gaia else None),
+                    "gaia_parallax_mas": _format_optional(gaia.parallax_mas if gaia else None),
+                    "gaia_ruwe": _format_optional(gaia.ruwe if gaia else None),
+                    "gaia_absolute_g_mag": _format_optional(gaia.absolute_g_mag if gaia else None),
                     "ztf_status": ztf.status if ztf else "",
                     "ztf_observations": ztf.observations if ztf else "",
                     "ztf_amplitude_mag": _format_optional(ztf.amplitude_mag if ztf else None),
@@ -115,6 +130,7 @@ def write_research_notes(candidates: list[Candidate], path: Path) -> None:
         obs = candidate.observability
         aavso = candidate.aavso
         simbad = candidate.simbad
+        gaia = candidate.gaia
         lines.extend(
             [
                 f"### {rank}. {target.name}",
@@ -122,7 +138,8 @@ def write_research_notes(candidates: list[Candidate], path: Path) -> None:
                 f"- Score: `{candidate.score:.1f}`",
                 f"- VSX/SIMBAD type: `{target.var_type or 'blank'}` / `{simbad.object_type if simbad else 'not checked'}`",
                 f"- SIMBAD main ID: `{simbad.main_id if simbad else 'not checked'}`",
-                f"- Recent AAVSO observations: `{aavso.recent_observations if aavso else 'not checked'}`",
+                f"- Gaia: {_gaia_summary_text(gaia)}",
+                f"- Recent AAVSO observations: `{_aavso_recent_text(aavso)}`",
                 f"- Best Jersey City window: `{obs.best_night_date.isoformat() if obs.best_night_date else 'n/a'}`, "
                 f"`{obs.minutes_above_minimum} min` above altitude floor",
                 f"- Observing plan: {_observing_strategy_text(target)}",
@@ -154,6 +171,7 @@ def write_candidate_packet(candidate: Candidate, packet_dir: Path) -> Path:
     obs = candidate.observability
     aavso = candidate.aavso
     simbad = candidate.simbad
+    gaia = candidate.gaia
     ztf = candidate.ztf
     path = packet_dir / f"{safe_file_stem(target.name)}.md"
     lines = [
@@ -220,6 +238,27 @@ def write_candidate_packet(candidate: Candidate, packet_dir: Path) -> Path:
             lines.append(f"- Other IDs: {', '.join(f'`{identifier}`' for identifier in simbad.identifiers)}")
         if simbad.note:
             lines.append(f"- Note: {simbad.note}")
+
+    lines.extend(["", "## Gaia DR3 Context", ""])
+    if gaia is None:
+        lines.append("- Not requested for this run.")
+    else:
+        lines.extend(
+            [
+                f"- Status: `{gaia.status}`",
+                f"- Source ID: `{gaia.source_id or 'n/a'}`",
+                f"- G mag: `{_format_optional(gaia.g_mag)}`",
+                f"- BP-RP: `{_format_optional(gaia.bp_rp)}`",
+                f"- Parallax: `{_format_optional(gaia.parallax_mas)}` mas",
+                f"- Parallax error: `{_format_optional(gaia.parallax_error_mas)}` mas",
+                f"- RUWE: `{_format_optional(gaia.ruwe)}`",
+                f"- Absolute G estimate: `{_format_optional(gaia.absolute_g_mag)}`",
+                f"- Match separation: `{_format_optional(gaia.separation_arcsec)}` arcsec",
+                f"- VizieR query: {gaia.url}",
+            ]
+        )
+        if gaia.note:
+            lines.append(f"- Note: {gaia.note}")
 
     lines.extend(["", "## ZTF Enrichment", ""])
     if ztf is None:
@@ -310,8 +349,9 @@ def _research_value_text(candidate: Candidate) -> str:
     target = candidate.target
     aavso = candidate.aavso
     simbad = candidate.simbad
+    gaia = candidate.gaia
     pieces: list[str] = []
-    if aavso and aavso.status == "ok" and aavso.recent_observations <= 5:
+    if aavso and aavso.status.startswith("ok") and aavso.recent_observations <= 5:
         pieces.append("sparse recent AAVSO coverage")
     if simbad and simbad.status == "ok" and simbad.object_type.endswith("?"):
         pieces.append(f"SIMBAD object type is uncertain ({simbad.object_type})")
@@ -321,4 +361,33 @@ def _research_value_text(candidate: Candidate) -> str:
         pieces.append("no VSX period listed")
     if target.catalog_amplitude and target.catalog_amplitude >= 0.25:
         pieces.append(f"amplitude is large enough to measure from an urban site ({target.catalog_amplitude:.2f} mag)")
+    if gaia and gaia.bp_rp is not None and gaia.bp_rp >= 2.0:
+        pieces.append(f"Gaia color is very red (BP-RP={gaia.bp_rp:.2f})")
+    if gaia and gaia.ruwe is not None and gaia.ruwe >= 1.4:
+        pieces.append(f"Gaia RUWE is elevated ({gaia.ruwe:.2f})")
     return "; ".join(pieces) if pieces else "good observability, but lower novelty signal in current metadata"
+
+
+def _gaia_summary_text(gaia) -> str:
+    if gaia is None:
+        return "not checked"
+    if gaia.status != "ok":
+        return gaia.status
+    parts = [f"source `{gaia.source_id}`"]
+    if gaia.g_mag is not None:
+        parts.append(f"G={gaia.g_mag:.2f}")
+    if gaia.bp_rp is not None:
+        parts.append(f"BP-RP={gaia.bp_rp:.2f}")
+    if gaia.parallax_mas is not None:
+        parts.append(f"plx={gaia.parallax_mas:.3f} mas")
+    if gaia.ruwe is not None:
+        parts.append(f"RUWE={gaia.ruwe:.2f}")
+    return ", ".join(parts)
+
+
+def _aavso_recent_text(aavso) -> str:
+    if aavso is None:
+        return "not checked"
+    if not aavso.status.startswith("ok"):
+        return aavso.status
+    return str(aavso.recent_observations)

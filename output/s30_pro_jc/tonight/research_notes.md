@@ -4,7 +4,7 @@ Mixed mode: balanced classical/survey bonus. These are useful follow-up candidat
 
 ## Run Metadata
 
-- Run started (UTC): `2026-05-05T13:43:12Z`
+- Run started (UTC): `2026-05-05T16:29:18Z`
 - Config: `config/s30_pro_jc.yaml`
 - Output directory: `output\s30_pro_jc\tonight`
 - Start date: `2026-05-05`

@@ -3,9 +3,13 @@
 {% block content %}
 <section class="card">
   <h2>{{ run.label }}</h2>
+  <p class="meta">
+    <span class="htmx-indicator" id="run-poll-indicator">polling…</span>
+  </p>
   <div hx-get="{{ url_for('run_status_partial', run_id=run.run_id) }}"
        hx-trigger="load, every 2s"
-       hx-swap="innerHTML">
+       hx-swap="innerHTML"
+       hx-indicator="#run-poll-indicator">
     {% include "run_status_partial.html" %}
   </div>
   <p style="margin-top: 1rem;">

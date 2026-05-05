@@ -100,6 +100,33 @@ section.card p.meta { color: var(--fg-dim); font-size: 0.9rem; }
   gap: 0.75rem;
   margin-top: 0.5rem;
 }
+@media (min-width: 600px) {
+  .kickoff-form { grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+  .kickoff-form > .full-width,
+  .kickoff-form > button,
+  .kickoff-form > .full-width-md { grid-column: 1 / -1; }
+}
+/* HTMX loading feedback: shows a small spinner next to polled regions. */
+.htmx-indicator {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+  opacity: 0;
+  transition: opacity 120ms ease-in;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { opacity: 1; }
+.htmx-indicator::before {
+  content: "⟳";
+  display: inline-block;
+  margin-right: 0.25rem;
+  animation: spin 1.2s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 .kickoff-form label {
   display: block;
   font-size: 0.9rem;
@@ -116,26 +143,43 @@ section.card p.meta { color: var(--fg-dim); font-size: 0.9rem; }
   border: 1px solid var(--card-border);
   border-radius: 6px;
 }
-.btn, button.btn-primary, button[type="submit"], a.btn-primary {
-  display: inline-block;
+/* Unified button system: one .btn class with optional .btn-primary modifier.
+   Applies identically to <a class="btn"> and <button class="btn">. Submit
+   buttons without an explicit class default to .btn-primary styling. */
+.btn,
+.btn-primary,
+button[type="submit"],
+button.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--button-bg);
   color: var(--button-fg);
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 0.65rem 1rem;
   font-size: 1rem;
-  text-decoration: none;
   font-weight: 600;
+  text-decoration: none;
   min-height: 44px;
   line-height: 1.3;
   cursor: pointer;
+  box-sizing: border-box;
+  transition: filter 120ms ease;
 }
-.btn-primary, button.btn-primary, button[type="submit"], a.btn-primary {
+.btn-primary,
+button[type="submit"],
+button.btn-primary,
+a.btn-primary {
   background: var(--button-primary-bg);
   color: var(--button-primary-fg);
   border-color: var(--button-primary-bg);
 }
 .btn:hover, .btn-primary:hover, button:hover { filter: brightness(1.1); }
+.btn:focus-visible, .btn-primary:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 table.data { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 table.data th, table.data td { padding: 0.4rem 0.5rem; text-align: left; }
 table.data tr:nth-child(even) { background: var(--table-stripe); }
@@ -153,10 +197,20 @@ details > summary {
 }
 details > summary::before { content: "▸ "; color: var(--accent); }
 details[open] > summary::before { content: "▾ "; }
-.status-done { color: var(--status-done); font-weight: 600; }
-.status-running { color: var(--status-running); font-weight: 600; }
-.status-failed { color: var(--status-failed); font-weight: 600; }
-.status-queued { color: var(--status-queued); font-weight: 600; }
+/* Status pills: visually distinct badges instead of just colored text. */
+.status-done, .status-running, .status-failed, .status-queued {
+  display: inline-block;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  vertical-align: baseline;
+}
+.status-done { color: var(--status-done); background: rgba(102, 204, 119, 0.12); }
+.status-running { color: var(--status-running); background: rgba(255, 170, 68, 0.14); }
+.status-failed { color: var(--status-failed); background: rgba(255, 68, 68, 0.14); }
+.status-queued { color: var(--status-queued); background: rgba(170, 170, 170, 0.12); }
 progress {
   width: 100%;
   height: 8px;
@@ -179,4 +233,11 @@ li { margin: 0.2rem 0; }
 @media (max-width: 600px) {
   header.app-header nav { gap: 0.5rem; font-size: 0.9rem; }
   .nav-links { gap: 0.6rem; }
+}
+@media (max-width: 480px) {
+  .brand-text { display: none; }
+  .nav-links a { font-size: 0.85rem; }
+  .theme-toggle { padding: 0.3rem 0.55rem; font-size: 0.8rem; }
+  main { padding: 0.6rem; }
+  section.card { padding: 0.85rem 0.9rem; }
 }

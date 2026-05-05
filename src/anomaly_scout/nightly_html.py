@@ -285,22 +285,15 @@ def write_session_schedule_html(
         f'· {len(schedule.scheduled)} targets · {duration:.1f}h window '
         f'· {total_integration} min integration</div>',
         "</div>",
+        '<div style="display:flex;gap:0.5rem;align-items:center;">',
+        '<a href="/" class="theme-toggle" title="Back to dashboard (when served via webapp)">← Dashboard</a>',
         '<button id="theme-toggle" class="theme-toggle">☀ Day</button>',
+        '</div>',
         "</header>",
         "<main>",
     ]
 
-    if schedule.scheduled:
-        parts.append(_render_quick_glance(schedule))
-        for index, scheduled in enumerate(schedule.scheduled, start=1):
-            parts.append(_render_target_card(index, scheduled))
-    else:
-        parts.append('<section class="quick-glance"><p>No targets scheduled in this window.</p></section>')
-
-    if schedule.overflow:
-        parts.append(_render_overflow(schedule))
-
-    parts.append(_render_footer())
+    parts.append(render_schedule_main_html(schedule))
 
     parts.extend(
         [
@@ -312,6 +305,44 @@ def write_session_schedule_html(
     )
     html_path.write_text("\n".join(parts), encoding="utf-8")
     return html_path
+
+
+def render_schedule_main_html(schedule: ScheduleResult) -> str:
+    """Return the HTML for the schedule body content (inside <main>).
+    Used by the standalone HTML writer AND the Flask /schedule route, which
+    embeds the same content inside the webapp base layout."""
+    parts: list[str] = []
+    if schedule.scheduled:
+        parts.append(_render_quick_glance(schedule))
+        for index, scheduled in enumerate(schedule.scheduled, start=1):
+            parts.append(_render_target_card(index, scheduled))
+    else:
+        parts.append('<section class="quick-glance"><p>No targets scheduled in this window.</p></section>')
+
+    if schedule.overflow:
+        parts.append(_render_overflow(schedule))
+
+    parts.append(_render_footer())
+    return "\n".join(parts)
+
+
+def render_schedule_summary_html(schedule: ScheduleResult, site_name: str) -> str:
+    """One-line summary HTML for embedding above the schedule content (used
+    by /schedule when the page is wrapped in webapp chrome that doesn't
+    duplicate the session header)."""
+    duration = (schedule.window_end - schedule.window_start).total_seconds() / 3600.0
+    total_integration = sum(t.integration_minutes for t in schedule.scheduled)
+    return (
+        '<section class="card">'
+        f'<h2>{html.escape(schedule.window_start.strftime("%a %b %d, %Y"))} from {html.escape(site_name)}</h2>'
+        f'<p class="meta">'
+        f'{html.escape(schedule.window_start.strftime("%H:%M"))}–'
+        f'{html.escape(schedule.window_end.strftime("%H:%M %Z"))} '
+        f'· {len(schedule.scheduled)} targets · {duration:.1f}h window '
+        f'· {total_integration} min integration'
+        '</p>'
+        '</section>'
+    )
 
 
 def _render_quick_glance(schedule: ScheduleResult) -> str:

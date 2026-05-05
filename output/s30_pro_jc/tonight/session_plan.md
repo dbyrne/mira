@@ -1,6 +1,6 @@
 # Session Plan: 2026-05-05 from Jersey City
 
-Window: **09:43 EDT** to **03:43 EDT** (18.0 hours)
+Window: **12:29 EDT** to **06:29 EDT** (18.0 hours)
 
 Site: Jersey City (lat 40.718, lon -74.043)
 

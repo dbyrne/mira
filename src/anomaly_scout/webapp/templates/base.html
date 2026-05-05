@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <title>{% block title %}AAVSO Anomaly Scout{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
 </head>
 <body>
 <header class="app-header">
   <nav>
-    <a href="{{ url_for('index') }}" class="brand">🔭 AAVSO Anomaly Scout</a>
+    <a href="{{ url_for('index') }}" class="brand">🔭 <span class="brand-text">AAVSO Scout</span></a>
     <span class="nav-links">
       <a href="{{ url_for('schedule') }}">Schedule</a>
       <a href="{{ url_for('photometry_index') }}">Photometry</a>

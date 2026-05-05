@@ -17,6 +17,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from datetime import datetime, timezone
+
 from flask import Flask, render_template, request, redirect, url_for, abort, send_file, Response
 
 from .runs import RunRegistry
@@ -46,7 +48,27 @@ def create_app(
     app.config["RUNS"] = runs
     app.config["NINA"] = nina
 
+    app.jinja_env.filters["human_time"] = _human_time
+
     from .routes import register_routes
     register_routes(app)
 
     return app
+
+
+def _human_time(timestamp: float | None) -> str:
+    """Render a Unix timestamp as 'X min ago', 'X hr ago', or 'YYYY-MM-DD HH:MM'.
+    Used by the photometry index to format mtimes."""
+    if timestamp is None:
+        return ""
+    now = datetime.now(timezone.utc).timestamp()
+    delta = now - timestamp
+    if delta < 60:
+        return "just now"
+    if delta < 3600:
+        return f"{int(delta / 60)} min ago"
+    if delta < 86400:
+        return f"{int(delta / 3600)} hr ago"
+    if delta < 7 * 86400:
+        return f"{int(delta / 86400)} d ago"
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")

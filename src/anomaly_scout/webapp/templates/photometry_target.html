@@ -10,11 +10,11 @@
   {% endif %}
 
   <form action="{{ url_for('trigger_photometry', target_slug=target_slug) }}" method="post" class="kickoff-form">
-    <label>
+    <label class="full-width">
       Target name (used for VSX lookup)
       <input type="text" name="target_name" value="{{ target_name }}">
     </label>
-    <label>
+    <label class="full-width">
       Comp-stars JSON path
       <input type="text" name="comp_stars" value="{{ comp_star_default }}">
     </label>
@@ -32,9 +32,13 @@
 
 <section class="card">
   <h2>Status</h2>
+  <p class="meta">
+    <span class="htmx-indicator" id="phot-poll-indicator">polling…</span>
+  </p>
   <div hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug) }}"
        hx-trigger="load, every 2s"
-       hx-swap="innerHTML">
+       hx-swap="innerHTML"
+       hx-indicator="#phot-poll-indicator">
     {% include "photometry_partial.html" %}
   </div>
 

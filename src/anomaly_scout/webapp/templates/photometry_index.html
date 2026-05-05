@@ -14,7 +14,7 @@
       <tr>
         <td><a href="{{ url_for('photometry_target', target_slug=target.slug) }}">{{ target.name }}</a></td>
         <td>{{ target.fits_count }}</td>
-        <td>{{ target.modified | int }}</td>
+        <td>{{ target.modified | human_time }}</td>
         <td>
           {% if target.upload_exists %}
           <span class="status-done">upload ready</span>

@@ -1,6 +1,6 @@
 # Session Schedule: 2026-05-05 from Jersey City
 
-Window: **09:43 EDT** to **03:43 EDT** (18.0 hours)
+Window: **12:29 EDT** to **06:29 EDT** (18.0 hours)
 
 Scheduled: **9 targets**, 240 min integration + 24 min slewing.
 

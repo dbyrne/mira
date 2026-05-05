@@ -16,10 +16,12 @@ class WebappRoutesTests(TestCase):
         self.output_dir.mkdir()
         self.captures_root = Path(self.tmp.name) / "captures"
         self.captures_root.mkdir()
+        self.state_dir = Path(self.tmp.name) / "runs"
         self.app = create_app(
             output_dir=self.output_dir,
             captures_root=self.captures_root,
             nina_base_url="http://localhost:1888",
+            state_dir=self.state_dir,
         )
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
@@ -47,7 +49,7 @@ class WebappRoutesTests(TestCase):
     def test_photometry_index_empty(self) -> None:
         response = self.client.get("/photometry")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"No FITS-containing", response.data)
+        self.assertIn(b"No captures found", response.data)
 
     def test_photometry_index_lists_target_dirs(self) -> None:
         target_dir = self.captures_root / "RR_LYR"
@@ -85,6 +87,61 @@ class WebappRoutesTests(TestCase):
             response = self.client.get("/nina/partial")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"NINA not reachable", response.data)
+
+    def test_run_record_persists_and_reloads_after_restart(self) -> None:
+        from anomaly_scout.webapp.runs import RunRegistry
+
+        state_dir = Path(self.tmp.name) / "persist-test"
+        registry = RunRegistry(state_dir=state_dir)
+
+        def quick_task(record):
+            record.log("doing work")
+            return {"answer": 42}
+
+        record = registry.submit("test", "tiny task", quick_task)
+        # Wait for completion
+        import time
+        for _ in range(50):
+            if record.status in ("done", "failed"):
+                break
+            time.sleep(0.05)
+        self.assertEqual(record.status, "done")
+        self.assertEqual(record.result, {"answer": 42})
+
+        # New registry sees the record
+        registry2 = RunRegistry(state_dir=state_dir)
+        loaded = registry2.get(record.run_id)
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded.status, "done")
+        self.assertEqual(loaded.label, "tiny task")
+        self.assertEqual(loaded.result, {"answer": 42})
+
+    def test_in_flight_run_marked_failed_on_restart(self) -> None:
+        from anomaly_scout.webapp.runs import RunRecord, RunRegistry
+
+        state_dir = Path(self.tmp.name) / "inflight-test"
+        state_dir.mkdir()
+
+        # Manually drop a "running" record JSON into the state dir, simulating a
+        # process that died mid-task.
+        from datetime import datetime, timezone
+        import json
+        running = RunRecord(
+            run_id="ghost",
+            kind="tonight",
+            label="lost run",
+            status="running",
+            log_lines=["[12:00:00] Started: lost run"],
+            created_at=datetime.now(timezone.utc),
+            started_at=datetime.now(timezone.utc),
+        )
+        (state_dir / "ghost.json").write_text(json.dumps(running.to_dict()), encoding="utf-8")
+
+        registry = RunRegistry(state_dir=state_dir)
+        loaded = registry.get("ghost")
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded.status, "failed")
+        self.assertIn("lost on server restart", loaded.error)
 
     def test_nina_partial_when_connected(self) -> None:
         status = NinaStatus(

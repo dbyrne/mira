@@ -12,7 +12,7 @@ Produces a single, self-contained session_schedule.html file:
 from __future__ import annotations
 
 import html
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -107,6 +107,71 @@ section.quick-glance h2 {
   font-size: 1rem;
   margin: 0 0 0.5rem 0;
   color: var(--fg-dim);
+}
+section.timeline-section {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 1.5rem;
+}
+section.timeline-section h2 {
+  font-size: 1rem;
+  margin: 0 0 0.6rem 0;
+  color: var(--fg-dim);
+}
+.timeline { position: relative; width: 100%; }
+.timeline-track {
+  position: relative;
+  height: 38px;
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.timeline-block {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.timeline-block:hover { filter: brightness(1.18); text-decoration: none; }
+.timeline-block-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.timeline-ticks {
+  position: relative;
+  height: 1.1rem;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--fg-dim);
+}
+.timeline-ticks .tick {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-ticks .tick::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 4px;
+  background: var(--card-border);
+  margin: 0 auto 1px;
 }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 0.4rem 0.5rem; text-align: left; }
@@ -313,6 +378,7 @@ def render_schedule_main_html(schedule: ScheduleResult) -> str:
     embeds the same content inside the webapp base layout."""
     parts: list[str] = []
     if schedule.scheduled:
+        parts.append(_render_timeline_html(schedule))
         parts.append(_render_quick_glance(schedule))
         for index, scheduled in enumerate(schedule.scheduled, start=1):
             parts.append(_render_target_card(index, scheduled))
@@ -342,6 +408,69 @@ def render_schedule_summary_html(schedule: ScheduleResult, site_name: str) -> st
         f'· {total_integration} min integration'
         '</p>'
         '</section>'
+    )
+
+
+def _render_timeline_html(schedule: ScheduleResult) -> str:
+    """CSS-only horizontal timeline of scheduled targets. Each block is a
+    jump-link to the corresponding target card; hour ticks align below."""
+    window_start = schedule.window_start
+    window_end = schedule.window_end
+    total_seconds = (window_end - window_start).total_seconds()
+    if total_seconds <= 0:
+        return ""
+
+    blocks: list[str] = []
+    for index, scheduled in enumerate(schedule.scheduled, start=1):
+        slot_start = (scheduled.start_local - window_start).total_seconds()
+        slot_end = (scheduled.end_local - window_start).total_seconds()
+        slot_start = max(0.0, min(total_seconds, slot_start))
+        slot_end = max(0.0, min(total_seconds, slot_end))
+        if slot_end <= slot_start:
+            continue
+        left_pct = (slot_start / total_seconds) * 100.0
+        width_pct = ((slot_end - slot_start) / total_seconds) * 100.0
+        target = scheduled.candidate.target
+        slot_text = (
+            f"{scheduled.start_local.strftime('%H:%M')}–"
+            f"{scheduled.end_local.strftime('%H:%M')}"
+        )
+        title = f"{index}. {target.name} ({slot_text})"
+        blocks.append(
+            f'<a class="timeline-block" href="#t{index}" '
+            f'style="left:{left_pct:.2f}%;width:{width_pct:.2f}%;" '
+            f'title="{html.escape(title)}">'
+            f'<span class="timeline-block-label">{index}. {html.escape(target.name)}</span>'
+            f"</a>"
+        )
+
+    ticks: list[str] = []
+    first_tick = window_start.replace(minute=0, second=0, microsecond=0)
+    if first_tick < window_start:
+        first_tick = first_tick + timedelta(hours=1)
+    current = first_tick
+    while current <= window_end:
+        offset = (current - window_start).total_seconds()
+        if 0 <= offset <= total_seconds:
+            left_pct = (offset / total_seconds) * 100.0
+            ticks.append(
+                f'<span class="tick" style="left:{left_pct:.2f}%;">'
+                f'{html.escape(current.strftime("%H:%M"))}</span>'
+            )
+        current = current + timedelta(hours=1)
+
+    return (
+        '<section class="timeline-section">'
+        "<h2>Tonight at a glance</h2>"
+        '<div class="timeline">'
+        '<div class="timeline-track">'
+        + "".join(blocks)
+        + "</div>"
+        '<div class="timeline-ticks">'
+        + "".join(ticks)
+        + "</div>"
+        "</div>"
+        "</section>"
     )
 
 

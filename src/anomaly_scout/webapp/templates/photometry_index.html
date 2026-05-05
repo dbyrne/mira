@@ -27,9 +27,26 @@
     </tbody>
   </table>
   {% else %}
-  <p>No FITS-containing subdirectories found under <code>{{ captures_root }}</code>.
-  Make sure NINA's image directory matches this path, or pass <code>--captures-root</code>
-  when starting the webapp.</p>
+  <div class="empty-state">
+    <h3>No captures found</h3>
+    <p>Photometry expects per-target subdirectories with FITS files, like:</p>
+    <pre>{{ captures_root }}/
+├── RR_LYR/
+│   ├── frame001.fits
+│   ├── frame002.fits
+│   └── …
+└── BETA_LYR/
+    └── …</pre>
+    <p>
+      Configure NINA to write captures into a subdirectory of <code>{{ captures_root }}</code>
+      named after the target (NINA does this automatically when imaging from a
+      Target Scheduler project). You can also point the app at a different
+      root with <code>anomaly-scout webapp --captures-root /path/to/your/NINA/captures</code>.
+    </p>
+    <p class="meta">
+      Workflow walkthrough: <code>docs/photometry.md</code> in the repo.
+    </p>
+  </div>
   {% endif %}
 </section>
 {% endblock %}

@@ -17,24 +17,26 @@
   --status-failed: #ff4444;
   --status-queued: #aaa;
 }
+/* Day mode: single accent color (slate-blue) for brand, links, active nav,
+   and primary buttons. Status colors stay distinct but harmonized. */
 body.day-mode {
-  --bg: #f7f5f0;
-  --fg: #1f1f1f;
-  --fg-dim: #555;
-  --accent: #b8462a;
+  --bg: #f5f6f8;
+  --fg: #1c1f24;
+  --fg-dim: #5a6271;
+  --accent: #2b5fb0;
   --card-bg: #ffffff;
-  --card-border: #d8cfc4;
-  --link: #2664c8;
-  --button-bg: #e6dfd2;
-  --button-fg: #1f1f1f;
-  --button-primary-bg: #1f2a44;
+  --card-border: #d6dae0;
+  --link: #2b5fb0;
+  --button-bg: #eef0f4;
+  --button-fg: #1c1f24;
+  --button-primary-bg: #2b5fb0;
   --button-primary-fg: #ffffff;
-  --table-stripe: #efebe2;
-  --code-bg: #efeae0;
+  --table-stripe: #f0f1f4;
+  --code-bg: #eef0f4;
   --status-done: #2a8540;
-  --status-running: #cc7700;
+  --status-running: #b56c00;
   --status-failed: #b00020;
-  --status-queued: #777;
+  --status-queued: #6a7280;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -64,8 +66,14 @@ header.app-header nav {
 }
 .brand { font-weight: 700; color: var(--accent); text-decoration: none; }
 .nav-links { display: flex; gap: 1rem; flex: 1 1 auto; }
-.nav-links a { color: var(--fg-dim); text-decoration: none; }
-.nav-links a:hover { color: var(--fg); text-decoration: underline; }
+.nav-links a {
+  color: var(--fg-dim);
+  text-decoration: none;
+  padding-bottom: 0.15rem;
+  border-bottom: 2px solid transparent;
+}
+.nav-links a:hover { color: var(--fg); }
+.nav-links a.active { color: var(--accent); border-bottom-color: var(--accent); }
 .theme-toggle {
   background: var(--button-bg);
   color: var(--button-fg);
@@ -83,6 +91,13 @@ section.card {
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
 }
+section.card.primary {
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-color: var(--accent);
+  border-width: 1px;
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+section.card.primary h2 { font-size: 1.3rem; color: var(--accent); }
 section.card h2 { margin-top: 0; font-size: 1.15rem; }
 section.card h3 { font-size: 1rem; color: var(--fg-dim); margin: 1rem 0 0.5rem; }
 section.card p.meta { color: var(--fg-dim); font-size: 0.9rem; }
@@ -229,6 +244,40 @@ progress::-moz-progress-bar { background: var(--accent); }
 }
 ul { padding-left: 1.2rem; }
 li { margin: 0.2rem 0; }
+.empty-state {
+  padding: 0.5rem 0.5rem 1rem;
+}
+.empty-state h3 {
+  font-size: 1rem;
+  color: var(--accent);
+  margin: 0.25rem 0 0.5rem;
+}
+.empty-state pre {
+  font-size: 0.85rem;
+  color: var(--fg-dim);
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+}
+.frames-table { font-size: 0.9rem; margin-top: 0.5rem; }
+.frames-table td:nth-child(3),
+.frames-table td:nth-child(4),
+.frames-table td:nth-child(2) { font-variant-numeric: tabular-nums; }
+.frame-flag {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.flag-ok { color: var(--status-done); background: rgba(102, 204, 119, 0.10); }
+.flag-pending { color: var(--status-running); background: rgba(255, 170, 68, 0.10); }
+.flag-outlier { color: var(--status-failed); background: rgba(255, 68, 68, 0.12); }
+.flag-failed, .flag-no-signal { color: var(--status-failed); background: rgba(255, 68, 68, 0.12); }
+.frame-outlier td:nth-child(3) { font-weight: 700; }
 
 @media (max-width: 600px) {
   header.app-header nav { gap: 0.5rem; font-size: 0.9rem; }

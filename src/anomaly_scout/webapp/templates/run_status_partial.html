@@ -16,7 +16,19 @@
   {% endif %}
   <details {% if run.status == 'running' %}open{% endif %}>
     <summary>Log ({{ run.log_lines|length }} lines)</summary>
-    <pre class="log">{% for line in run.log_lines %}{{ line }}
+    <pre class="log" data-autoscroll="{{ 1 if run.status == 'running' else 0 }}">{% for line in run.log_lines %}{{ line }}
 {% endfor %}</pre>
   </details>
 </div>
+<script>
+(function(){
+  document.querySelectorAll('pre.log[data-autoscroll="1"]').forEach(function(el){
+    // Auto-scroll to bottom unless the user has scrolled away from the bottom.
+    var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+    if (atBottom || el.dataset.firstRender === undefined) {
+      el.scrollTop = el.scrollHeight;
+      el.dataset.firstRender = '1';
+    }
+  });
+})();
+</script>

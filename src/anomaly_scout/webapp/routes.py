@@ -343,6 +343,15 @@ def _execute_submit(
         raise RuntimeError(f"No FITS files found in {target_dir}")
     record.log(f"Processing {len(fits_files)} FITS files...")
 
+    # Live results dict: the photometry template polls record.result['frames']
+    # to render a table that fills in as each frame is processed.
+    record.result = {
+        "frames": [],
+        "observation_count": 0,
+        "failures": 0,
+        "median_mag": None,
+        "upload_path": None,
+    }
     observations = []
     failures = []
     for index, path in enumerate(fits_files):
@@ -357,18 +366,59 @@ def _execute_submit(
         except Exception as exc:
             failures.append((path.name, str(exc)))
             record.log(f"  {path.name}: failed ({exc})")
+            record.result["frames"].append(
+                {"filename": path.name, "magnitude": None, "magnitude_error": None,
+                 "comp_label": "", "flag": "failed", "note": str(exc)}
+            )
+            record.result["failures"] = len(failures)
             continue
         if obs is None:
             failures.append((path.name, "no usable signal"))
             record.log(f"  {path.name}: no usable signal")
+            record.result["frames"].append(
+                {"filename": path.name, "magnitude": None, "magnitude_error": None,
+                 "comp_label": "", "flag": "no-signal", "note": "no usable signal"}
+            )
+            record.result["failures"] = len(failures)
             continue
         obs.chart_id = chart_id
         observations.append(obs)
+        record.result["frames"].append(
+            {
+                "filename": path.name,
+                "jd": obs.julian_date,
+                "magnitude": obs.magnitude,
+                "magnitude_error": obs.magnitude_error,
+                "comp_label": obs.comp_star_label,
+                "flag": "pending",  # filled with "ok"/"outlier" after the loop
+                "note": "",
+            }
+        )
+        record.result["observation_count"] = len(observations)
         record.log(f"  {path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
         record.set_progress(0.1 + 0.85 * (index + 1) / len(fits_files))
 
     if not observations:
         raise RuntimeError("No successful observations.")
+
+    # Flag outliers: |mag - median| > 3 * 1.4826 * MAD (robust sigma estimate).
+    mags = [o.magnitude for o in observations]
+    median_mag = sorted(mags)[len(mags) // 2]
+    if len(mags) >= 5:
+        deviations = sorted(abs(m - median_mag) for m in mags)
+        mad = deviations[len(deviations) // 2]
+        sigma = mad * 1.4826
+        for frame in record.result["frames"]:
+            if frame["flag"] == "pending":
+                if sigma > 0 and abs(frame["magnitude"] - median_mag) > 3 * sigma:
+                    frame["flag"] = "outlier"
+                else:
+                    frame["flag"] = "ok"
+    else:
+        # Too few frames to meaningfully flag outliers.
+        for frame in record.result["frames"]:
+            if frame["flag"] == "pending":
+                frame["flag"] = "ok"
 
     upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
     write_aavso_extended_file(
@@ -378,16 +428,12 @@ def _execute_submit(
         chart_id=chart_id,
     )
 
-    mags = [o.magnitude for o in observations]
-    record.log(f"Median mag {sorted(mags)[len(mags) // 2]:.3f}; wrote {upload_path.name}")
+    record.log(f"Median mag {median_mag:.3f}; wrote {upload_path.name}")
     record.set_progress(1.0)
 
-    return {
-        "upload_path": str(upload_path),
-        "observation_count": len(observations),
-        "failures": len(failures),
-        "median_mag": sorted(mags)[len(mags) // 2],
-    }
+    record.result["median_mag"] = median_mag
+    record.result["upload_path"] = str(upload_path)
+    return record.result
 
 
 # --- helpers ---

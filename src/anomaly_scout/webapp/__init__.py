@@ -29,6 +29,7 @@ def create_app(
     output_dir: Path | None = None,
     captures_root: Path | None = None,
     nina_base_url: str = "http://localhost:1888",
+    state_dir: Path | None = None,
 ) -> Flask:
     here = Path(__file__).parent
     app = Flask(
@@ -39,8 +40,9 @@ def create_app(
 
     output_dir = (output_dir or Path("output/s30_pro_jc/tonight")).resolve()
     captures_root = (captures_root or Path("captures")).resolve()
+    state_dir = (state_dir or Path("data/webapp_runs")).resolve()
 
-    runs = RunRegistry(max_workers=2)
+    runs = RunRegistry(max_workers=2, state_dir=state_dir)
     nina = NinaClient(base_url=nina_base_url)
 
     app.config["OUTPUT_DIR"] = output_dir

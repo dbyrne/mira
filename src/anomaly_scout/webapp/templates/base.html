@@ -4,17 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <title>{% block title %}AAVSO Anomaly Scout{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
 </head>
 <body>
 <header class="app-header">
   <nav>
+    {% set ep = request.endpoint or '' %}
     <a href="{{ url_for('index') }}" class="brand">🔭 <span class="brand-text">AAVSO Scout</span></a>
     <span class="nav-links">
-      <a href="{{ url_for('schedule') }}">Schedule</a>
-      <a href="{{ url_for('photometry_index') }}">Photometry</a>
-      <a href="{{ url_for('nina_dashboard') }}">NINA</a>
+      <a href="{{ url_for('schedule') }}" class="{% if ep == 'schedule' %}active{% endif %}">Schedule</a>
+      <a href="{{ url_for('photometry_index') }}" class="{% if ep.startswith('photometry') %}active{% endif %}">Photometry</a>
+      <a href="{{ url_for('nina_dashboard') }}" class="{% if ep.startswith('nina') %}active{% endif %}">NINA</a>
     </span>
     <button id="theme-toggle" class="theme-toggle">☀ Day</button>
   </nav>

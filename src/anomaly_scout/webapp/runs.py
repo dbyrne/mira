@@ -5,11 +5,13 @@ lines, and a result payload. UI polls the run by id to display progress.
 """
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Literal
 
 
@@ -43,16 +45,60 @@ class RunRecord:
         with self._lock:
             self.progress = max(0.0, min(1.0, fraction))
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "kind": self.kind,
+            "label": self.label,
+            "status": self.status,
+            "progress": self.progress,
+            "log_lines": list(self.log_lines),
+            "result": self.result,
+            "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RunRecord":
+        def _parse_dt(value: str | None) -> datetime | None:
+            if not value:
+                return None
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                return None
+
+        return cls(
+            run_id=data["run_id"],
+            kind=data["kind"],
+            label=data.get("label", ""),
+            status=data.get("status", "failed"),  # type: ignore[arg-type]
+            progress=float(data.get("progress", 0.0)),
+            log_lines=list(data.get("log_lines", [])),
+            result=data.get("result"),
+            error=data.get("error", ""),
+            created_at=_parse_dt(data.get("created_at")) or datetime.now(timezone.utc),
+            started_at=_parse_dt(data.get("started_at")),
+            finished_at=_parse_dt(data.get("finished_at")),
+        )
+
 
 class RunRegistry:
-    """Tracks all pipeline / photometry tasks."""
+    """Tracks all pipeline / photometry tasks. Optionally persists records
+    to a state directory so they survive server restarts."""
 
-    def __init__(self, max_workers: int = 2) -> None:
+    def __init__(self, max_workers: int = 2, state_dir: Path | None = None) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="anomaly-scout")
         self._records: dict[str, RunRecord] = {}
         self._futures: dict[str, Future] = {}
         self._latest_by_kind: dict[str, str] = {}
         self._lock = threading.Lock()
+        self._state_dir = state_dir
+        if self._state_dir is not None:
+            self._state_dir.mkdir(parents=True, exist_ok=True)
+            self._load_existing()
 
     def submit(
         self,
@@ -65,11 +111,13 @@ class RunRegistry:
         with self._lock:
             self._records[run_id] = record
             self._latest_by_kind[kind] = run_id
+        self._persist(record)
 
         def _runner():
             record.status = "running"
             record.started_at = datetime.now(timezone.utc)
             record.log(f"Started: {label}")
+            self._persist(record)
             try:
                 result = target_callable(record)
                 record.result = result
@@ -82,6 +130,7 @@ class RunRegistry:
                 record.log(f"FAILED: {exc}")
             finally:
                 record.finished_at = datetime.now(timezone.utc)
+                self._persist(record)
 
         future = self._executor.submit(_runner)
         with self._lock:
@@ -100,3 +149,39 @@ class RunRegistry:
     def all(self) -> list[RunRecord]:
         with self._lock:
             return sorted(self._records.values(), key=lambda r: r.created_at, reverse=True)
+
+    # --- Persistence ---
+
+    def _persist(self, record: RunRecord) -> None:
+        if self._state_dir is None:
+            return
+        path = self._state_dir / f"{record.run_id}.json"
+        try:
+            payload = json.dumps(record.to_dict(), indent=2, default=str)
+            path.write_text(payload, encoding="utf-8")
+        except OSError:
+            pass
+
+    def _load_existing(self) -> None:
+        if self._state_dir is None or not self._state_dir.exists():
+            return
+        for path in sorted(self._state_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                record = RunRecord.from_dict(data)
+            except (OSError, ValueError, KeyError):
+                continue
+            # Any in-flight runs were lost when the server died.
+            if record.status in ("queued", "running"):
+                record.status = "failed"
+                record.error = (record.error + "; lost on server restart").strip("; ")
+                record.log("[restart] Run was in flight when the server restarted; marked failed.")
+                self._persist(record)
+            self._records[record.run_id] = record
+            existing = self._latest_by_kind.get(record.kind)
+            existing_record = self._records.get(existing) if existing else None
+            if (
+                existing_record is None
+                or (record.created_at and existing_record.created_at and record.created_at > existing_record.created_at)
+            ):
+                self._latest_by_kind[record.kind] = record.run_id

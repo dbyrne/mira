@@ -400,14 +400,30 @@ def tonight(args: argparse.Namespace) -> None:
         site_names=site_names,
         metadata=metadata,
     )
+
+    from .scheduler import build_session_schedule
     from .session_plan import write_session_plan
+    from .session_schedule import write_session_schedule_outputs
 
     plan_targets = candidates[:top_packets]
     write_session_plan(plan_targets, output_dir, now_local, window_end, config)
+
+    schedule = build_session_schedule(
+        candidates,
+        window_start=now_local,
+        window_end=window_end,
+    )
+    write_session_schedule_outputs(schedule, output_dir, config)
+
     print(f"Wrote {output_dir / 'candidate_queue.csv'}")
-    print(f"Wrote {output_dir / 'session_plan.md'}")
+    print(f"Wrote {output_dir / 'session_plan.md'} (full menu)")
     print(f"Wrote {output_dir / 'session_plan.csv'}")
-    print(f"Wrote {output_dir / 'nina_targets.csv'} (NINA Target Scheduler import)")
+    print(
+        f"Wrote {output_dir / 'session_schedule.md'} "
+        f"({len(schedule.scheduled)} targets scheduled, {len(schedule.overflow)} overflow)"
+    )
+    print(f"Wrote {output_dir / 'session_schedule.csv'}")
+    print(f"Wrote {output_dir / 'nina_targets.csv'} (scheduled targets in execution order)")
     print(f"Wrote {packet_count} packets in {packet_dir}")
 
 

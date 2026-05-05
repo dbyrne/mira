@@ -42,7 +42,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `2`
-- JD range: `2460435.99-2461165.99`
+- JD range: `2460436.05-2461166.05`
 - Most recent observation: `2025-03-19` (JD `2460754.37`)
 - Period agreement: not assessable (Lomb-Scargle did not return a period)
 

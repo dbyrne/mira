@@ -75,6 +75,10 @@ class AavsoStats:
     period_power: float | None = None
     period_disagrees: bool | None = None
     period_note: str = ""
+    recent_median_mag: float | None = None
+    recent_min_mag: float | None = None
+    recent_max_mag: float | None = None
+    recent_samples: list[tuple[float, float, str]] = field(default_factory=list)
 
 
 @dataclass

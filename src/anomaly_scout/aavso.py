@@ -80,6 +80,8 @@ def fetch_recent_observation_count(
         observations = parse_cdata_observations(response.text)
         count = len(observations)
         last_observation_jd = max((obs[0] for obs in observations), default=None)
+        recent_median_mag, recent_min_mag, recent_max_mag = _summarize_mags(observations)
+        recent_samples = _sample_observations(observations)
 
         derived_period: float | None = None
         peak_power: float | None = None
@@ -109,6 +111,10 @@ def fetch_recent_observation_count(
             period_power=peak_power,
             period_disagrees=period_disagrees,
             period_note=period_note,
+            recent_median_mag=recent_median_mag,
+            recent_min_mag=recent_min_mag,
+            recent_max_mag=recent_max_mag,
+            recent_samples=recent_samples,
         )
     except Exception as exc:
         cached_text = find_cached_response_for_name(name)
@@ -200,6 +206,25 @@ def apply_aavso_score(candidate: Candidate, config: ScoutConfig) -> None:
             f"AAVSO discovered period {stats.derived_period_days:.4f} d "
             f"(peak power {stats.period_power:.3f}); VSX has no catalog period",
         )
+
+
+def _summarize_mags(observations: list[tuple[float, float, str]]) -> tuple[float | None, float | None, float | None]:
+    if not observations:
+        return None, None, None
+    mags = sorted(obs[1] for obs in observations)
+    median = mags[len(mags) // 2]
+    return median, mags[0], mags[-1]
+
+
+def _sample_observations(
+    observations: list[tuple[float, float, str]],
+    sample_count: int = 10,
+) -> list[tuple[float, float, str]]:
+    """Return up to `sample_count` recent observations, most recent first."""
+    if not observations:
+        return []
+    sorted_obs = sorted(observations, key=lambda obs: obs[0], reverse=True)
+    return sorted_obs[:sample_count]
 
 
 def find_cached_response_for_name(name: str) -> str | None:

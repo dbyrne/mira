@@ -105,9 +105,10 @@ def main() -> None:
     submit_parser.add_argument("--target", required=True, help="VSX target name (used to look up RA/Dec).")
     submit_parser.add_argument(
         "--comp-stars",
-        required=True,
-        help="Path to a JSON file listing AAVSO comparison stars: "
-        "[{\"label\":\"095\",\"ra_deg\":...,\"dec_deg\":...,\"catalog_mag\":9.5,\"catalog_band\":\"V\"}, ...]",
+        default=None,
+        help="Optional path to a JSON file listing AAVSO comparison stars. "
+        "Format: [{\"label\":\"095\",\"ra_deg\":...,\"dec_deg\":...,\"catalog_mag\":9.5,\"catalog_band\":\"V\"}, ...] "
+        "If omitted, comps are auto-fetched from AAVSO VSP for the target.",
     )
     submit_parser.add_argument(
         "--observer-code",
@@ -345,23 +346,47 @@ def submit(args: argparse.Namespace) -> None:
         f"Dec {vsx_target.dec_deg:.5f}"
     )
 
-    comp_path = Path(args.comp_stars)
-    if not comp_path.exists():
-        print(f"Comparison-star file '{comp_path}' does not exist.")
-        return
-    with comp_path.open(encoding="utf-8") as handle:
-        comp_data = _json.load(handle)
-    comps = [
-        CompStar(
-            label=str(item["label"]),
-            ra_deg=float(item["ra_deg"]),
-            dec_deg=float(item["dec_deg"]),
-            catalog_mag=float(item["catalog_mag"]),
-            catalog_band=str(item.get("catalog_band", "V")),
+    chart_id = args.chart_id
+    if args.comp_stars:
+        comp_path = Path(args.comp_stars)
+        if not comp_path.exists():
+            print(f"Comparison-star file '{comp_path}' does not exist.")
+            return
+        with comp_path.open(encoding="utf-8") as handle:
+            comp_data = _json.load(handle)
+        comps = [
+            CompStar(
+                label=str(item["label"]),
+                ra_deg=float(item["ra_deg"]),
+                dec_deg=float(item["dec_deg"]),
+                catalog_mag=float(item["catalog_mag"]),
+                catalog_band=str(item.get("catalog_band", "V")),
+            )
+            for item in comp_data
+        ]
+        print(f"Loaded {len(comps)} comparison stars from {comp_path}.")
+    else:
+        from .vsp import fetch_vsp_chart, filter_comps_for_target
+
+        print("Auto-fetching comp stars from AAVSO VSP...")
+        try:
+            chart = fetch_vsp_chart(args.target)
+        except Exception as exc:
+            print(f"VSP fetch failed: {exc}")
+            print("Re-run with --comp-stars <path.json> to use a manual sequence.")
+            return
+        target_mag = vsx_target.max_mag if vsx_target.max_mag is not None else None
+        comps = filter_comps_for_target(chart.comps, target_mag)
+        if not comps:
+            print(f"VSP chart {chart.chart_id} returned {len(chart.comps)} comps, none within mag tolerance.")
+            comps = chart.comps[:6]
+        print(
+            f"VSP chart {chart.chart_id}: {len(chart.comps)} candidate comps, "
+            f"{len(comps)} selected (mags {min(c.catalog_mag for c in comps):.2f}–"
+            f"{max(c.catalog_mag for c in comps):.2f})."
         )
-        for item in comp_data
-    ]
-    print(f"Loaded {len(comps)} comparison stars.")
+        if not chart_id or chart_id == "na":
+            chart_id = chart.chart_id
 
     fits_files = sorted(list(captures_dir.glob("*.fits")) + list(captures_dir.glob("*.fit")))
     if not fits_files:
@@ -387,7 +412,7 @@ def submit(args: argparse.Namespace) -> None:
         if obs is None:
             failures.append((fits_path.name, "no usable signal"))
             continue
-        obs.chart_id = args.chart_id
+        obs.chart_id = chart_id
         observations.append(obs)
         print(f"  {fits_path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
 
@@ -405,7 +430,7 @@ def submit(args: argparse.Namespace) -> None:
         observations,
         output_path,
         observer_code=args.observer_code,
-        chart_id=args.chart_id,
+        chart_id=chart_id,
     )
 
     mags = [o.magnitude for o in observations]

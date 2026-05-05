@@ -112,21 +112,27 @@ def register_routes(app: Flask) -> None:
         if target_dir is None:
             abort(404)
 
-        comp_path = Path(request.form.get("comp_stars", "")).resolve()
+        comp_stars_input = request.form.get("comp_stars", "").strip()
+        comp_path: Path | None = None
+        if comp_stars_input:
+            candidate = Path(comp_stars_input).resolve()
+            if not candidate.exists():
+                return render_template(
+                    "photometry_target.html",
+                    target_slug=target_slug,
+                    target_dir=target_dir,
+                    target_name=request.form.get("target_name", "").strip()
+                    or _dir_to_target_name(target_dir),
+                    run=None,
+                    error=f"Comp-stars JSON not found: {candidate}",
+                    comp_star_default=_default_comp_stars_path(target_dir),
+                ), 400
+            comp_path = candidate
+
         observer_code = request.form.get("observer_code", "").strip()
-        chart_id = request.form.get("chart_id", "na").strip() or "na"
+        chart_id = request.form.get("chart_id", "").strip() or "na"
         target_name = request.form.get("target_name", "").strip() or _dir_to_target_name(target_dir)
 
-        if not comp_path.exists():
-            return render_template(
-                "photometry_target.html",
-                target_slug=target_slug,
-                target_dir=target_dir,
-                target_name=target_name,
-                run=None,
-                error=f"Comp-stars JSON not found: {comp_path}",
-                comp_star_default=_default_comp_stars_path(target_dir),
-            ), 400
         if not observer_code:
             return render_template(
                 "photometry_target.html",
@@ -158,8 +164,24 @@ def register_routes(app: Flask) -> None:
         runs: RunRegistry = current_app.config["RUNS"]
         record = runs.latest(_submit_kind(target_slug))
         if record is None:
-            return render_template("photometry_partial.html", run=None)
-        return render_template("photometry_partial.html", run=record)
+            return render_template("photometry_partial.html", run=None, target_slug=target_slug)
+        return render_template("photometry_partial.html", run=record, target_slug=target_slug)
+
+    @app.route("/photometry/<target_slug>/lightcurve.png")
+    def photometry_lightcurve(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None or not (target_dir / "lightcurve.png").exists():
+            abort(404)
+        return send_from_directory(str(target_dir), "lightcurve.png")
+
+    @app.route("/photometry/<target_slug>/lightcurve_folded.png")
+    def photometry_lightcurve_folded(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None or not (target_dir / "lightcurve_folded.png").exists():
+            abort(404)
+        return send_from_directory(str(target_dir), "lightcurve_folded.png")
 
     @app.route("/photometry/<target_slug>/upload")
     def photometry_upload(target_slug):
@@ -311,7 +333,7 @@ def _execute_submit(
     record: RunRecord,
     target_dir: Path,
     target_name: str,
-    comp_path: Path,
+    comp_path: Path | None,
     observer_code: str,
     chart_id: str,
 ) -> dict:
@@ -324,19 +346,38 @@ def _execute_submit(
         raise RuntimeError(f"Target '{target_name}' not found in VSX.")
     record.log(f"Found: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, Dec {vsx_target.dec_deg:.5f}")
 
-    with comp_path.open(encoding="utf-8") as handle:
-        comp_data = json.load(handle)
-    comps = [
-        CompStar(
-            label=str(item["label"]),
-            ra_deg=float(item["ra_deg"]),
-            dec_deg=float(item["dec_deg"]),
-            catalog_mag=float(item["catalog_mag"]),
-            catalog_band=str(item.get("catalog_band", "V")),
+    if comp_path is not None:
+        with comp_path.open(encoding="utf-8") as handle:
+            comp_data = json.load(handle)
+        comps = [
+            CompStar(
+                label=str(item["label"]),
+                ra_deg=float(item["ra_deg"]),
+                dec_deg=float(item["dec_deg"]),
+                catalog_mag=float(item["catalog_mag"]),
+                catalog_band=str(item.get("catalog_band", "V")),
+            )
+            for item in comp_data
+        ]
+        record.log(f"Loaded {len(comps)} comparison stars from {comp_path.name}.")
+    else:
+        from ..vsp import fetch_vsp_chart, filter_comps_for_target
+
+        record.log("Auto-fetching comp stars from AAVSO VSP...")
+        try:
+            chart = fetch_vsp_chart(target_name)
+        except Exception as exc:
+            raise RuntimeError(f"VSP fetch failed: {exc}. Provide a comp-stars JSON to retry.")
+        target_mag = vsx_target.max_mag
+        comps = filter_comps_for_target(chart.comps, target_mag)
+        if not comps:
+            comps = chart.comps[:6]
+        if not chart_id or chart_id == "na":
+            chart_id = chart.chart_id
+        record.log(
+            f"VSP chart {chart.chart_id}: {len(comps)} comps selected of {len(chart.comps)} "
+            f"(mags {min(c.catalog_mag for c in comps):.2f}–{max(c.catalog_mag for c in comps):.2f})."
         )
-        for item in comp_data
-    ]
-    record.log(f"Loaded {len(comps)} comparison stars.")
 
     fits_files = sorted(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
     if not fits_files:
@@ -429,11 +470,60 @@ def _execute_submit(
     )
 
     record.log(f"Median mag {median_mag:.3f}; wrote {upload_path.name}")
+
+    # Pull recent AAVSO obs for context overlay; failure is non-fatal.
+    aavso_recent = _fetch_aavso_recent_samples(target_name)
+    if aavso_recent:
+        record.log(f"Fetched {len(aavso_recent)} recent AAVSO observations for overlay.")
+
+    from ..lightcurve import plot_phase_folded, plot_session_light_curve
+
+    lightcurve_path = target_dir / "lightcurve.png"
+    if plot_session_light_curve(observations, target_name, lightcurve_path, aavso_recent):
+        record.result["lightcurve_path"] = str(lightcurve_path)
+        record.log(f"Wrote light curve: {lightcurve_path.name}")
+
+    if vsx_target.period_days and len(observations) >= 3:
+        folded_path = target_dir / "lightcurve_folded.png"
+        if plot_phase_folded(
+            observations,
+            target_name,
+            vsx_target.period_days,
+            folded_path,
+            aavso_recent,
+        ):
+            record.result["folded_path"] = str(folded_path)
+            record.log(f"Wrote phase-folded light curve: {folded_path.name}")
+
     record.set_progress(1.0)
 
     record.result["median_mag"] = median_mag
     record.result["upload_path"] = str(upload_path)
     return record.result
+
+
+def _fetch_aavso_recent_samples(target_name: str) -> list[tuple[float, float, str]] | None:
+    """Pull recent AAVSO observations for overlay on the light-curve plot.
+    Best-effort — returns None on any error."""
+    try:
+        from ..aavso import fetch_recent_observation_count
+        from ..config import AavsoConfig
+
+        cfg = AavsoConfig(
+            enabled=True,
+            enrich_top=1,
+            recent_days=90,
+            sparse_recent_threshold=10,
+            timeout_seconds=30,
+            bands=("V", "TG", "Vis."),
+            period_min_peak_power=0.4,
+        )
+        stats = fetch_recent_observation_count(target_name, cfg)
+        if stats and stats.recent_samples:
+            return list(stats.recent_samples)
+    except Exception:
+        return None
+    return None
 
 
 # --- helpers ---

@@ -19,6 +19,14 @@
   {% endif %}
 </dl>
 
+{% if run.result.lightcurve_path %}
+<h3>Light curve</h3>
+<img class="lightcurve" src="{{ url_for('photometry_lightcurve', target_slug=target_slug) }}?t={{ run.run_id }}" alt="Light curve for {{ run.label }}">
+{% if run.result.folded_path %}
+<img class="lightcurve" src="{{ url_for('photometry_lightcurve_folded', target_slug=target_slug) }}?t={{ run.run_id }}" alt="Phase-folded light curve">
+{% endif %}
+{% endif %}
+
 {% if run.result.frames %}
 <h3>Per-frame results</h3>
 <table class="data frames-table">

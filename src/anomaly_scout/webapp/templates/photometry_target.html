@@ -14,18 +14,26 @@
       Target name (used for VSX lookup)
       <input type="text" name="target_name" value="{{ target_name }}">
     </label>
-    <label class="full-width">
-      Comp-stars JSON path
-      <input type="text" name="comp_stars" value="{{ comp_star_default }}">
-    </label>
     <label>
       Observer code (your AAVSO code)
       <input type="text" name="observer_code" required>
     </label>
     <label>
-      Chart ID (from AAVSO VSP, optional)
-      <input type="text" name="chart_id" value="na">
+      Chart ID override (optional)
+      <input type="text" name="chart_id" placeholder="auto from VSP">
     </label>
+    <details class="full-width">
+      <summary>Comp stars: auto-fetched from AAVSO VSP (override)</summary>
+      <p class="meta">
+        By default we pull the comp-star sequence from AAVSO VSP at run time
+        and pick comps within ±2 mag of the target. To use a hand-curated
+        sequence instead, paste the JSON file path here.
+      </p>
+      <label>
+        Comp-stars JSON path (override)
+        <input type="text" name="comp_stars" placeholder="(blank = auto-fetch from VSP)">
+      </label>
+    </details>
     <button type="submit" class="btn-primary">Run photometry</button>
   </form>
 </section>

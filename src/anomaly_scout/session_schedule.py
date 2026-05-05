@@ -15,8 +15,10 @@ from typing import Any
 from .models import Candidate, Observability
 from .scheduler import ScheduledTarget, ScheduleResult
 from .session_plan import (
+    MagnitudeSummary,
     dec_to_dms,
     dec_to_target_scheduler_dms,
+    expected_magnitude_summary,
     ra_to_hms,
     ra_to_target_scheduler_hms,
     recommended_exposure_plan,
@@ -123,7 +125,7 @@ def _target_section(index: int, scheduled: ScheduledTarget) -> list[str]:
     slew_at = (scheduled.start_local).strftime("%H:%M")
 
     aavso = candidate.aavso
-    expected_mag = _expected_magnitude(target, aavso)
+    mag_summary = expected_magnitude_summary(target, aavso)
 
     lines = [
         f"## {index}. {slot} — {target.name}",
@@ -135,14 +137,30 @@ def _target_section(index: int, scheduled: ScheduledTarget) -> list[str]:
     ]
 
     summary_bits = [f"**Score:** `{candidate.score:.1f}`"]
-    if expected_mag is not None:
-        summary_bits.append(f"**Expected mag:** `~{expected_mag:.2f}`")
+    if mag_summary.expected_mag is not None:
+        bracket = ""
+        if mag_summary.range_min is not None and mag_summary.range_max is not None:
+            bracket = f" (range `{mag_summary.range_min:.2f}`–`{mag_summary.range_max:.2f}`, source: {mag_summary.source})"
+        summary_bits.append(f"**Expected mag:** `~{mag_summary.expected_mag:.2f}`{bracket}")
     summary_bits.append(f"**Type:** `{target.var_type or 'blank'}`")
     if target.period_days is not None:
         summary_bits.append(f"**Period:** `{target.period_days:.3f} d`")
     summary_bits.append(f"**Max alt tonight:** `{obs.max_altitude_deg:.1f}°`")
     lines.append("  |  ".join(summary_bits))
     lines.append("")
+
+    if mag_summary.sparkline:
+        lines.append(
+            f"Brightness today vs recent range: `{mag_summary.sparkline}` "
+            f"(brighter ←  → fainter)"
+        )
+        lines.append("")
+    if mag_summary.comp_low_label and mag_summary.comp_high_label:
+        lines.append(
+            f"**At the chart, bracket your estimate against comp stars near "
+            f"mag {mag_summary.comp_low_label} and mag {mag_summary.comp_high_label}.**"
+        )
+        lines.append("")
 
     lines.extend(
         [
@@ -417,17 +435,6 @@ def write_nina_targets_scheduled_csv(schedule: ScheduleResult, path: Path) -> No
                     "ROI": 100,
                 }
             )
-
-
-def _expected_magnitude(target, aavso) -> float | None:
-    """Return a best-effort 'what magnitude should I expect tonight?' value.
-    Prefers the AAVSO recent median (real recent behavior); falls back to the
-    midpoint of catalog max/min."""
-    if aavso and aavso.recent_median_mag is not None:
-        return aavso.recent_median_mag
-    if target.max_mag is not None and target.min_mag is not None and not target.min_is_amplitude:
-        return (target.max_mag + target.min_mag) / 2.0
-    return target.bright_mag
 
 
 def _format_optional(value: float | None, digits: int = 3) -> str:

@@ -59,6 +59,22 @@ def main() -> None:
         help="Scoring profile (see run --mode).",
     )
 
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Serve the output directory over HTTP so you can read session_schedule.html from your phone (Tailscale-friendly).",
+    )
+    serve_parser.add_argument(
+        "--output-dir",
+        default="output/s30_pro_jc/tonight",
+        help="Directory to serve (default output/s30_pro_jc/tonight). The Tonight HTML lives here.",
+    )
+    serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default 8000).")
+    serve_parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Interface to bind. 0.0.0.0 lets Tailscale peers reach you; 127.0.0.1 is local only.",
+    )
+
     submit_parser = subparsers.add_parser(
         "submit",
         help="Run photometry on a captures dir and produce an AAVSO upload file.",
@@ -110,6 +126,8 @@ def main() -> None:
         tonight(args)
     elif args.command == "submit":
         submit(args)
+    elif args.command == "serve":
+        serve(args)
     elif args.command in (None, "run"):
         run(args)
 
@@ -208,6 +226,86 @@ def run(args: argparse.Namespace) -> None:
 def _site_slug(name: str) -> str:
     cleaned = "".join(ch.lower() if ch.isalnum() else "_" for ch in name).strip("_")
     return cleaned or "site"
+
+
+def serve(args: argparse.Namespace) -> None:
+    """Serve the output directory over HTTP. Print Tailscale-reachable URLs."""
+    import http.server
+    import json as _json
+    import socketserver
+    import subprocess
+
+    output_dir = Path(args.output_dir).resolve()
+    if not output_dir.exists():
+        print(f"Output directory '{output_dir}' does not exist.")
+        print("Run 'anomaly-scout tonight ...' first to generate it.")
+        return
+
+    handler_cls = _make_directory_handler(output_dir)
+
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.ThreadingTCPServer((args.host, args.port), handler_cls) as httpd:
+        print(f"Serving {output_dir} on {args.host}:{args.port}")
+        print()
+        print("Open one of these from any device on your Tailnet:")
+
+        # Local
+        print(f"  Local:        http://localhost:{args.port}/session_schedule.html")
+
+        # Tailscale IP
+        try:
+            ts_ip = subprocess.run(
+                ["tailscale", "ip", "-4"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            for line in ts_ip.stdout.splitlines():
+                ip = line.strip()
+                if ip:
+                    print(f"  Tailscale IP: http://{ip}:{args.port}/session_schedule.html")
+                    break
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+        # Tailscale magic DNS
+        try:
+            ts_status = subprocess.run(
+                ["tailscale", "status", "--self", "--json"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            if ts_status.returncode == 0:
+                data = _json.loads(ts_status.stdout)
+                dns_name = (data.get("Self") or {}).get("DNSName", "").rstrip(".")
+                if dns_name:
+                    print(f"  Magic DNS:    http://{dns_name}:{args.port}/session_schedule.html")
+        except (FileNotFoundError, subprocess.TimeoutExpired, _json.JSONDecodeError):
+            pass
+
+        print()
+        print("Press Ctrl+C to stop.")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopping.")
+
+
+def _make_directory_handler(directory: Path):
+    import http.server
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(directory), **kwargs)
+
+        def log_message(self, fmt, *args):
+            # Quieter log: just method + path
+            print(f"[serve] {self.address_string()} {fmt % args}")
+
+    return _Handler
 
 
 def submit(args: argparse.Namespace) -> None:
@@ -401,6 +499,7 @@ def tonight(args: argparse.Namespace) -> None:
         metadata=metadata,
     )
 
+    from .nightly_html import write_session_schedule_html
     from .scheduler import build_session_schedule
     from .session_plan import write_session_plan
     from .session_schedule import write_session_schedule_outputs
@@ -414,6 +513,7 @@ def tonight(args: argparse.Namespace) -> None:
         window_end=window_end,
     )
     write_session_schedule_outputs(schedule, output_dir, config)
+    write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
 
     print(f"Wrote {output_dir / 'candidate_queue.csv'}")
     print(f"Wrote {output_dir / 'session_plan.md'} (full menu)")
@@ -423,6 +523,7 @@ def tonight(args: argparse.Namespace) -> None:
         f"({len(schedule.scheduled)} targets scheduled, {len(schedule.overflow)} overflow)"
     )
     print(f"Wrote {output_dir / 'session_schedule.csv'}")
+    print(f"Wrote {output_dir / 'session_schedule.html'} (phone-readable)")
     print(f"Wrote {output_dir / 'nina_targets.csv'} (scheduled targets in execution order)")
     print(f"Wrote {packet_count} packets in {packet_dir}")
 

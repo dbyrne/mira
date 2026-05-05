@@ -3,9 +3,83 @@ NINA-importable session_plan.csv for the targets selected by `tonight`."""
 from __future__ import annotations
 
 import csv
+import math
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlencode
+
+
+@dataclass
+class MagnitudeSummary:
+    """Eyepiece-friendly summary of what brightness to expect tonight."""
+    expected_mag: float | None
+    range_min: float | None
+    range_max: float | None
+    comp_low_label: str | None  # e.g. "9" - bracket-bright comp star magnitude
+    comp_high_label: str | None  # e.g. "10" - bracket-faint
+    sparkline: str  # e.g. "[····●···]" or "" when not enough data
+    source: str  # "aavso" / "catalog" / "none"
+
+
+def expected_magnitude_summary(target, aavso) -> MagnitudeSummary:
+    expected: float | None = None
+    range_min: float | None = None
+    range_max: float | None = None
+    source = "none"
+
+    if aavso is not None and aavso.recent_median_mag is not None:
+        expected = aavso.recent_median_mag
+        range_min = aavso.recent_min_mag
+        range_max = aavso.recent_max_mag
+        source = "aavso"
+    elif target.max_mag is not None and target.min_mag is not None and not target.min_is_amplitude:
+        expected = (target.max_mag + target.min_mag) / 2.0
+        range_min = target.max_mag  # brightest catalog mag = lowest number
+        range_max = target.min_mag
+        source = "catalog"
+    elif target.bright_mag is not None:
+        expected = target.bright_mag
+        source = "catalog"
+
+    comp_low: str | None = None
+    comp_high: str | None = None
+    if expected is not None:
+        low = math.floor(expected)
+        high = math.ceil(expected)
+        if low == high:
+            high = low + 1
+        comp_low = str(low)
+        comp_high = str(high)
+
+    sparkline = build_sparkline(expected, range_min, range_max)
+
+    return MagnitudeSummary(
+        expected_mag=expected,
+        range_min=range_min,
+        range_max=range_max,
+        comp_low_label=comp_low,
+        comp_high_label=comp_high,
+        sparkline=sparkline,
+        source=source,
+    )
+
+
+def build_sparkline(current: float | None, range_min: float | None, range_max: float | None, width: int = 11) -> str:
+    """Render a horizontal bar showing where `current` sits in [range_min, range_max].
+    Lower mag = brighter, so position 0 = brightest end of range, position N-1 = faintest.
+    Returns '' if any input is None or range collapses.
+    """
+    if current is None or range_min is None or range_max is None:
+        return ""
+    if range_max <= range_min:
+        return ""
+    fraction = (current - range_min) / (range_max - range_min)
+    fraction = max(0.0, min(1.0, fraction))
+    pos = int(round(fraction * (width - 1)))
+    cells = ["·"] * width
+    cells[pos] = "●"
+    return "[" + "".join(cells) + "]"
 
 
 def write_session_plan(

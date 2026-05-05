@@ -1,6 +1,6 @@
 # Session Schedule: 2026-05-05 from Jersey City
 
-Window: **09:12 EDT** to **03:12 EDT** (18.0 hours)
+Window: **09:43 EDT** to **03:43 EDT** (18.0 hours)
 
 Scheduled: **9 targets**, 240 min integration + 24 min slewing.
 
@@ -10,7 +10,7 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 | Time slot       | Target | Mag | Type | Exposure |
 |-----------------|--------|-----|------|----------|
-| 21:45–22:15 | Gaia DR3 1454878252642442624 | 12.00 | SR|M | 60×30s |
+| 21:45–22:15 | Gaia DR3 1454878252642442624 | 12.00 | SR\|M | 60×30s |
 | 22:18–22:48 | RU Leo | 10.30 | LB | 60×30s |
 | 22:51–23:06 | CT Dra | 9.80 | LB | 60×15s |
 | 23:09–23:39 | BV Boo | 11.70 | LB | 60×30s |
@@ -26,7 +26,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 21:45, capture 21:45–22:15** (60×30s = 30 min integration).
 
-**Score:** `112.0`  |  **Expected mag:** `~12.13`  |  **Type:** `SR|M`  |  **Period:** `307.000 d`  |  **Max alt tonight:** `77.4°`
+**Score:** `112.0`  |  **Expected mag:** `~12.13` (range `12.00`–`12.26`, source: catalog)  |  **Type:** `SR|M`  |  **Period:** `307.000 d`  |  **Max alt tonight:** `77.4°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 12 and mag 13.**
 
 ### Catalog
 
@@ -86,7 +90,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 22:18, capture 22:18–22:48** (60×30s = 30 min integration).
 
-**Score:** `92.0`  |  **Expected mag:** `~11.15`  |  **Type:** `LB`  |  **Period:** `62.220 d`  |  **Max alt tonight:** `72.0°`
+**Score:** `92.0`  |  **Expected mag:** `~11.15` (range `10.30`–`12.00`, source: catalog)  |  **Type:** `LB`  |  **Period:** `62.220 d`  |  **Max alt tonight:** `72.0°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 11 and mag 12.**
 
 ### Catalog
 
@@ -146,7 +154,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 22:51, capture 22:51–23:06** (60×15s = 15 min integration).
 
-**Score:** `79.2`  |  **Expected mag:** `~10.10`  |  **Type:** `LB`  |  **Max alt tonight:** `55.2°`
+**Score:** `79.2`  |  **Expected mag:** `~10.10` (range `9.80`–`10.40`, source: catalog)  |  **Type:** `LB`  |  **Max alt tonight:** `55.2°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 10 and mag 11.**
 
 ### Catalog
 
@@ -205,7 +217,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 23:09, capture 23:09–23:39** (60×30s = 30 min integration).
 
-**Score:** `98.0`  |  **Expected mag:** `~11.90`  |  **Type:** `LB`  |  **Period:** `37.620 d`  |  **Max alt tonight:** `72.0°`
+**Score:** `98.0`  |  **Expected mag:** `~11.90` (range `11.70`–`12.10`, source: catalog)  |  **Type:** `LB`  |  **Period:** `37.620 d`  |  **Max alt tonight:** `72.0°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 11 and mag 12.**
 
 ### Catalog
 
@@ -264,7 +280,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 23:42, capture 23:42–23:57** (60×15s = 15 min integration).
 
-**Score:** `94.0`  |  **Expected mag:** `~9.50`  |  **Type:** `LB`  |  **Max alt tonight:** `85.1°`
+**Score:** `94.0`  |  **Expected mag:** `~9.50` (range `9.26`–`9.74`, source: catalog)  |  **Type:** `LB`  |  **Max alt tonight:** `85.1°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 9 and mag 10.**
 
 ### Catalog
 
@@ -323,7 +343,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 00:00, capture 00:00–00:30** (60×30s = 30 min integration).
 
-**Score:** `88.0`  |  **Expected mag:** `~11.80`  |  **Type:** `LB`  |  **Max alt tonight:** `86.8°`
+**Score:** `88.0`  |  **Expected mag:** `~11.80` (range `11.00`–`12.60`, source: catalog)  |  **Type:** `LB`  |  **Max alt tonight:** `86.8°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 11 and mag 12.**
 
 ### Catalog
 
@@ -383,7 +407,11 @@ Overflow (viable but unscheduled): **39 targets** (listed at the end).
 
 **Slew at 00:33, capture 00:33–01:03** (60×30s = 30 min integration).
 
-**Score:** `98.0`  |  **Expected mag:** `~10.10`  |  **Type:** `SRA`  |  **Period:** `360.000 d`  |  **Max alt tonight:** `89.6°`
+**Score:** `98.0`  |  **Expected mag:** `~10.10` (range `10.00`–`10.10`, source: aavso)  |  **Type:** `SRA`  |  **Period:** `360.000 d`  |  **Max alt tonight:** `89.6°`
+
+Brightness today vs recent range: `[··········●]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 10 and mag 11.**
 
 ### Catalog
 
@@ -452,7 +480,11 @@ Most recent AAVSO observations:
 
 **Slew at 01:06, capture 01:06–01:36** (60×30s = 30 min integration).
 
-**Score:** `94.0`  |  **Expected mag:** `~11.35`  |  **Type:** `LB`  |  **Max alt tonight:** `85.2°`
+**Score:** `94.0`  |  **Expected mag:** `~11.35` (range `10.90`–`11.80`, source: catalog)  |  **Type:** `LB`  |  **Max alt tonight:** `85.2°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 11 and mag 12.**
 
 ### Catalog
 
@@ -511,7 +543,11 @@ Most recent AAVSO observations:
 
 **Slew at 01:39, capture 01:39–02:09** (60×30s = 30 min integration).
 
-**Score:** `88.0`  |  **Expected mag:** `~11.98`  |  **Type:** `L`  |  **Max alt tonight:** `80.6°`
+**Score:** `88.0`  |  **Expected mag:** `~11.98` (range `11.60`–`12.36`, source: catalog)  |  **Type:** `L`  |  **Max alt tonight:** `80.6°`
+
+Brightness today vs recent range: `[·····●·····]` (brighter ←  → fainter)
+
+**At the chart, bracket your estimate against comp stars near mag 11 and mag 12.**
 
 ### Catalog
 

@@ -1,0 +1,120 @@
+# Tuned for ZWO Seestar S30 Pro from Jersey City, NJ.
+#
+# Why these values differ from the generic jersey_city.yaml:
+#  - 30mm aperture + IMX585 OSC sensor reaches roughly mag 12-13 in 5-10 min
+#    stacks from urban (Bortle 8-9) Jersey City. prefer_max_mag is set to 12
+#    rather than 14, so the queue surfaces targets the gear can actually image.
+#  - OSC photometric scatter from urban skies is roughly 0.05-0.1 mag, so we
+#    ignore catalog amplitudes below 0.20 - they will not be detectable.
+#  - Short-period eclipsing binaries (EW, EA) and pulsators (RR-family, DSCT)
+#    fold cleanly only with sub-30s cadence, which is below the practical
+#    cadence of the S30 Pro stacking workflow. Drop them from include_types.
+#  - ZTF is disabled because the S30 Pro is the imager. AAVSO time-series and
+#    Gaia DR3 enrichment remain valuable.
+#
+# Use:
+#   anomaly-scout run --config config/s30_pro_jc.yaml
+#   anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+sites:
+  - name: Jersey City
+    observer:
+      latitude_deg: 40.7178
+      longitude_deg: -74.0431
+      timezone: America/New_York
+    observing_window:
+      start_hour_local: 20
+      end_hour_local: 1
+      nights: 14
+      sample_minutes: 30
+      min_altitude_deg: 45
+      max_sun_altitude_deg: -12
+      max_moon_altitude_deg: 30
+      max_moon_illumination: 0.7
+    filters:
+      min_galactic_latitude_abs_deg: 12
+      min_catalog_amplitude_mag: 0.20
+      prefer_amplitude_mag: 0.40
+      prefer_max_mag: 12.0
+      reject_saturated_brighter_than_mag: 5.0
+
+vsx_query:
+  row_limit: 600
+  ra_bin_degrees: 30
+  oversample_factor: 3
+  min_declination_deg: -10
+  max_bright_mag: 13.0
+  require_period: false
+  include_types:
+    # SR-family slow red variables - the S30 Pro's bread and butter
+    - "SR*"
+    # L-family irregular - same workflow
+    - "L*"
+    # Mira - large amplitude, long period, easy
+    - M
+    # Truly unclassified targets - high novelty
+    - "?"
+    # Broad/uncertain categories
+    - VAR
+    - ROT
+
+scoring:
+  uncertain_type_bonus: 20
+  # Mixed defaults; flip via --mode novelty / --mode practice on the CLI.
+  survey_name_bonus: 6
+  classical_name_bonus: 6
+  sparse_aavso_bonus: 15
+  well_observed_aavso_penalty: 18
+  high_amplitude_bonus: 14
+  moderate_amplitude_bonus: 8
+  bright_target_bonus: 10
+  long_period_bonus: 8
+  time_series_bonus: 5
+  clean_field_bonus: 8
+  period_disagreement_bonus: 18
+  period_discovered_bonus: 10
+  gaia_color_anomaly_bonus: 8
+  gaia_crowding_penalty: 6
+
+aavso:
+  enabled: true
+  enrich_top: 200
+  recent_days: 730
+  sparse_recent_threshold: 5
+  timeout_seconds: 20
+  bands:
+    - V
+    - Vis.
+    - CV
+    - TG
+    - B
+    - R
+    - I
+  period_min_peak_power: 0.3
+
+simbad:
+  enabled: true
+  enrich_top: 30
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
+gaia:
+  enabled: true
+  enrich_top: 200
+  search_radius_arcsec: 3
+  timeout_seconds: 30
+
+ztf:
+  # Disabled: the S30 Pro is the imager now. Re-enable if you want catalog-vs-
+  # ZTF cross-checks for targets you can't reach yourself.
+  enabled: false
+  search_radius_arcsec: 5
+  timeout_seconds: 45
+  bad_catflags_mask: 32768
+  bands:
+    - g
+    - r
+  period_min_peak_power: 0.3
+
+output:
+  directory: output/s30_pro_jc
+  top_packets: 15

@@ -1,0 +1,449 @@
+from __future__ import annotations
+
+import json
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+from flask import Flask, abort, current_app, redirect, render_template, request, send_from_directory, url_for
+
+from .runs import RunRecord, RunRegistry
+
+
+def register_routes(app: Flask) -> None:
+    @app.route("/")
+    def index():
+        runs: RunRegistry = current_app.config["RUNS"]
+        latest_run = runs.latest("tonight")
+        latest_photometry = [r for r in runs.all() if r.kind == "submit"][:5]
+        schedule_path: Path = current_app.config["OUTPUT_DIR"] / "session_schedule.html"
+        return render_template(
+            "index.html",
+            latest_run=latest_run,
+            latest_photometry=latest_photometry,
+            schedule_exists=schedule_path.exists(),
+            output_dir=current_app.config["OUTPUT_DIR"],
+            captures_root=current_app.config["CAPTURES_ROOT"],
+        )
+
+    # --- Layer 1: kick off + view ---
+
+    @app.route("/run", methods=["POST"])
+    def trigger_run():
+        runs: RunRegistry = current_app.config["RUNS"]
+        config_path = request.form.get("config", "config/s30_pro_jc.yaml")
+        hours = float(request.form.get("hours", "4"))
+        mode = request.form.get("mode") or None
+        output_dir: Path = current_app.config["OUTPUT_DIR"]
+
+        record = runs.submit(
+            kind="tonight",
+            label=f"tonight: {config_path} hours={hours}" + (f" mode={mode}" if mode else ""),
+            target_callable=lambda rec: _execute_tonight(rec, config_path, hours, mode, output_dir),
+        )
+        return redirect(url_for("run_status", run_id=record.run_id))
+
+    @app.route("/run/<run_id>")
+    def run_status(run_id):
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.get(run_id)
+        if record is None:
+            abort(404)
+        return render_template("run_status.html", run=record)
+
+    @app.route("/run/<run_id>/partial")
+    def run_status_partial(run_id):
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.get(run_id)
+        if record is None:
+            abort(404)
+        return render_template("run_status_partial.html", run=record)
+
+    @app.route("/schedule")
+    def schedule():
+        output_dir: Path = current_app.config["OUTPUT_DIR"]
+        path = output_dir / "session_schedule.html"
+        if not path.exists():
+            return render_template("schedule_missing.html", output_dir=output_dir), 404
+        return send_from_directory(str(output_dir), "session_schedule.html")
+
+    @app.route("/output/<path:filename>")
+    def output_file(filename):
+        """Serve any file from the output dir (for chart images, CSVs, etc)."""
+        output_dir: Path = current_app.config["OUTPUT_DIR"]
+        return send_from_directory(str(output_dir), filename)
+
+    # --- Layer 2: photometry ---
+
+    @app.route("/photometry")
+    def photometry_index():
+        runs: RunRegistry = current_app.config["RUNS"]
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        targets = _discover_capture_targets(captures_root)
+        photometry_runs = {r.label: r for r in runs.all() if r.kind == "submit"}
+        return render_template(
+            "photometry_index.html",
+            targets=targets,
+            captures_root=captures_root,
+            photometry_runs=photometry_runs,
+        )
+
+    @app.route("/photometry/<target_slug>")
+    def photometry_target(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None:
+            abort(404)
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.latest(_submit_kind(target_slug))
+        return render_template(
+            "photometry_target.html",
+            target_slug=target_slug,
+            target_dir=target_dir,
+            target_name=_dir_to_target_name(target_dir),
+            run=record,
+            comp_star_default=_default_comp_stars_path(target_dir),
+        )
+
+    @app.route("/photometry/<target_slug>/run", methods=["POST"])
+    def trigger_photometry(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None:
+            abort(404)
+
+        comp_path = Path(request.form.get("comp_stars", "")).resolve()
+        observer_code = request.form.get("observer_code", "").strip()
+        chart_id = request.form.get("chart_id", "na").strip() or "na"
+        target_name = request.form.get("target_name", "").strip() or _dir_to_target_name(target_dir)
+
+        if not comp_path.exists():
+            return render_template(
+                "photometry_target.html",
+                target_slug=target_slug,
+                target_dir=target_dir,
+                target_name=target_name,
+                run=None,
+                error=f"Comp-stars JSON not found: {comp_path}",
+                comp_star_default=_default_comp_stars_path(target_dir),
+            ), 400
+        if not observer_code:
+            return render_template(
+                "photometry_target.html",
+                target_slug=target_slug,
+                target_dir=target_dir,
+                target_name=target_name,
+                run=None,
+                error="Observer code is required.",
+                comp_star_default=_default_comp_stars_path(target_dir),
+            ), 400
+
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.submit(
+            kind=_submit_kind(target_slug),
+            label=f"submit: {target_name}",
+            target_callable=lambda rec: _execute_submit(
+                rec,
+                target_dir=target_dir,
+                target_name=target_name,
+                comp_path=comp_path,
+                observer_code=observer_code,
+                chart_id=chart_id,
+            ),
+        )
+        return redirect(url_for("photometry_target", target_slug=target_slug))
+
+    @app.route("/photometry/<target_slug>/partial")
+    def photometry_target_partial(target_slug):
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.latest(_submit_kind(target_slug))
+        if record is None:
+            return render_template("photometry_partial.html", run=None)
+        return render_template("photometry_partial.html", run=record)
+
+    @app.route("/photometry/<target_slug>/upload")
+    def photometry_upload(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None:
+            abort(404)
+        upload_path = target_dir / f"aavso_{_dir_to_target_name(target_dir).replace(' ', '_')}.txt"
+        if not upload_path.exists():
+            abort(404)
+        return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)
+
+    # --- Layer 3: NINA monitor ---
+
+    @app.route("/nina")
+    def nina_dashboard():
+        return render_template("nina.html", base_url=current_app.config["NINA"].base_url)
+
+    @app.route("/nina/partial")
+    def nina_partial():
+        nina = current_app.config["NINA"]
+        status = nina.status()
+        return render_template("nina_partial.html", status=status, base_url=nina.base_url)
+
+
+# --- Background-task implementations ---
+
+def _execute_tonight(record: RunRecord, config_path: str, hours: float, mode: str | None, output_dir: Path) -> dict:
+    """Run the same logic as anomaly-scout tonight, reporting progress on the record."""
+    from dataclasses import replace as dc_replace
+    from datetime import date, datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from ..aavso import enrich_candidates_with_aavso
+    from ..config import load_config
+    from ..gaia import enrich_candidates_with_gaia
+    from ..nightly_html import write_session_schedule_html
+    from ..report import compute_packet_union_oids, write_outputs
+    from ..scheduler import build_session_schedule
+    from ..scoring import build_candidates, candidate_sort_key
+    from ..session_plan import write_session_plan
+    from ..session_schedule import write_session_schedule_outputs
+    from ..simbad import enrich_candidates_with_simbad
+    from ..vsx import fetch_vsx_targets
+
+    record.set_progress(0.05)
+    record.log(f"Loading config: {config_path}")
+    config = load_config(config_path)
+
+    # Apply mode if given
+    if mode:
+        from ..cli import _apply_mode
+        config = _apply_mode(config, mode)
+        record.log(f"Mode: {mode}")
+
+    # Override sites to nights=1
+    new_sites = tuple(
+        dc_replace(site, observing_window=dc_replace(site.observing_window, nights=1))
+        for site in config.sites
+    )
+    config = dc_replace(config, sites=new_sites)
+
+    today = date.today()
+    primary_tz = ZoneInfo(config.sites[0].observer.timezone)
+    now_local = datetime.now(primary_tz)
+    window_end = now_local + timedelta(hours=hours)
+
+    record.log(f"Tonight = {today}; window = {now_local.strftime('%H:%M')} -> {window_end.strftime('%H:%M %Z')}")
+    record.set_progress(0.1)
+
+    record.log(f"Fetching up to {config.vsx_query.row_limit} VSX rows...")
+    targets = fetch_vsx_targets(config.vsx_query)
+    record.log(f"Fetched {len(targets)} catalog rows.")
+    record.set_progress(0.25)
+
+    candidates = build_candidates(targets, config, start_date=today)
+    record.log(f"{len(candidates)} targets passed site filters.")
+
+    earliest = now_local - timedelta(hours=1)
+    candidates = [
+        c for c in candidates
+        if any(
+            obs.best_local_time and earliest <= obs.best_local_time <= window_end
+            for obs in c.observabilities
+        )
+    ]
+    record.log(f"{len(candidates)} observable in the next {hours:g}h.")
+    record.set_progress(0.35)
+
+    if not candidates:
+        record.log("Nothing observable; widen --hours or run later.")
+        return {"scheduled": 0, "schedule_path": ""}
+
+    site_names = [s.name for s in config.sites]
+    top_packets = config.output.top_packets
+
+    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
+    aavso_count = enrich_candidates_with_aavso(candidates, config, limit=config.aavso.enrich_top, extra_oids=union_oids)
+    record.log(f"AAVSO enriched: {aavso_count}")
+    record.set_progress(0.55)
+
+    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
+    simbad_count = enrich_candidates_with_simbad(candidates, config, limit=config.simbad.enrich_top, extra_oids=union_oids)
+    record.log(f"SIMBAD enriched: {simbad_count}")
+    record.set_progress(0.7)
+
+    gaia_count = enrich_candidates_with_gaia(candidates, config, limit=config.gaia.enrich_top, extra_oids=union_oids)
+    candidates.sort(key=candidate_sort_key)
+    record.log(f"Gaia enriched: {gaia_count}")
+    record.set_progress(0.85)
+
+    metadata = {
+        "config_path": config_path,
+        "output_dir": str(output_dir),
+        "start_date": today.isoformat(),
+        "mode": mode or "(yaml defaults)",
+        "vsx_row_limit": config.vsx_query.row_limit,
+        "candidates_after_filters": len(candidates),
+        "aavso_enriched": aavso_count,
+        "simbad_enriched": simbad_count,
+        "gaia_enriched": gaia_count,
+        "ztf_enriched": 0,
+        "top_packets_per_view": top_packets,
+        "tonight_window_start": now_local.isoformat(),
+        "tonight_window_end": window_end.isoformat(),
+        "tonight_hours": hours,
+    }
+
+    packet_count = write_outputs(candidates, output_dir, top_packets, site_names=site_names, metadata=metadata)
+    plan_targets = candidates[:top_packets]
+    write_session_plan(plan_targets, output_dir, now_local, window_end, config)
+    schedule = build_session_schedule(candidates, window_start=now_local, window_end=window_end)
+    write_session_schedule_outputs(schedule, output_dir, config)
+    write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
+
+    record.log(f"Scheduled {len(schedule.scheduled)} targets, {len(schedule.overflow)} overflow.")
+    record.log(f"Packets: {packet_count}")
+    record.set_progress(1.0)
+
+    return {
+        "scheduled": len(schedule.scheduled),
+        "overflow": len(schedule.overflow),
+        "packet_count": packet_count,
+        "schedule_path": str(output_dir / "session_schedule.html"),
+    }
+
+
+def _execute_submit(
+    record: RunRecord,
+    target_dir: Path,
+    target_name: str,
+    comp_path: Path,
+    observer_code: str,
+    chart_id: str,
+) -> dict:
+    from ..photometry import CompStar, process_capture, write_aavso_extended_file
+    from ..vsx import fetch_vsx_target_by_name
+
+    record.log(f"Looking up '{target_name}' in VSX...")
+    vsx_target = fetch_vsx_target_by_name(target_name)
+    if vsx_target is None:
+        raise RuntimeError(f"Target '{target_name}' not found in VSX.")
+    record.log(f"Found: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, Dec {vsx_target.dec_deg:.5f}")
+
+    with comp_path.open(encoding="utf-8") as handle:
+        comp_data = json.load(handle)
+    comps = [
+        CompStar(
+            label=str(item["label"]),
+            ra_deg=float(item["ra_deg"]),
+            dec_deg=float(item["dec_deg"]),
+            catalog_mag=float(item["catalog_mag"]),
+            catalog_band=str(item.get("catalog_band", "V")),
+        )
+        for item in comp_data
+    ]
+    record.log(f"Loaded {len(comps)} comparison stars.")
+
+    fits_files = sorted(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
+    if not fits_files:
+        raise RuntimeError(f"No FITS files found in {target_dir}")
+    record.log(f"Processing {len(fits_files)} FITS files...")
+
+    observations = []
+    failures = []
+    for index, path in enumerate(fits_files):
+        try:
+            obs = process_capture(
+                path,
+                target_name,
+                vsx_target.ra_deg,
+                vsx_target.dec_deg,
+                comps,
+            )
+        except Exception as exc:
+            failures.append((path.name, str(exc)))
+            record.log(f"  {path.name}: failed ({exc})")
+            continue
+        if obs is None:
+            failures.append((path.name, "no usable signal"))
+            record.log(f"  {path.name}: no usable signal")
+            continue
+        obs.chart_id = chart_id
+        observations.append(obs)
+        record.log(f"  {path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
+        record.set_progress(0.1 + 0.85 * (index + 1) / len(fits_files))
+
+    if not observations:
+        raise RuntimeError("No successful observations.")
+
+    upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
+    write_aavso_extended_file(
+        observations,
+        upload_path,
+        observer_code=observer_code,
+        chart_id=chart_id,
+    )
+
+    mags = [o.magnitude for o in observations]
+    record.log(f"Median mag {sorted(mags)[len(mags) // 2]:.3f}; wrote {upload_path.name}")
+    record.set_progress(1.0)
+
+    return {
+        "upload_path": str(upload_path),
+        "observation_count": len(observations),
+        "failures": len(failures),
+        "median_mag": sorted(mags)[len(mags) // 2],
+    }
+
+
+# --- helpers ---
+
+def _discover_capture_targets(captures_root: Path) -> list[dict]:
+    """Each immediate subdirectory of captures_root that contains FITS files
+    is treated as a target."""
+    if not captures_root.exists():
+        return []
+    targets = []
+    for entry in sorted(captures_root.iterdir()):
+        if not entry.is_dir():
+            continue
+        fits_files = list(entry.glob("*.fits")) + list(entry.glob("*.fit"))
+        if not fits_files:
+            continue
+        targets.append(
+            {
+                "slug": entry.name,
+                "name": _dir_to_target_name(entry),
+                "fits_count": len(fits_files),
+                "path": entry,
+                "modified": max(f.stat().st_mtime for f in fits_files),
+                "upload_exists": any(entry.glob("aavso_*.txt")),
+            }
+        )
+    targets.sort(key=lambda d: d["modified"], reverse=True)
+    return targets
+
+
+def _resolve_target_dir(captures_root: Path, slug: str) -> Path | None:
+    """Map a URL slug back to a captures subdirectory. Defensive against
+    path traversal: only allow direct children of captures_root."""
+    if not captures_root.exists():
+        return None
+    candidate = captures_root / slug
+    try:
+        resolved = candidate.resolve()
+    except (OSError, RuntimeError):
+        return None
+    if not resolved.is_dir():
+        return None
+    if captures_root.resolve() not in resolved.parents and resolved != captures_root.resolve():
+        return None
+    return resolved
+
+
+def _dir_to_target_name(target_dir: Path) -> str:
+    """Convert a directory name like 'RR_LYR' into a VSX-style target name 'RR LYR'."""
+    return target_dir.name.replace("_", " ")
+
+
+def _default_comp_stars_path(target_dir: Path) -> str:
+    """Suggest the path where a comp-stars JSON would live."""
+    return str(target_dir / "comp_stars.json")
+
+
+def _submit_kind(target_slug: str) -> str:
+    return f"submit:{target_slug}"

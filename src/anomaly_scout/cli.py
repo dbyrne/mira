@@ -59,21 +59,43 @@ def main() -> None:
         help="Scoring profile (see run --mode).",
     )
 
-    serve_parser = subparsers.add_parser(
-        "serve",
-        help="Serve the output directory over HTTP so you can read session_schedule.html from your phone (Tailscale-friendly).",
+    webapp_parser = subparsers.add_parser(
+        "webapp",
+        help="Start the Flask web app: kick off plans, monitor progress, run photometry, watch NINA. Tailscale-friendly.",
     )
-    serve_parser.add_argument(
+    webapp_parser.add_argument(
         "--output-dir",
         default="output/s30_pro_jc/tonight",
-        help="Directory to serve (default output/s30_pro_jc/tonight). The Tonight HTML lives here.",
+        help="Directory where tonight's session outputs live (default output/s30_pro_jc/tonight).",
     )
-    serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default 8000).")
-    serve_parser.add_argument(
+    webapp_parser.add_argument(
+        "--captures-root",
+        default="captures",
+        help="Root directory containing per-target NINA capture subdirectories (default ./captures).",
+    )
+    webapp_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default 8000).")
+    webapp_parser.add_argument(
         "--host",
         default="0.0.0.0",
         help="Interface to bind. 0.0.0.0 lets Tailscale peers reach you; 127.0.0.1 is local only.",
     )
+    webapp_parser.add_argument(
+        "--nina-url",
+        default="http://localhost:1888",
+        help="NINA Advanced API base URL (default http://localhost:1888).",
+    )
+
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="[deprecated alias for webapp] Serve the output directory over HTTP. Use 'webapp' instead.",
+    )
+    serve_parser.add_argument(
+        "--output-dir",
+        default="output/s30_pro_jc/tonight",
+        help="Directory to serve (default output/s30_pro_jc/tonight).",
+    )
+    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--host", default="0.0.0.0")
 
     submit_parser = subparsers.add_parser(
         "submit",
@@ -126,8 +148,14 @@ def main() -> None:
         tonight(args)
     elif args.command == "submit":
         submit(args)
+    elif args.command == "webapp":
+        webapp(args)
     elif args.command == "serve":
-        serve(args)
+        # Backwards-compat alias: route to the new webapp.
+        print("[serve] note: 'serve' is deprecated; use 'webapp'. Continuing with default webapp settings.")
+        args.captures_root = "captures"
+        args.nina_url = "http://localhost:1888"
+        webapp(args)
     elif args.command in (None, "run"):
         run(args)
 
@@ -228,84 +256,68 @@ def _site_slug(name: str) -> str:
     return cleaned or "site"
 
 
-def serve(args: argparse.Namespace) -> None:
-    """Serve the output directory over HTTP. Print Tailscale-reachable URLs."""
-    import http.server
-    import json as _json
-    import socketserver
-    import subprocess
+def webapp(args: argparse.Namespace) -> None:
+    """Start the Flask webapp."""
+    from .webapp import create_app
 
     output_dir = Path(args.output_dir).resolve()
-    if not output_dir.exists():
-        print(f"Output directory '{output_dir}' does not exist.")
-        print("Run 'anomaly-scout tonight ...' first to generate it.")
-        return
+    captures_root = Path(args.captures_root).resolve()
 
-    handler_cls = _make_directory_handler(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    captures_root.mkdir(parents=True, exist_ok=True)
 
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.ThreadingTCPServer((args.host, args.port), handler_cls) as httpd:
-        print(f"Serving {output_dir} on {args.host}:{args.port}")
-        print()
-        print("Open one of these from any device on your Tailnet:")
+    app = create_app(
+        output_dir=output_dir,
+        captures_root=captures_root,
+        nina_base_url=args.nina_url,
+    )
 
-        # Local
-        print(f"  Local:        http://localhost:{args.port}/session_schedule.html")
+    print(f"AAVSO Anomaly Scout webapp")
+    print(f"  Output dir:    {output_dir}")
+    print(f"  Captures root: {captures_root}")
+    print(f"  NINA API:      {args.nina_url}")
+    print()
+    print("Open one of these from any device on your Tailnet:")
+    print(f"  Local:        http://localhost:{args.port}/")
+    _print_tailscale_urls(args.port)
+    print()
+    print("Press Ctrl+C to stop.")
 
-        # Tailscale IP
-        try:
-            ts_ip = subprocess.run(
-                ["tailscale", "ip", "-4"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-            for line in ts_ip.stdout.splitlines():
-                ip = line.strip()
-                if ip:
-                    print(f"  Tailscale IP: http://{ip}:{args.port}/session_schedule.html")
-                    break
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-
-        # Tailscale magic DNS
-        try:
-            ts_status = subprocess.run(
-                ["tailscale", "status", "--self", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-            if ts_status.returncode == 0:
-                data = _json.loads(ts_status.stdout)
-                dns_name = (data.get("Self") or {}).get("DNSName", "").rstrip(".")
-                if dns_name:
-                    print(f"  Magic DNS:    http://{dns_name}:{args.port}/session_schedule.html")
-        except (FileNotFoundError, subprocess.TimeoutExpired, _json.JSONDecodeError):
-            pass
-
-        print()
-        print("Press Ctrl+C to stop.")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nStopping.")
+    # Use Werkzeug's threaded server so HTMX polling and the long-running
+    # background task don't block each other. Single-user, single-machine,
+    # so this is fine; not exposing it to the internet.
+    app.run(host=args.host, port=args.port, debug=False, use_reloader=False, threaded=True)
 
 
-def _make_directory_handler(directory: Path):
-    import http.server
+def _print_tailscale_urls(port: int) -> None:
+    import json as _json
+    import subprocess
 
-    class _Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(directory), **kwargs)
+    try:
+        ts_ip = subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        for line in ts_ip.stdout.splitlines():
+            ip = line.strip()
+            if ip:
+                print(f"  Tailscale IP: http://{ip}:{port}/")
+                break
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
 
-        def log_message(self, fmt, *args):
-            # Quieter log: just method + path
-            print(f"[serve] {self.address_string()} {fmt % args}")
-
-    return _Handler
+    try:
+        ts_status = subprocess.run(
+            ["tailscale", "status", "--self", "--json"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        if ts_status.returncode == 0:
+            data = _json.loads(ts_status.stdout)
+            dns_name = (data.get("Self") or {}).get("DNSName", "").rstrip(".")
+            if dns_name:
+                print(f"  Magic DNS:    http://{dns_name}:{port}/")
+    except (FileNotFoundError, subprocess.TimeoutExpired, _json.JSONDecodeError):
+        pass
 
 
 def submit(args: argparse.Namespace) -> None:

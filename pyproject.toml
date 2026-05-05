@@ -9,6 +9,7 @@ description = "Jersey City observing queue generator for under-reviewed VSX vari
 requires-python = ">=3.11"
 dependencies = [
   "astropy>=6.0",
+  "Flask>=3.0",
   "matplotlib>=3.8",
   "photutils>=2.0",
   "PyYAML>=6.0",

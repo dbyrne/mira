@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>No schedule generated yet</h2>
+  <p>
+    The output directory <code>{{ output_dir }}</code> doesn't have a
+    <code>session_schedule.html</code> yet. Generate one from the home page.
+  </p>
+  <a href="{{ url_for('index') }}" class="btn">← Home</a>
+</section>
+{% endblock %}

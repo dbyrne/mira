@@ -1,0 +1,40 @@
+{% if not status.reachable %}
+<p class="error"><strong>NINA not reachable.</strong></p>
+<p class="meta">{{ status.error }}</p>
+<p>Open NINA, make sure the Advanced API plugin is enabled, then refresh.</p>
+{% else %}
+<dl class="meta-grid">
+  <dt>Sequence running</dt>
+  <dd>
+    {% if status.sequence_running %}
+    <span class="status-done">yes</span>
+    {% else %}
+    <span class="status-queued">no</span>
+    {% endif %}
+  </dd>
+  {% if status.current_target %}
+  <dt>Current target</dt><dd><strong>{{ status.current_target }}</strong></dd>
+  {% endif %}
+  {% if status.target_progress %}
+  <dt>Progress</dt><dd>{{ status.target_progress }}</dd>
+  {% endif %}
+  {% if status.last_image_hfr is not none %}
+  <dt>Last image HFR</dt><dd>{{ '%.2f'|format(status.last_image_hfr) }}</dd>
+  {% endif %}
+</dl>
+
+{% if status.equipment %}
+<h3>Equipment</h3>
+<table class="data">
+  <thead><tr><th>Device</th><th>State</th></tr></thead>
+  <tbody>
+    {% for device, state in status.equipment.items() %}
+    <tr>
+      <td>{{ device }}</td>
+      <td><span class="status-{{ 'done' if state == 'connected' else 'queued' }}">{{ state }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}

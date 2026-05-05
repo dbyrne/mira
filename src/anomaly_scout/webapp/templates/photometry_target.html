@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Photometry: {{ target_name }} - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Photometry: {{ target_name }}</h2>
+  <p class="meta"><code>{{ target_dir }}</code></p>
+
+  {% if error %}
+  <p class="error"><strong>Error:</strong> {{ error }}</p>
+  {% endif %}
+
+  <form action="{{ url_for('trigger_photometry', target_slug=target_slug) }}" method="post" class="kickoff-form">
+    <label>
+      Target name (used for VSX lookup)
+      <input type="text" name="target_name" value="{{ target_name }}">
+    </label>
+    <label>
+      Comp-stars JSON path
+      <input type="text" name="comp_stars" value="{{ comp_star_default }}">
+    </label>
+    <label>
+      Observer code (your AAVSO code)
+      <input type="text" name="observer_code" required>
+    </label>
+    <label>
+      Chart ID (from AAVSO VSP, optional)
+      <input type="text" name="chart_id" value="na">
+    </label>
+    <button type="submit" class="btn-primary">Run photometry</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Status</h2>
+  <div hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug) }}"
+       hx-trigger="load, every 2s"
+       hx-swap="innerHTML">
+    {% include "photometry_partial.html" %}
+  </div>
+
+  <p style="margin-top: 1rem;">
+    {% if run and run.status == 'done' %}
+    <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn-primary">Download AAVSO file</a>
+    {% endif %}
+    <a href="{{ url_for('photometry_index') }}" class="btn">← All targets</a>
+  </p>
+</section>
+{% endblock %}

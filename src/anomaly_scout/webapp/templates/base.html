@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<title>{% block title %}AAVSO Anomaly Scout{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+</head>
+<body>
+<header class="app-header">
+  <nav>
+    <a href="{{ url_for('index') }}" class="brand">🔭 AAVSO Anomaly Scout</a>
+    <span class="nav-links">
+      <a href="{{ url_for('schedule') }}">Schedule</a>
+      <a href="{{ url_for('photometry_index') }}">Photometry</a>
+      <a href="{{ url_for('nina_dashboard') }}">NINA</a>
+    </span>
+    <button id="theme-toggle" class="theme-toggle">☀ Day</button>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<script>
+(function(){
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  // Restore last theme preference
+  if (localStorage.getItem('day-mode') === '1') {
+    document.body.classList.add('day-mode');
+    btn.textContent = '🌙 Night';
+  }
+  btn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('day-mode');
+    btn.textContent = on ? '🌙 Night' : '☀ Day';
+    localStorage.setItem('day-mode', on ? '1' : '0');
+  });
+})();
+</script>
+</body>
+</html>

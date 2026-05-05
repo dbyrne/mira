@@ -1,0 +1,22 @@
+<div class="run-status-block">
+  <p>
+    Status: <span class="status-{{ run.status }}">{{ run.status }}</span>
+    {% if run.status == 'running' %}
+    <progress value="{{ run.progress }}" max="1"></progress>
+    {% endif %}
+  </p>
+  {% if run.error %}
+  <p class="error"><strong>Error:</strong> {{ run.error }}</p>
+  {% endif %}
+  {% if run.result %}
+  <details open>
+    <summary>Result</summary>
+    <pre>{{ run.result }}</pre>
+  </details>
+  {% endif %}
+  <details {% if run.status == 'running' %}open{% endif %}>
+    <summary>Log ({{ run.log_lines|length }} lines)</summary>
+    <pre class="log">{% for line in run.log_lines %}{{ line }}
+{% endfor %}</pre>
+  </details>
+</div>

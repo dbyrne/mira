@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Photometry - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Captured target directories</h2>
+  <p class="meta">Scanning <code>{{ captures_root }}</code></p>
+  {% if targets %}
+  <table class="data">
+    <thead>
+      <tr><th>Target</th><th>Frames</th><th>Last modified</th><th>Photometry</th></tr>
+    </thead>
+    <tbody>
+      {% for target in targets %}
+      <tr>
+        <td><a href="{{ url_for('photometry_target', target_slug=target.slug) }}">{{ target.name }}</a></td>
+        <td>{{ target.fits_count }}</td>
+        <td>{{ target.modified | int }}</td>
+        <td>
+          {% if target.upload_exists %}
+          <span class="status-done">upload ready</span>
+          {% else %}
+          <span class="status-queued">not yet</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No FITS-containing subdirectories found under <code>{{ captures_root }}</code>.
+  Make sure NINA's image directory matches this path, or pass <code>--captures-root</code>
+  when starting the webapp.</p>
+  {% endif %}
+</section>
+{% endblock %}

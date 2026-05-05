@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}NINA Live - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>NINA live status</h2>
+  <p class="meta">Polling <code>{{ base_url }}</code> via the NINA Advanced API plugin.</p>
+  <div hx-get="{{ url_for('nina_partial') }}"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <p>Loading…</p>
+  </div>
+  <details>
+    <summary>How to enable NINA's Advanced API</summary>
+    <ol>
+      <li>In NINA: Plugins → Available → search "Advanced API" → install.</li>
+      <li>Restart NINA.</li>
+      <li>Settings → Advanced API → enable, default port 1888.</li>
+      <li>Make sure NINA is running and has equipment connected.</li>
+    </ol>
+    <p>If the dashboard says "unreachable" but NINA is running, check the
+    port and that no firewall is blocking <code>localhost</code>.</p>
+  </details>
+</section>
+{% endblock %}

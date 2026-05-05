@@ -1,0 +1,25 @@
+{% if run is none %}
+<p class="meta">No photometry run yet for this target.</p>
+{% else %}
+<p>
+  Status: <span class="status-{{ run.status }}">{{ run.status }}</span>
+  {% if run.status == 'running' %}
+  <progress value="{{ run.progress }}" max="1"></progress>
+  {% endif %}
+</p>
+{% if run.error %}
+<p class="error"><strong>Error:</strong> {{ run.error }}</p>
+{% endif %}
+{% if run.result %}
+<dl class="meta-grid">
+  <dt>Observations</dt><dd>{{ run.result.observation_count }}</dd>
+  <dt>Failures</dt><dd>{{ run.result.failures }}</dd>
+  <dt>Median magnitude</dt><dd>{{ '%.3f'|format(run.result.median_mag) }}</dd>
+</dl>
+{% endif %}
+<details {% if run.status == 'running' %}open{% endif %}>
+  <summary>Log ({{ run.log_lines|length }} lines)</summary>
+  <pre class="log">{% for line in run.log_lines %}{{ line }}
+{% endfor %}</pre>
+</details>
+{% endif %}

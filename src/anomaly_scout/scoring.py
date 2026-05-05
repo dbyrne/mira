@@ -145,7 +145,7 @@ def build_single_candidate(
 
 def candidate_sort_key(candidate: Candidate) -> tuple:
     aavso = candidate.aavso
-    aavso_known = aavso is not None and aavso.status == "ok"
+    aavso_known = aavso is not None and aavso.status in ("ok", "ok-cached")
     aavso_recent = aavso.recent_observations if aavso_known else 10**9
     obs = candidate.best_observability
     amplitude = candidate.target.catalog_amplitude

@@ -138,7 +138,7 @@ def _per_site_sort_key(candidate: Candidate, site_name: str) -> tuple:
         # Should never happen - caller filters first - but be defensive.
         return candidate_sort_key(candidate)
     aavso = candidate.aavso
-    aavso_known = aavso is not None and aavso.status == "ok"
+    aavso_known = aavso is not None and aavso.status in ("ok", "ok-cached")
     aavso_recent = aavso.recent_observations if aavso_known else 10**9
     amplitude = candidate.target.catalog_amplitude
     site_score = candidate.site_scores.get(site_name, candidate.score)
@@ -250,7 +250,9 @@ def write_queue_csv(
                     "galactic_latitude_deg": f"{obs.galactic_latitude_deg:.1f}",
                     "aavso_status": aavso.status if aavso else "",
                     "aavso_recent_observations": (
-                        aavso.recent_observations if aavso and aavso.status == "ok" else ""
+                        aavso.recent_observations
+                        if aavso and aavso.status in ("ok", "ok-cached")
+                        else ""
                     ),
                     "aavso_derived_period_days": _format_optional(
                         aavso.derived_period_days if aavso else None, digits=4
@@ -491,7 +493,7 @@ def write_candidate_packet(candidate: Candidate, packet_dir: Path) -> Path:
         lines.append("- Not requested for this run.")
     else:
         lines.append(f"- Status: `{aavso.status}`")
-        if aavso.status == "ok":
+        if aavso.status in ("ok", "ok-cached"):
             lines.extend(
                 [
                     f"- Recent observations: `{aavso.recent_observations}`",
@@ -631,9 +633,10 @@ def _format_optional(value: float | None, digits: int = 3) -> str:
 def _format_aavso_count(aavso) -> str:
     if aavso is None:
         return "not checked"
-    if aavso.status != "ok":
+    if aavso.status not in ("ok", "ok-cached"):
         return f"unavailable ({aavso.status})"
-    return str(aavso.recent_observations)
+    suffix = " (cached)" if aavso.status == "ok-cached" else ""
+    return f"{aavso.recent_observations}{suffix}"
 
 
 def _format_jd_as_iso(jd: float | None) -> str | None:
@@ -694,8 +697,9 @@ def _research_value_text(candidate: Candidate) -> str:
     target = candidate.target
     aavso = candidate.aavso
     simbad = candidate.simbad
+    gaia = candidate.gaia
     pieces: list[str] = []
-    if aavso and aavso.status == "ok" and aavso.recent_observations <= 5:
+    if aavso and aavso.status.startswith("ok") and aavso.recent_observations <= 5:
         pieces.append("sparse recent AAVSO coverage")
     if simbad and simbad.status == "ok" and simbad.object_type.endswith("?"):
         pieces.append(f"SIMBAD object type is uncertain ({simbad.object_type})")
@@ -705,4 +709,33 @@ def _research_value_text(candidate: Candidate) -> str:
         pieces.append("no VSX period listed")
     if target.catalog_amplitude and target.catalog_amplitude >= 0.25:
         pieces.append(f"amplitude is large enough to measure from an urban site ({target.catalog_amplitude:.2f} mag)")
+    if gaia and gaia.bp_rp is not None and gaia.bp_rp >= 2.0:
+        pieces.append(f"Gaia color is very red (BP-RP={gaia.bp_rp:.2f})")
+    if gaia and gaia.ruwe is not None and gaia.ruwe >= 1.4:
+        pieces.append(f"Gaia RUWE is elevated ({gaia.ruwe:.2f})")
     return "; ".join(pieces) if pieces else "good observability, but lower novelty signal in current metadata"
+
+
+def _gaia_summary_text(gaia) -> str:
+    if gaia is None:
+        return "not checked"
+    if gaia.status != "ok":
+        return gaia.status
+    parts = [f"source `{gaia.source_id}`"]
+    if gaia.g_mag is not None:
+        parts.append(f"G={gaia.g_mag:.2f}")
+    if gaia.bp_rp is not None:
+        parts.append(f"BP-RP={gaia.bp_rp:.2f}")
+    if gaia.parallax_mas is not None:
+        parts.append(f"plx={gaia.parallax_mas:.3f} mas")
+    if gaia.ruwe is not None:
+        parts.append(f"RUWE={gaia.ruwe:.2f}")
+    return ", ".join(parts)
+
+
+def _aavso_recent_text(aavso) -> str:
+    if aavso is None:
+        return "not checked"
+    if not aavso.status.startswith("ok"):
+        return aavso.status
+    return str(aavso.recent_observations)

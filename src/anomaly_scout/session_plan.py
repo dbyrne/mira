@@ -59,7 +59,7 @@ def write_session_plan_md(candidates, path: Path, window_start, window_end, conf
         catalog_period = f"{target.period_days:.3f} d" if target.period_days is not None else "n/a"
         catalog_amplitude = f"{target.catalog_amplitude:.2f} mag" if target.catalog_amplitude is not None else "n/a"
         aavso_count = "n/a"
-        if candidate.aavso and candidate.aavso.status == "ok":
+        if candidate.aavso and candidate.aavso.status in ("ok", "ok-cached"):
             aavso_count = str(candidate.aavso.recent_observations)
 
         lines.extend(

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+from pathlib import Path
+from urllib.parse import unquote_plus
 
 from .cache import cached_get
 from .config import AavsoConfig, ScoutConfig
@@ -17,6 +20,7 @@ from .period_analysis import (
 )
 
 AAVSO_VSX_API_URL = "https://vsx.aavso.org/index.php"
+AAVSO_CACHE_DIR = Path("data/cache/aavso")
 
 
 def enrich_candidates_with_aavso(
@@ -107,6 +111,16 @@ def fetch_recent_observation_count(
             period_note=period_note,
         )
     except Exception as exc:
+        cached_text = find_cached_response_for_name(name)
+        if cached_text is not None:
+            count = count_cdata_csv_rows(cached_text)
+            return AavsoStats(
+                status="ok-cached",
+                recent_observations=count,
+                from_jd=from_jd,
+                to_jd=to_jd,
+                note=f"used cached AAVSO response after live request failed: {exc}",
+            )
         return AavsoStats(status="unavailable", from_jd=from_jd, to_jd=to_jd, note=str(exc))
 
 
@@ -140,7 +154,7 @@ def apply_aavso_score(candidate: Candidate, config: ScoutConfig) -> None:
     stats = candidate.aavso
     if stats is None:
         return
-    if stats.status != "ok":
+    if stats.status not in ("ok", "ok-cached"):
         apply_target_reason(candidate, "AAVSO recent-coverage check unavailable")
         return
     if stats.recent_observations <= config.aavso.sparse_recent_threshold:
@@ -186,6 +200,28 @@ def apply_aavso_score(candidate: Candidate, config: ScoutConfig) -> None:
             f"AAVSO discovered period {stats.derived_period_days:.4f} d "
             f"(peak power {stats.period_power:.3f}); VSX has no catalog period",
         )
+
+
+def find_cached_response_for_name(name: str) -> str | None:
+    """Fallback used when the live AAVSO API request fails: scan the cache
+    directory for a previously-successful response keyed by the same target
+    name. Returns the cached XML text or None if nothing usable is on disk.
+    """
+    if not AAVSO_CACHE_DIR.exists():
+        return None
+    encoded_name = f"ident={name.replace(' ', '+')}"
+    plain_name = f"ident={name}"
+    for path in sorted(AAVSO_CACHE_DIR.glob("*.json"), reverse=True):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        url = unquote_plus(str(payload.get("url", "")))
+        if payload.get("status_code") == 200 and (encoded_name in url or plain_name in url):
+            text = str(payload.get("text", ""))
+            if text.startswith("<?xml"):
+                return text
+    return None
 
 
 def _parse_float(value: str | None) -> float | None:

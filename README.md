@@ -21,6 +21,7 @@ For a clean continuation in a fresh thread or on another computer, start with
 - Avoids low-altitude and crowded Galactic-plane fields.
 - Checks recent AAVSO coverage for top candidates.
 - Adds SIMBAD context and cross-identifiers for candidate review.
+- Adds Gaia DR3 color/parallax/RUWE context for top candidates.
 - Caches successful archive/API calls in `data/cache/` for repeatable runs.
 - Scores targets for amateur follow-up value.
 - Optionally fetches ZTF light curves for top-ranked candidates.
@@ -37,7 +38,7 @@ For a small smoke-test run:
 
 ```powershell
 python -m pip install -e .
-anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0
+anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --gaia-top 5 --ztf-top 0
 ```
 
 Outputs are written to `output/` by default:
@@ -52,8 +53,8 @@ Outputs are written to `output/` by default:
 Start without ZTF enrichment, review the queue, then enrich a few candidates:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 25 --aavso-top 25 --simbad-top 25 --ztf-top 0
-anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 10 --aavso-top 10 --simbad-top 10 --ztf-top 5
+anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 25 --aavso-top 25 --simbad-top 25 --gaia-top 25 --ztf-top 0
+anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 10 --aavso-top 10 --simbad-top 10 --gaia-top 10 --ztf-top 5
 ```
 
 ZTF calls can be slow or occasionally time out. That is expected; the Scout will
@@ -61,6 +62,9 @@ keep going and mark the ZTF status in the candidate packet.
 
 Successful network calls are cached under `data/cache/`. Delete that directory
 when you want to force fresh archive queries.
+
+If AAVSO live coverage checks fail, cached successful responses may be used and
+reported as `ok-cached`.
 
 To evaluate a specific observing season:
 
@@ -86,6 +90,7 @@ These are deliberately conservative for urban differential photometry.
 - VSX through VizieR: `B/vsx/vsx`
 - AAVSO recent coverage through the VSX object API
 - SIMBAD context through the CDS SIMBAD TAP service
+- Gaia DR3 context through VizieR `I/355/gaiadr3`
 - ZTF light curves through IRSA: `https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves`
 
 Use the generated packets as starting points, not as discovery claims. Before

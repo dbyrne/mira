@@ -158,6 +158,12 @@ def run(args: argparse.Namespace) -> None:
         candidates.sort(key=candidate_sort_key)
         print(f"Fetched Gaia DR3 context for {gaia_count} candidates")
 
+    gaia_top = config.gaia.enrich_top if args.gaia_top is None else max(0, int(args.gaia_top))
+    if config.gaia.enabled and gaia_top:
+        checked = min(gaia_top, len(candidates))
+        print(f"Fetching Gaia DR3 context for top {checked} candidates...")
+        enrich_candidates_with_gaia(candidates, config, limit=gaia_top)
+
     ztf_top = max(0, int(args.ztf_top or 0))
     ztf_count = 0
     if config.ztf.enabled and ztf_top:

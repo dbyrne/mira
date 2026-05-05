@@ -59,6 +59,32 @@ def main() -> None:
         help="Scoring profile (see run --mode).",
     )
 
+    submit_parser = subparsers.add_parser(
+        "submit",
+        help="Run photometry on a captures dir and produce an AAVSO upload file.",
+    )
+    submit_parser.add_argument("--captures", required=True, help="Directory containing FITS files for one target.")
+    submit_parser.add_argument("--target", required=True, help="VSX target name (used to look up RA/Dec).")
+    submit_parser.add_argument(
+        "--comp-stars",
+        required=True,
+        help="Path to a JSON file listing AAVSO comparison stars: "
+        "[{\"label\":\"095\",\"ra_deg\":...,\"dec_deg\":...,\"catalog_mag\":9.5,\"catalog_band\":\"V\"}, ...]",
+    )
+    submit_parser.add_argument(
+        "--observer-code",
+        required=True,
+        help="Your AAVSO observer code (assigned when you register on aavso.org).",
+    )
+    submit_parser.add_argument("--config", default="config/s30_pro_jc.yaml", help="YAML config (used to resolve target RA/Dec via VSX).")
+    submit_parser.add_argument("--chart-id", default="na", help="AAVSO chart sequence ID (e.g. X12345AAB), if known.")
+    submit_parser.add_argument(
+        "--aperture-arcsec",
+        type=float,
+        default=6.0,
+        help="Photometric aperture radius in arcsec (default 6).",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -82,6 +108,8 @@ def main() -> None:
         target(args)
     elif args.command == "tonight":
         tonight(args)
+    elif args.command == "submit":
+        submit(args)
     elif args.command in (None, "run"):
         run(args)
 
@@ -174,6 +202,104 @@ def run(args: argparse.Namespace) -> None:
 def _site_slug(name: str) -> str:
     cleaned = "".join(ch.lower() if ch.isalnum() else "_" for ch in name).strip("_")
     return cleaned or "site"
+
+
+def submit(args: argparse.Namespace) -> None:
+    """Run photometry on captured FITS files and produce an AAVSO upload file."""
+    import json as _json
+
+    from .photometry import (
+        CompStar,
+        process_capture,
+        write_aavso_extended_file,
+    )
+
+    captures_dir = Path(args.captures)
+    if not captures_dir.exists():
+        print(f"Captures directory '{captures_dir}' does not exist.")
+        return
+
+    print(f"Looking up '{args.target}' in VSX...")
+    vsx_target = fetch_vsx_target_by_name(args.target)
+    if vsx_target is None:
+        print(f"Target '{args.target}' not found in VSX. Cannot proceed without RA/Dec.")
+        return
+    print(
+        f"Target: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, "
+        f"Dec {vsx_target.dec_deg:.5f}"
+    )
+
+    comp_path = Path(args.comp_stars)
+    if not comp_path.exists():
+        print(f"Comparison-star file '{comp_path}' does not exist.")
+        return
+    with comp_path.open(encoding="utf-8") as handle:
+        comp_data = _json.load(handle)
+    comps = [
+        CompStar(
+            label=str(item["label"]),
+            ra_deg=float(item["ra_deg"]),
+            dec_deg=float(item["dec_deg"]),
+            catalog_mag=float(item["catalog_mag"]),
+            catalog_band=str(item.get("catalog_band", "V")),
+        )
+        for item in comp_data
+    ]
+    print(f"Loaded {len(comps)} comparison stars.")
+
+    fits_files = sorted(list(captures_dir.glob("*.fits")) + list(captures_dir.glob("*.fit")))
+    if not fits_files:
+        print(f"No FITS files found in {captures_dir}.")
+        return
+    print(f"Processing {len(fits_files)} FITS files...")
+
+    observations = []
+    failures = []
+    for fits_path in fits_files:
+        try:
+            obs = process_capture(
+                fits_path,
+                args.target,
+                vsx_target.ra_deg,
+                vsx_target.dec_deg,
+                comps,
+                aperture_radius_arcsec=args.aperture_arcsec,
+            )
+        except Exception as exc:
+            failures.append((fits_path.name, str(exc)))
+            continue
+        if obs is None:
+            failures.append((fits_path.name, "no usable signal"))
+            continue
+        obs.chart_id = args.chart_id
+        observations.append(obs)
+        print(f"  {fits_path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
+
+    if failures:
+        print(f"\n{len(failures)} files failed:")
+        for name, reason in failures[:10]:
+            print(f"  {name}: {reason}")
+
+    if not observations:
+        print("\nNo successful observations. Verify FITS files have a celestial WCS (NINA must plate-solve).")
+        return
+
+    output_path = captures_dir / f"aavso_{args.target.replace(' ', '_').replace('/', '_')}.txt"
+    write_aavso_extended_file(
+        observations,
+        output_path,
+        observer_code=args.observer_code,
+        chart_id=args.chart_id,
+    )
+
+    mags = [o.magnitude for o in observations]
+    median_mag = sorted(mags)[len(mags) // 2]
+    print(
+        f"\n{len(observations)} observations submitted, median magnitude "
+        f"{median_mag:.3f} (range {min(mags):.3f}–{max(mags):.3f})"
+    )
+    print(f"Wrote {output_path}")
+    print(f"Verify the file, then upload at: https://www.aavso.org/webobs/file")
 
 
 def tonight(args: argparse.Namespace) -> None:
@@ -275,6 +401,7 @@ def tonight(args: argparse.Namespace) -> None:
     print(f"Wrote {output_dir / 'candidate_queue.csv'}")
     print(f"Wrote {output_dir / 'session_plan.md'}")
     print(f"Wrote {output_dir / 'session_plan.csv'}")
+    print(f"Wrote {output_dir / 'nina_targets.csv'} (NINA Target Scheduler import)")
     print(f"Wrote {packet_count} packets in {packet_dir}")
 
 

@@ -1,0 +1,24 @@
+[
+  {
+    "label": "095",
+    "ra_deg": 282.453000,
+    "dec_deg": 33.357000,
+    "catalog_mag": 9.512,
+    "catalog_band": "V",
+    "_note": "Replace with real data from your AAVSO chart. Each chart star has a label (e.g. '37' for mag 3.7, or longer for fainter stars), RA/Dec from the VSP table, and a catalog magnitude in the V band (or whichever band you'll submit in)."
+  },
+  {
+    "label": "102",
+    "ra_deg": 282.612000,
+    "dec_deg": 33.401000,
+    "catalog_mag": 10.234,
+    "catalog_band": "V"
+  },
+  {
+    "label": "115",
+    "ra_deg": 282.387000,
+    "dec_deg": 33.298000,
+    "catalog_mag": 11.512,
+    "catalog_band": "V"
+  }
+]

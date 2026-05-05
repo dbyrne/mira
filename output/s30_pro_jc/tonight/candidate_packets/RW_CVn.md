@@ -1,6 +1,6 @@
 # RW CVn
 
-Score: **77.0**  
+Score: **92.0**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `86.4 deg`
+- Max altitude in dark window: `86.5 deg`
 - Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-04`
-- Best sampled local time: `2026-05-05T00:00:00-04:00`
+- Best window date: `2026-05-05`
+- Best sampled local time: `2026-05-06T00:00:00-04:00`
 
 ## Observing Strategy
 
@@ -28,21 +28,22 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 86.4 deg from Jersey City
+- max altitude 86.5 deg from Jersey City
 - long nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 0.52 mag
 - bright enough for Jersey City (8.27)
 - long-period cadence friendly (100.00 d)
 - well away from Galactic plane (b=72.5 deg)
-- AAVSO recent-coverage check unavailable
+- sparse AAVSO coverage (0 recent observations)
 - Gaia ipd_frac_multi_peak=10.00 suggests blended/contaminated PSF
 
 ## AAVSO Recent Coverage
 
-- Status: `unavailable`
-- Recent observations: not available (status above).
-- Note: 405 Client Error: Not Allowed for url: https://vsx.aavso.org/index.php?view=api.object&ident=RW+CVn&data=50000&fromjd=2460435.52331&tojd=2461165.52331&csv=&band=V%2CVis.%2CCV%2CTG%2CB%2CR%2CI&mtype=std
+- Status: `ok`
+- Recent observations: `0`
+- JD range: `2460435.99-2461165.99`
+- Most recent observation: `none in the configured window`
 
 ## SIMBAD Context
 

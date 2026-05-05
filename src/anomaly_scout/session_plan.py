@@ -14,10 +14,11 @@ def write_session_plan(
     window_start: datetime,
     window_end: datetime,
     config,
-) -> tuple[Path, Path]:
+) -> tuple[Path, Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     md_path = output_dir / "session_plan.md"
     csv_path = output_dir / "session_plan.csv"
+    nina_path = output_dir / "nina_targets.csv"
 
     # Sort by best_local_time ascending so the plan reads in chronological order
     sorted_candidates = sorted(
@@ -27,7 +28,8 @@ def write_session_plan(
 
     write_session_plan_md(sorted_candidates, md_path, window_start, window_end, config)
     write_session_plan_csv(sorted_candidates, csv_path)
-    return md_path, csv_path
+    write_nina_target_scheduler_csv(sorted_candidates, nina_path)
+    return md_path, csv_path, nina_path
 
 
 def write_session_plan_md(candidates, path: Path, window_start, window_end, config) -> None:
@@ -148,6 +150,56 @@ def write_session_plan_csv(candidates, path: Path) -> None:
                     "aavso_chart_url": vsp_chart_url(target.name),
                 }
             )
+
+
+def write_nina_target_scheduler_csv(candidates, path: Path) -> None:
+    """Emit a CSV in NINA Target Scheduler plugin's documented import format.
+
+    Columns: Type, Name, Ra, Dec, Rotation, ROI
+      - Ra:  HMS string like "10h 08m 19s"
+      - Dec: DMS string like "+20° 00' 13\""
+      - Rotation: degrees (0 = native)
+      - ROI: percentage of full sensor (100 = full frame)
+
+    Reference: https://tcpalmer.github.io/nina-scheduler/target-management/targets.html
+    """
+    fields = ["Type", "Name", "Ra", "Dec", "Rotation", "ROI"]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for candidate in candidates:
+            target = candidate.target
+            writer.writerow(
+                {
+                    "Type": "Variable Star",
+                    "Name": target.name,
+                    "Ra": ra_to_target_scheduler_hms(target.ra_deg),
+                    "Dec": dec_to_target_scheduler_dms(target.dec_deg),
+                    "Rotation": 0,
+                    "ROI": 100,
+                }
+            )
+
+
+def ra_to_target_scheduler_hms(ra_deg: float) -> str:
+    """Format RA as 'HHh MMm SSs' for NINA Target Scheduler."""
+    hours_total = ra_deg / 15.0
+    h = int(hours_total)
+    minutes_total = (hours_total - h) * 60.0
+    m = int(minutes_total)
+    s = (minutes_total - m) * 60.0
+    return f"{h:02d}h {m:02d}m {s:02.0f}s"
+
+
+def dec_to_target_scheduler_dms(dec_deg: float) -> str:
+    """Format Dec as '±DD° MM\\' SS\"' for NINA Target Scheduler."""
+    sign = "+" if dec_deg >= 0 else "-"
+    abs_dec = abs(dec_deg)
+    d = int(abs_dec)
+    minutes_total = (abs_dec - d) * 60.0
+    m = int(minutes_total)
+    s = (minutes_total - m) * 60.0
+    return f"{sign}{d:02d}° {m:02d}' {s:02.0f}\""
 
 
 def recommended_exposure_plan(bright_mag: float | None) -> dict:

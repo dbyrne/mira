@@ -1,6 +1,6 @@
 # VX CVn
 
-Score: **83.0**  
+Score: **98.0**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `89.2 deg`
+- Max altitude in dark window: `89.6 deg`
 - Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-04`
-- Best sampled local time: `2026-05-04T23:30:00-04:00`
+- Best window date: `2026-05-05`
+- Best sampled local time: `2026-05-05T23:30:00-04:00`
 
 ## Observing Strategy
 
@@ -28,20 +28,22 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 89.2 deg from Jersey City
+- max altitude 89.6 deg from Jersey City
 - long nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 1.30 mag
 - bright enough for Jersey City (10.20)
 - long-period cadence friendly (360.00 d)
 - well away from Galactic plane (b=74.0 deg)
-- AAVSO recent-coverage check unavailable
+- sparse AAVSO coverage (2 recent observations)
 
 ## AAVSO Recent Coverage
 
-- Status: `unavailable`
-- Recent observations: not available (status above).
-- Note: 405 Client Error: Not Allowed for url: https://vsx.aavso.org/index.php?view=api.object&ident=VX+CVn&data=50000&fromjd=2460435.52331&tojd=2461165.52331&csv=&band=V%2CVis.%2CCV%2CTG%2CB%2CR%2CI&mtype=std
+- Status: `ok`
+- Recent observations: `2`
+- JD range: `2460435.99-2461165.99`
+- Most recent observation: `2025-08-30` (JD `2460917.64`)
+- Period agreement: not assessable (Lomb-Scargle did not return a period)
 
 ## SIMBAD Context
 

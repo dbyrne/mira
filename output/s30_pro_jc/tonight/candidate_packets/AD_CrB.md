@@ -1,6 +1,6 @@
 # AD CrB
 
-Score: **79.2**  
+Score: **79.9**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `68.2 deg`
+- Max altitude in dark window: `68.9 deg`
 - Best single-night dark time above altitude floor: `150 min`
-- Best window date: `2026-05-04`
-- Best sampled local time: `2026-05-05T00:30:00-04:00`
+- Best window date: `2026-05-05`
+- Best sampled local time: `2026-05-06T00:30:00-04:00`
 
 ## Observing Strategy
 
@@ -28,7 +28,7 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 68.2 deg from Jersey City
+- max altitude 68.9 deg from Jersey City
 - usable nightly window from Jersey City
 - uncertain or broad VSX type (SRB:)
 - classical GCVS variable, suitable for practice and follow-up
@@ -36,14 +36,15 @@ Observable from: **Jersey City**
 - bright enough for Jersey City (8.73)
 - no catalog period listed
 - well away from Galactic plane (b=47.6 deg)
-- AAVSO recent-coverage check unavailable
+- AAVSO has 21 recent observations
 - Gaia ipd_frac_multi_peak=3.00 suggests blended/contaminated PSF
 
 ## AAVSO Recent Coverage
 
-- Status: `unavailable`
-- Recent observations: not available (status above).
-- Note: 405 Client Error: Not Allowed for url: https://vsx.aavso.org/index.php?view=api.object&ident=AD+CrB&data=50000&fromjd=2460435.52330&tojd=2461165.52330&csv=&band=V%2CVis.%2CCV%2CTG%2CB%2CR%2CI&mtype=std
+- Status: `ok`
+- Recent observations: `21`
+- JD range: `2460435.99-2461165.99`
+- Most recent observation: `2025-07-24` (JD `2460880.53`)
 
 ## SIMBAD Context
 

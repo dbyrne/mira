@@ -37,7 +37,24 @@ anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
 That writes `output/s30_pro_jc/tonight/`:
 - `candidate_queue.csv`, `best_<site>.csv`, `shared_targets.csv`, `research_notes.md`, packet markdown — same as `run`, but filtered to tonight's window.
 - `session_plan.md` — phone-readable, chronological, with per-target RA/Dec in HH:MM:SS / DMS, recommended exposure plan, AAVSO/SIMBAD chart links.
-- `session_plan.csv` — same data as a CSV that can be imported into NINA's Target Scheduler or pasted into a session log.
+- `session_plan.csv` — same data as a generic CSV.
+- `nina_targets.csv` — formatted for the NINA **Target Scheduler** plugin's bulk-import (columns Type, Name, Ra, Dec, Rotation, ROI). Drop into Target Scheduler → Targets → Import CSV.
+
+After NINA captures FITS files, run photometry and produce an AAVSO upload:
+
+```powershell
+anomaly-scout submit `
+  --captures "C:/NINA/captures/RR_LYR/" `
+  --target "RR LYR" `
+  --comp-stars docs/comp_stars/rr_lyr.json `
+  --observer-code ABC `
+  --chart-id X12345AAB
+```
+
+This reads each FITS, runs circular-aperture differential photometry against
+the comp stars listed in the JSON file, and writes
+`aavso_<TARGET>.txt` (AAVSO Extended File Format) for manual upload at
+https://www.aavso.org/webobs/file.
 
 Fast smoke test:
 
@@ -99,6 +116,8 @@ Cross-cutting modules:
 - The `tonight` subcommand overrides each site's `observing_window.nights` to 1 via `dataclasses.replace`, runs the standard pipeline against today's date, then post-filters candidates whose `best_local_time` falls in `[now − 1h, now + N hours]`. Output goes to `output_dir / tonight/` so it's separate from the multi-night queue.
 - `session_plan.py` produces a phone-readable Markdown plan plus a NINA-importable CSV. Per-target exposure recommendations (`recommended_exposure_plan`) are tuned for the S30 Pro in EQ mode: 5s/15s/30s/60s for bright/mid/faint/very-faint targets. Adjust per actual sky conditions.
 - `config/s30_pro_jc.yaml` is the gear-tuned profile: 30mm OSC sensor reach (`prefer_max_mag: 12`), urban-amplitude floor (`min_catalog_amplitude_mag: 0.20`), no fast eclipsing/short-period types in `include_types`, ZTF disabled.
+- `photometry.py` performs circular-aperture differential photometry on NINA-captured FITS. Requires NINA to have plate-solved (a celestial WCS in headers). Picks the brightest viable comp star per frame, propagates flux errors, writes the AAVSO Extended File Format. Uses `astropy.io.fits` + `astropy.wcs` + `photutils.aperture`. Tested with synthetic FITS that pin the magnitude recovery to within 0.4 mag of planted values.
+- `docs/nina_setup.md` and `docs/photometry.md` walk through the per-night workflow end-to-end (NINA configuration, Target Scheduler plugin, comp-star JSON, submit command). Keep these docs aligned with code changes that affect the workflow.
 - Solar position is computed by `sun_position` in `observability.py` (low-precision, ~1° accuracy — fine for "is it dark"). To disable the darkness filter for a site, set `max_sun_altitude_deg: 0` (sun-on-horizon).
 - VSX type matching is token-aware. `tokenize_var_type` splits on `/` and `|`, strips trailing `?` and `:`. Include patterns can be exact (e.g., `EW`) or family wildcards with a trailing `*` (e.g., `SR*` matches SR/SRA/SRB/SRC/SRD/SRS but not the unrelated string `MSR`). The chief regression we guard against in `test_prefix_wildcard_does_not_match_via_substring` is `L` matching `ELL`.
 - `is_uncertain_type` flags only real uncertainty markers — `?`, `:`, `|` modifiers in the type string, blank type, or the broad categories `VAR`/`MISC`. Well-defined classes like `SR`, `SRA`, `LB`, `RRAB` are *not* uncertain.

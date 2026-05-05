@@ -1,26 +1,26 @@
-# UY CVn
+# TW CVn
 
-Score: **94.0**  
+Score: **88.0**  
 Observable from: **Jersey City**
 
 ## Catalog
 
 - VSX type: `LB`
-- Coordinates: RA `186.22429`, Dec `45.58464`
-- Catalog photometry: range `9.260-9.740` (Hp/Hp)
-- Catalog amplitude: `0.480` mag
+- Coordinates: RA `194.83826`, Dec `43.88767`
+- Catalog photometry: range `11.000-12.600` (pg/pg)
+- Catalog amplitude: `1.600` mag
 - Period: `` days
 - Spectral type: `M5III`
-- Galactic latitude: `70.8 deg`
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5055
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=UY+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- Galactic latitude: `73.2 deg`
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5047
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=TW+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `85.1 deg`
+- Max altitude in dark window: `86.8 deg`
 - Best single-night dark time above altitude floor: `210 min`
 - Best window date: `2026-05-05`
-- Best sampled local time: `2026-05-05T22:30:00-04:00`
+- Best sampled local time: `2026-05-05T23:00:00-04:00`
 
 ## Observing Strategy
 
@@ -28,14 +28,15 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 85.1 deg from Jersey City
+- max altitude 86.8 deg from Jersey City
 - long nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
-- catalog amplitude about 0.48 mag
-- bright enough for Jersey City (9.26)
+- catalog amplitude about 1.60 mag
+- bright enough for Jersey City (11.00)
 - no catalog period listed
-- well away from Galactic plane (b=70.8 deg)
+- well away from Galactic plane (b=73.2 deg)
 - sparse AAVSO coverage (0 recent observations)
+- Gaia ipd_frac_multi_peak=3.00 suggests blended/contaminated PSF
 
 ## AAVSO Recent Coverage
 
@@ -47,23 +48,23 @@ Observable from: **Jersey City**
 ## SIMBAD Context
 
 - Status: `ok`
-- Main ID: `V* UY CVn`
+- Main ID: `V* TW CVn`
 - Object type: `LP*`
-- Match separation: `0.071` arcsec
-- Search: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=186.224290+45.584640&Radius=5.0&Radius.unit=arcsec
-- Other IDs: `HIP 60564`, `Gaia DR3 1541775547096686592`, `AG+45  996`, `BD+46  1784`, `GEN# +0.04601784`, `GSC 03456-01992`, `HIC  60564`, `NGP 46  76`
+- Match separation: `0.048` arcsec
+- Search: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=194.838260+43.887670&Radius=5.0&Radius.unit=arcsec
+- Other IDs: `Gaia DR3 1529383982333679360`, `BSD  32-385`, `BD+44  2243`, `CSV   1967`, `GSC 03023-01946`, `IRAS 12570+4409`, `NGP 44 164`, `SV* SON  4764`
 
 ## Gaia DR3 Context
 
 - Status: `ok`
-- Source ID: `1541775547096686592`
-- G magnitude: `8.128`
-- BP-RP color: `3.003`
-- Parallax: `0.985` +/- `0.031` mas
-- RUWE: `1.147`
+- Source ID: `1529383982333679360`
+- G magnitude: `8.790`
+- BP-RP color: `2.961`
+- Parallax: `0.552` +/- `0.027` mas
+- RUWE: `1.214`
 - Gaia photometric variability flag: `VARIABLE`
-- Match separation: `0.429` arcsec
-- IPD multi-peak fraction: `0.000`
+- Match separation: `0.119` arcsec
+- IPD multi-peak fraction: `3.000` (PSF appears blended/contaminated)
 
 ## ZTF Enrichment
 

@@ -1,6 +1,6 @@
 # BV Boo
 
-Score: **83.0**  
+Score: **98.0**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -19,8 +19,8 @@ Observable from: **Jersey City**
 
 - Max altitude in dark window: `72.0 deg`
 - Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-04`
-- Best sampled local time: `2026-05-05T00:00:00-04:00`
+- Best window date: `2026-05-05`
+- Best sampled local time: `2026-05-05T23:30:00-04:00`
 
 ## Observing Strategy
 
@@ -35,13 +35,14 @@ Observable from: **Jersey City**
 - bright enough for Jersey City (11.70)
 - long-period cadence friendly (37.62 d)
 - well away from Galactic plane (b=77.8 deg)
-- AAVSO recent-coverage check unavailable
+- sparse AAVSO coverage (0 recent observations)
 
 ## AAVSO Recent Coverage
 
-- Status: `unavailable`
-- Recent observations: not available (status above).
-- Note: 405 Client Error: Not Allowed for url: https://vsx.aavso.org/index.php?view=api.object&ident=BV+Boo&data=50000&fromjd=2460435.52333&tojd=2461165.52333&csv=&band=V%2CVis.%2CCV%2CTG%2CB%2CR%2CI&mtype=std
+- Status: `ok`
+- Recent observations: `0`
+- JD range: `2460435.99-2461165.99`
+- Most recent observation: `none in the configured window`
 
 ## SIMBAD Context
 

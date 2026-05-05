@@ -4,7 +4,9 @@ from unittest import TestCase
 
 from anomaly_scout.session_plan import (
     dec_to_dms,
+    dec_to_target_scheduler_dms,
     ra_to_hms,
+    ra_to_target_scheduler_hms,
     recommended_exposure_plan,
 )
 
@@ -59,3 +61,26 @@ class ExposurePlanTests(TestCase):
             plan = recommended_exposure_plan(mag)
             total_seconds = plan["exposure_s"] * plan["frames"]
             self.assertEqual(plan["total_min"], total_seconds // 60)
+
+
+class TargetSchedulerFormatTests(TestCase):
+    def test_ra_format_uses_hms_letters(self) -> None:
+        # Vega: 18h 36m 56s = 279.234 deg
+        result = ra_to_target_scheduler_hms(279.234)
+        self.assertTrue(result.startswith("18h 36m"))
+        self.assertTrue(result.endswith("s"))
+
+    def test_ra_format_zero(self) -> None:
+        self.assertEqual(ra_to_target_scheduler_hms(0.0), "00h 00m 00s")
+
+    def test_dec_format_positive(self) -> None:
+        result = dec_to_target_scheduler_dms(40.0)
+        self.assertEqual(result, "+40° 00' 00\"")
+
+    def test_dec_format_negative(self) -> None:
+        result = dec_to_target_scheduler_dms(-30.5)
+        self.assertTrue(result.startswith("-30°"))
+        self.assertIn("30'", result)
+
+    def test_dec_format_zero(self) -> None:
+        self.assertEqual(dec_to_target_scheduler_dms(0.0), "+00° 00' 00\"")

@@ -452,13 +452,45 @@ def register_routes(app: Flask) -> None:
             abort(404)
         sessions = store.list_sessions(target_slug=target_slug)
         observations = store.get_observations(target_slug)
+        history_chart_url = url_for("data_target_history_chart", target_slug=target_slug) if observations else None
         return render_template(
             "data_target.html",
             target_slug=target_slug,
             target_name=target_slug.replace("_", " "),
             sessions=sessions,
             observations=observations,
+            history_chart_url=history_chart_url,
         )
+
+    @app.route("/data/target/<target_slug>/history.png")
+    def data_target_history_chart(target_slug):
+        store = current_app.config.get("SESSION_STORE")
+        if store is None:
+            abort(404)
+        observations = store.get_observations(target_slug)
+        if not observations:
+            abort(404)
+        from ..lightcurve import plot_history
+
+        state_dir: Path = current_app.config.get("STATE_DIR")
+        cache_dir = state_dir / "history-charts"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        chart_path = cache_dir / f"{target_slug}.png"
+        # Always regenerate — sessions evolve. (At single-user volumes this is fine.)
+        points = [
+            (
+                float(o["julian_date"]) if o["julian_date"] is not None else 0.0,
+                float(o["magnitude"]) if o["magnitude"] is not None else float("nan"),
+                float(o["magnitude_error"]) if o["magnitude_error"] is not None else None,
+                o.get("session_date"),
+            )
+            for o in observations
+            if o["julian_date"] is not None and o["magnitude"] is not None
+        ]
+        if not points:
+            abort(404)
+        plot_history(target_slug.replace("_", " "), points, chart_path)
+        return send_from_directory(str(cache_dir), f"{target_slug}.png")
 
     @app.route("/archive")
     def archive_index():

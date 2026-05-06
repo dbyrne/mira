@@ -508,6 +508,35 @@ class WebappRoutesTests(TestCase):
         store_anomalies = store.list_sessions(anomaly_only=True)
         self.assertEqual(len(store_anomalies), 1)
 
+    def test_data_target_history_chart_renders(self) -> None:
+        store = self.app.config["SESSION_STORE"]
+        store.upsert_session(
+            run_id="r1", target_name="RR LYR", target_slug="RR_LYR",
+            session_date="2026-05-06", observer_code="ABC", chart_id="X1",
+            observation_count=3, median_mag=7.6, anomaly_level="info",
+            submitted_at=None, created_at="2026-05-06T22:00:00+00:00",
+            observations=[
+                {"filename": f"f{i}.fits", "julian_date": 2461000.0 + i,
+                 "magnitude": 7.55 + i * 0.01, "magnitude_error": 0.05,
+                 "band": "TG", "comp_star_label": "97", "comp_star_mag": 9.7,
+                 "flag": "ok"} for i in range(3)
+            ],
+        )
+        # Chart URL exposed on the target page
+        response = self.client.get("/data/target/RR_LYR")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"history.png", response.data)
+
+        # PNG itself
+        chart_response = self.client.get("/data/target/RR_LYR/history.png")
+        self.assertEqual(chart_response.status_code, 200)
+        self.assertEqual(chart_response.mimetype, "image/png")
+        self.assertGreater(len(chart_response.data), 1000)
+
+    def test_data_target_history_404s_for_unknown(self) -> None:
+        response = self.client.get("/data/target/UNKNOWN/history.png")
+        self.assertEqual(response.status_code, 404)
+
     def test_data_sessions_csv_export(self) -> None:
         store = self.app.config["SESSION_STORE"]
         store.upsert_session(

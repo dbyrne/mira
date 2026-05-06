@@ -139,6 +139,35 @@ def main() -> None:
         help="Override path to sessions.db (default <state-dir>/sessions.db).",
     )
 
+    cleanup_parser = subparsers.add_parser(
+        "cleanup",
+        help="Delete old run records and stale HTTP cache entries. Default is dry-run.",
+    )
+    cleanup_parser.add_argument(
+        "--state-dir", default="data/webapp_runs",
+        help="State directory containing run JSON files (default data/webapp_runs).",
+    )
+    cleanup_parser.add_argument(
+        "--cache-dir", default="data/cache",
+        help="HTTP cache root (default data/cache).",
+    )
+    cleanup_parser.add_argument(
+        "--older-than", type=int, default=90,
+        help="Age threshold in days; entries older than this are eligible for deletion (default 90).",
+    )
+    cleanup_parser.add_argument(
+        "--runs", action="store_true",
+        help="Include run records in the cleanup. Submitted sessions are kept regardless of age.",
+    )
+    cleanup_parser.add_argument(
+        "--cache", action="store_true",
+        help="Include HTTP cache entries in the cleanup.",
+    )
+    cleanup_parser.add_argument(
+        "--apply", action="store_true",
+        help="Actually delete. Without this, the command reports what it would touch but does nothing.",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -166,6 +195,8 @@ def main() -> None:
         submit(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
+    elif args.command == "cleanup":
+        cleanup(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -176,6 +207,87 @@ def main() -> None:
         webapp(args)
     elif args.command in (None, "run"):
         run(args)
+
+
+def cleanup(args: argparse.Namespace) -> None:
+    """Garbage-collect old run records and HTTP cache entries.
+
+    Default is dry-run: lists what would be removed but doesn't touch
+    anything. Pass --apply to actually delete. Submitted sessions
+    (those marked with `submitted_at` in the DB or run record) are kept
+    regardless of age — they're irreplaceable.
+    """
+    import json as _json
+    import time as _time
+
+    if not (args.runs or args.cache):
+        print("Specify at least one of --runs or --cache (and optionally --apply).")
+        return
+
+    cutoff = _time.time() - args.older_than * 86400
+    mode = "APPLY" if args.apply else "DRY-RUN"
+    print(f"[{mode}] Cleanup: --older-than {args.older_than}d (cutoff {datetime.fromtimestamp(cutoff).isoformat()[:19]})")
+
+    if args.runs:
+        state_dir = Path(args.state_dir)
+        if not state_dir.is_dir():
+            print(f"  state-dir does not exist: {state_dir}")
+        else:
+            kept = 0
+            removed = 0
+            protected = 0
+            for path in sorted(state_dir.glob("*.json")):
+                if path.name == "settings.json":
+                    continue
+                try:
+                    mtime = path.stat().st_mtime
+                except OSError:
+                    continue
+                if mtime >= cutoff:
+                    kept += 1
+                    continue
+                # Read the record; keep if it was submitted to AAVSO.
+                try:
+                    data = _json.loads(path.read_text(encoding="utf-8"))
+                    submitted = bool((data.get("result") or {}).get("submitted_at"))
+                except (OSError, ValueError):
+                    submitted = False
+                if submitted:
+                    protected += 1
+                    print(f"  KEEP  {path.name} (submitted to AAVSO)")
+                    continue
+                if args.apply:
+                    try:
+                        path.unlink()
+                    except OSError as exc:
+                        print(f"  ERROR removing {path.name}: {exc}")
+                        continue
+                print(f"  {'DEL' if args.apply else 'WOULD DEL'} {path.name}")
+                removed += 1
+            print(f"  Run records: kept {kept}, would-remove/removed {removed}, protected (submitted) {protected}")
+
+    if args.cache:
+        cache_dir = Path(args.cache_dir)
+        if not cache_dir.is_dir():
+            print(f"  cache-dir does not exist: {cache_dir}")
+        else:
+            removed = 0
+            kept = 0
+            for path in cache_dir.rglob("*.json"):
+                try:
+                    mtime = path.stat().st_mtime
+                except OSError:
+                    continue
+                if mtime >= cutoff:
+                    kept += 1
+                    continue
+                if args.apply:
+                    try:
+                        path.unlink()
+                    except OSError:
+                        continue
+                removed += 1
+            print(f"  Cache entries: kept {kept}, would-remove/removed {removed}")
 
 
 def migrate_runs(args: argparse.Namespace) -> None:

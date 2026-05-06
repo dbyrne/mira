@@ -83,6 +83,46 @@ def plot_session_light_curve(
     return output_path
 
 
+def plot_history(
+    target_name: str,
+    points: list[tuple[float, float, float | None, str | None]],
+    output_path: Path,
+) -> Path | None:
+    """Plot a target's full multi-night observation history from the
+    SQLite session store. `points` is a list of (jd, mag, mag_err, date)
+    tuples; date is the YYYY-MM-DD label of the session each point came
+    from (used to color-code by session)."""
+    if not points:
+        return None
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    # Group by date for coloring; one color per session.
+    by_date: dict[str | None, list[tuple[float, float, float | None]]] = {}
+    for jd, mag, err, date in points:
+        by_date.setdefault(date, []).append((jd, mag, err))
+    cmap = plt.get_cmap("tab10")
+    for index, (date, group) in enumerate(sorted(by_date.items(), key=lambda kv: (kv[0] or ""))):
+        jds = [g[0] for g in group]
+        mags = [g[1] for g in group]
+        errs = [g[2] if g[2] is not None else 0.0 for g in group]
+        ax.errorbar(
+            jds, mags, yerr=errs,
+            fmt="o", color=cmap(index % 10),
+            markersize=5, alpha=0.85, capsize=2,
+            label=date or "undated",
+        )
+    ax.invert_yaxis()
+    ax.set_xlabel("Julian Date")
+    ax.set_ylabel("Magnitude")
+    ax.set_title(f"{target_name} — multi-night history ({len(points)} obs across {len(by_date)} sessions)")
+    ax.legend(loc="best", fontsize="small")
+    ax.grid(True, alpha=0.2)
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=120)
+    plt.close(fig)
+    return output_path
+
+
 def plot_phase_folded(
     observations: Iterable[Observation],
     target_name: str,

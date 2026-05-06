@@ -5,6 +5,11 @@
   <h2>{{ target_name }} — full history</h2>
   <p class="meta">All observations of this target across every session. Source: SQLite session store.</p>
 
+  {% if history_chart_url %}
+  <h3>Multi-night light curve</h3>
+  <img class="lightcurve" src="{{ history_chart_url }}" alt="Multi-night history of {{ target_name }}">
+  {% endif %}
+
   {% if sessions %}
   <h3>Sessions ({{ sessions|length }})</h3>
   <table class="data">

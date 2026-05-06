@@ -127,3 +127,89 @@ class CoordParseTests(TestCase):
     def test_dms_returns_none_on_garbage(self) -> None:
         self.assertIsNone(_dms_to_deg(""))
         self.assertIsNone(_dms_to_deg("garbage"))
+
+
+class VspMalformedResponseTests(TestCase):
+    """VSP responses can be malformed in production: missing fields,
+    null values, partial photometry rows. parse_vsp_chart must surface
+    a clean ValueError or skip bad rows rather than crash."""
+
+    def test_missing_chartid_falls_back_to_na(self) -> None:
+        chart = parse_vsp_chart({
+            "star": "X",
+            "ra": "12:00:00",
+            "dec": "+00:00:00",
+            "photometry": [
+                {"label": "100", "ra": "12:00:30", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": 10.0, "error": 0.05}]},
+            ],
+        })
+        self.assertEqual(chart.chart_id, "na")
+
+    def test_missing_photometry_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            parse_vsp_chart({"chartid": "X", "star": "Y", "photometry": []})
+
+    def test_skips_comp_with_invalid_coords(self) -> None:
+        chart = parse_vsp_chart({
+            "chartid": "X1",
+            "star": "Y",
+            "ra": "12:00:00",
+            "dec": "+00:00:00",
+            "photometry": [
+                {"label": "good", "ra": "12:00:30", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": 10.0, "error": 0.05}]},
+                {"label": "bad-ra", "ra": "garbage", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": 10.0, "error": 0.05}]},
+                {"label": "bad-dec", "ra": "12:00:30", "dec": "not-a-coord",
+                 "bands": [{"band": "V", "mag": 10.0, "error": 0.05}]},
+            ],
+        })
+        labels = [c.label for c in chart.comps]
+        self.assertEqual(labels, ["good"])
+
+    def test_skips_comp_with_missing_band(self) -> None:
+        chart = parse_vsp_chart({
+            "chartid": "X1",
+            "star": "Y",
+            "ra": "12:00:00",
+            "dec": "+00:00:00",
+            "photometry": [
+                {"label": "v-only", "ra": "12:00:30", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": 10.0, "error": 0.05}]},
+                {"label": "no-bands", "ra": "12:00:35", "dec": "+00:01:00",
+                 "bands": []},
+                {"label": "no-mag", "ra": "12:00:40", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": None, "error": 0.05}]},
+            ],
+        })
+        labels = [c.label for c in chart.comps]
+        self.assertEqual(labels, ["v-only"])
+
+    def test_label_falls_back_to_mag_when_blank(self) -> None:
+        chart = parse_vsp_chart({
+            "chartid": "X1",
+            "star": "Y",
+            "ra": "12:00:00",
+            "dec": "+00:00:00",
+            "photometry": [
+                {"label": "", "ra": "12:00:30", "dec": "+00:01:00",
+                 "bands": [{"band": "V", "mag": 9.7, "error": 0.05}]},
+            ],
+        })
+        # Empty label → synthesize from magnitude
+        self.assertEqual(chart.comps[0].label, "9.7")
+
+    def test_filter_unknown_target_mag_returns_brightest(self) -> None:
+        # When VSX has no bright_mag (rare but happens for some types),
+        # filter_comps_for_target should still return a usable list.
+        from anomaly_scout.photometry import CompStar
+        comps = [
+            CompStar(label=f"c{i}", ra_deg=0, dec_deg=0,
+                     catalog_mag=8.0 + i * 0.5, catalog_band="V")
+            for i in range(8)
+        ]
+        result = filter_comps_for_target(comps, target_mag=None, max_count=4)
+        self.assertEqual(len(result), 4)
+        # Brightest first when target_mag is unknown
+        self.assertEqual(result[0].label, "c0")

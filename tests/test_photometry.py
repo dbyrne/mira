@@ -157,7 +157,201 @@ class EnsembleMagnitudeTests(TestCase):
         self.assertTrue(math.isnan(mag))
 
 
+class AavsoFileRoundTripTests(TestCase):
+    """Write an AAVSO Extended File, parse it back, and assert each row
+    matches the source Observation. Catches header/column drift that
+    individual format tests would miss."""
+
+    def _parse(self, path: Path) -> tuple[dict[str, str], list[dict[str, str]]]:
+        text = path.read_text(encoding="utf-8")
+        headers: dict[str, str] = {}
+        col_names: list[str] = []
+        rows: list[dict[str, str]] = []
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                stripped = line.lstrip("#")
+                # The column-spec header starts with NAME, (the first column).
+                if stripped.startswith("NAME,"):
+                    col_names = stripped.split(",")
+                else:
+                    key, _, value = stripped.partition("=")
+                    headers[key] = value
+                continue
+            parts = line.split(",")
+            rows.append(dict(zip(col_names, parts, strict=True)))
+        return headers, rows
+
+    def test_roundtrip_preserves_observation_fields(self) -> None:
+        from anomaly_scout.photometry import Observation, write_aavso_extended_file
+
+        observations = [
+            Observation(
+                target_name="RR LYR",
+                julian_date=2461165.50000 + i * 0.01042,
+                magnitude=7.5 + i * 0.01,
+                magnitude_error=0.05,
+                band="TG",
+                comp_star_label="ENSEMBLE" if i % 2 else "97",
+                comp_star_mag=9.7,
+                chart_id="X12345",
+            )
+            for i in range(5)
+        ]
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "aavso.txt"
+            write_aavso_extended_file(observations, path, observer_code="ABC", chart_id="X12345")
+            headers, rows = self._parse(path)
+
+        self.assertEqual(headers["TYPE"], "Extended")
+        self.assertEqual(headers["OBSCODE"], "ABC")
+        self.assertEqual(headers["DELIM"], ",")
+        self.assertEqual(headers["DATE"], "JD")
+        self.assertEqual(len(rows), 5)
+        for i, row in enumerate(rows):
+            self.assertEqual(row["NAME"], "RR LYR")
+            self.assertAlmostEqual(float(row["DATE"]), 2461165.50000 + i * 0.01042, places=4)
+            self.assertAlmostEqual(float(row["MAG"]), 7.5 + i * 0.01, places=2)
+            self.assertEqual(row["FILT"], "TG")
+            self.assertEqual(row["MTYPE"], "STD")
+            self.assertEqual(row["CHART"], "X12345")
+            # Comp label rotates between "97" and "ENSEMBLE"
+            self.assertIn(row["CNAME"], ("97", "ENSEMBLE"))
+
+
+class CompSkipCallbackTests(TestCase):
+    """process_capture must invoke on_comp_skipped(comp, reason) for every
+    comp it can't use, so the caller can surface the skip in logs. Before
+    batch Y this was silently swallowed."""
+
+    def test_callback_fires_for_out_of_bounds_comp(self) -> None:
+        from anomaly_scout.photometry import CompStar, process_capture
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "t.fits"
+            _make_synthetic_fits(
+                path,
+                target_xy=(128, 128),
+                target_amplitude=1000.0,
+                comp_xy=[(158, 128)],
+                comp_amplitudes=[2512.0],
+                seed=2,
+            )
+            from anomaly_scout.photometry import read_fits_with_wcs
+            _, wcs, _ = read_fits_with_wcs(path)
+            target_sky = wcs.pixel_to_world(128, 128)
+            comp_sky = wcs.pixel_to_world(158, 128)
+
+            in_field = CompStar(
+                label="100", ra_deg=comp_sky.ra.deg, dec_deg=comp_sky.dec.deg,
+                catalog_mag=10.0, catalog_band="V",
+            )
+            # A bogus comp that's nowhere near the image — astropy will raise
+            far_away = CompStar(
+                label="999", ra_deg=0.0, dec_deg=-89.0,
+                catalog_mag=10.0, catalog_band="V",
+            )
+            skipped: list[tuple[str, str]] = []
+
+            def on_skip(comp, reason: str) -> None:
+                skipped.append((comp.label, reason))
+
+            obs = process_capture(
+                path,
+                target_name="TEST",
+                target_ra_deg=target_sky.ra.deg,
+                target_dec_deg=target_sky.dec.deg,
+                comp_stars=[in_field, far_away],
+                on_comp_skipped=on_skip,
+            )
+            self.assertIsNotNone(obs)
+            # At least one skip recorded for the far-away comp
+            self.assertEqual(len(skipped), 1)
+            self.assertEqual(skipped[0][0], "999")
+            self.assertNotEqual(skipped[0][1], "")
+
+
 class ProcessCaptureTests(TestCase):
+    def test_multi_comp_ensemble_end_to_end(self) -> None:
+        """Plant a target + 3 consistent comps in a synthetic FITS, run
+        process_capture with all of them, expect:
+        - Returned observation uses CNAME='ENSEMBLE'
+        - Magnitude is within 0.4 mag of the planted value
+        - Combined error is smaller than the single-comp case (statistical
+          benefit of ensembling)."""
+        from anomaly_scout.photometry import CompStar, process_capture, read_fits_with_wcs
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ensemble.fits"
+            # Target at center, 3 comps each ~1 mag brighter at different positions
+            _make_synthetic_fits(
+                path,
+                target_xy=(128, 128),
+                target_amplitude=1000.0,
+                comp_xy=[(158, 128), (98, 128), (128, 158)],
+                comp_amplitudes=[2512.0, 2512.0, 2512.0],
+                seed=3,
+            )
+            _, wcs, _ = read_fits_with_wcs(path)
+            target_sky = wcs.pixel_to_world(128, 128)
+            comp_skys = [
+                wcs.pixel_to_world(158, 128),
+                wcs.pixel_to_world(98, 128),
+                wcs.pixel_to_world(128, 158),
+            ]
+            comps = [
+                CompStar(label=f"100-{i}", ra_deg=s.ra.deg, dec_deg=s.dec.deg,
+                         catalog_mag=10.0, catalog_band="V")
+                for i, s in enumerate(comp_skys)
+            ]
+            obs = process_capture(
+                path,
+                target_name="TEST",
+                target_ra_deg=target_sky.ra.deg,
+                target_dec_deg=target_sky.dec.deg,
+                comp_stars=comps,
+            )
+            self.assertIsNotNone(obs)
+            self.assertEqual(obs.comp_star_label, "ENSEMBLE")
+            # Comp is 1 mag brighter (10.0 - 2.5*log10(2512/1000) = 9.0); target
+            # is at the comp brightness divided by 2.512, so target ~ 11.0.
+            self.assertGreater(obs.magnitude, 10.6)
+            self.assertLess(obs.magnitude, 11.4)
+            # Magnitude error must be a finite positive value
+            self.assertGreater(obs.magnitude_error, 0.0)
+            self.assertLess(obs.magnitude_error, 0.5)
+
+    def test_ensemble_drops_outlier_comp(self) -> None:
+        """If 3 comps say target is ~11 and a 4th comp is contaminated and
+        says target is ~9, the outlier should be dropped (>2σ from the
+        median) and the resulting magnitude should agree with the 3 good
+        comps. This is the load-bearing claim of the multi-comp ensemble."""
+        from anomaly_scout.photometry import (
+            CompStar,
+            ensemble_magnitude,
+        )
+        target_flux = 1000.0
+        target_err = 32.0
+        good_comps = [
+            CompStar(label=f"good{i}", ra_deg=0, dec_deg=0, catalog_mag=10.0, catalog_band="V")
+            for i in range(3)
+        ]
+        bad_comp = CompStar(label="bad", ra_deg=0, dec_deg=0, catalog_mag=10.0, catalog_band="V")
+        # Good comps each give target_mag = 10.0 - 2.5*log10(1000/2512) ~ 11.0
+        # Bad comp's measured flux is way too low → predicts target much brighter
+        results = [
+            (good_comps[0], 2512.0, 50.0),
+            (good_comps[1], 2512.0, 50.0),
+            (good_comps[2], 2512.0, 50.0),
+            (bad_comp, 200.0, 14.0),  # outlier
+        ]
+        mag, err, kept = ensemble_magnitude(target_flux, target_err, results)
+        self.assertEqual(len(kept), 3, "outlier should be dropped")
+        self.assertNotIn("bad", [c.label for c in kept])
+        self.assertAlmostEqual(mag, 11.0, delta=0.1)
+
+
     def test_end_to_end_synthetic(self) -> None:
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "test.fits"

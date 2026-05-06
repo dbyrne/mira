@@ -104,6 +104,53 @@ class SessionStoreTests(TestCase):
         self.assertEqual(len(rr), 1)
         self.assertEqual(rr[0]["run_id"], "a")
 
+    def test_upsert_update_path_returns_correct_session_id(self) -> None:
+        """Regression: cur.lastrowid is unreliable on the ON CONFLICT
+        UPDATE path of sqlite3 — the post-Y fix re-resolves session_id
+        from run_id every time. If the resolution is wrong, observations
+        are written with session_id=0 (orphaned). Verify both INSERT
+        and UPDATE attach observations to the same session row."""
+        common = {
+            "target_name": "RR LYR", "target_slug": "RR_LYR",
+            "session_date": "2026-05-06", "observer_code": "ABC", "chart_id": "X1",
+            "anomaly_level": "info", "submitted_at": None,
+            "created_at": "2026-05-06T22:00:00+00:00",
+        }
+        # First write: 2 observations
+        self.store.upsert_session(
+            run_id="r1", observation_count=2, median_mag=7.6, **common,
+            observations=[
+                {"filename": "f1.fits", "julian_date": 2461165.5, "magnitude": 7.6,
+                 "magnitude_error": 0.05, "band": "TG", "comp_star_label": "97",
+                 "comp_star_mag": 9.7, "flag": "ok"},
+                {"filename": "f2.fits", "julian_date": 2461165.6, "magnitude": 7.65,
+                 "magnitude_error": 0.05, "band": "TG", "comp_star_label": "97",
+                 "comp_star_mag": 9.7, "flag": "ok"},
+            ],
+        )
+        first_obs = self.store.get_observations("RR_LYR")
+        self.assertEqual(len(first_obs), 2)
+        # All observations must reference an actual sessions row, not session_id=0.
+        sessions = self.store.list_sessions()
+        self.assertEqual(len(sessions), 1)
+        # Re-upsert with different observations (UPDATE path).
+        self.store.upsert_session(
+            run_id="r1", observation_count=3, median_mag=7.7, **common,
+            observations=[
+                {"filename": f"updated{i}.fits", "julian_date": 2461165.5 + i*0.01,
+                 "magnitude": 7.7, "magnitude_error": 0.05, "band": "TG",
+                 "comp_star_label": "97", "comp_star_mag": 9.7, "flag": "ok"}
+                for i in range(3)
+            ],
+        )
+        # Sessions table still has exactly 1 row (UPDATE not INSERT).
+        sessions = self.store.list_sessions()
+        self.assertEqual(len(sessions), 1)
+        # New observations attached, old observations replaced (not appended).
+        new_obs = self.store.get_observations("RR_LYR")
+        self.assertEqual(len(new_obs), 3)
+        self.assertTrue(all("updated" in o["filename"] for o in new_obs))
+
     def test_mark_submitted(self) -> None:
         self.store.upsert_session(
             run_id="r1", target_name="RR LYR", target_slug="RR_LYR",

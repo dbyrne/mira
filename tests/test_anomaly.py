@@ -148,6 +148,24 @@ class AnomalyAssessmentTests(TestCase):
         self.assertEqual(result.level, "info")
         self.assertIsNone(result.session_median)
 
+    def test_baseline_helper_handles_empty_input(self) -> None:
+        """Regression: _baseline_median_and_sigma used to IndexError on
+        empty input. Now returns (None, None) so the caller can branch
+        without try/except."""
+        from anomaly_scout.anomaly import _baseline_median_and_sigma
+        median, sigma = _baseline_median_and_sigma([])
+        self.assertIsNone(median)
+        self.assertIsNone(sigma)
+
+    def test_baseline_helper_returns_sigma_none_when_mad_zero(self) -> None:
+        """If all values are identical, MAD is 0 and sigma should be None
+        (caller treats that as 'can't trust the spread')."""
+        from anomaly_scout.anomaly import _baseline_median_and_sigma
+        samples = [(2461000.0 + i, 7.5, "V") for i in range(10)]
+        median, sigma = _baseline_median_and_sigma(samples)
+        self.assertEqual(median, 7.5)
+        self.assertIsNone(sigma)
+
     def test_to_dict_contains_keys(self) -> None:
         target = _target(max_mag=7.06, min_mag=8.12)
         observations = [_obs(2460000.0, 7.5)]

@@ -389,7 +389,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b"NINA rejected the push", response.data)
 
     def test_aavso_preview_helper_truncates_data_rows(self) -> None:
-        from anomaly_scout.webapp.routes import _read_aavso_preview
+        from anomaly_scout.webapp._runner import read_aavso_preview as _read_aavso_preview
         path = self.output_dir / "preview.txt"
         rows = ["#TYPE=Extended", "#OBSCODE=ABC", "#NAME,DATE,MAG,MERR,FILT"]
         for i in range(10):

@@ -16,7 +16,8 @@
         <td>{{ s.start_local[11:16] }}–{{ s.end_local[11:16] }}</td>
         <td>
           {% if s.fits_count > 0 %}
-          <a href="{{ url_for('photometry_target', target_slug=s.slug) }}">{{ s.name }}</a>
+          <a href="{{ url_for('photometry_target', target_slug=s.slug, date=s.session_date) }}">{{ s.name }}</a>
+          {% if s.session_date %}<small class="meta">[{{ s.session_date }}]</small>{% endif %}
           {% else %}
           {{ s.name }}
           {% endif %}
@@ -82,17 +83,18 @@
 {% endif %}
 
 <section class="card">
-  <h2>Captured target directories</h2>
-  <p class="meta">Scanning <code>{{ captures_root }}</code></p>
+  <h2>Captured sessions</h2>
+  <p class="meta">Scanning <code>{{ captures_root }}</code> — one row per (target, date).</p>
   {% if targets %}
   <table class="data">
     <thead>
-      <tr><th>Target</th><th>Frames</th><th>Last modified</th><th>Photometry</th></tr>
+      <tr><th>Target</th><th>Date</th><th>Frames</th><th>Last modified</th><th>Photometry</th></tr>
     </thead>
     <tbody>
       {% for target in targets %}
       <tr>
-        <td><a href="{{ url_for('photometry_target', target_slug=target.slug) }}">{{ target.name }}</a></td>
+        <td><a href="{{ url_for('photometry_target', target_slug=target.slug, date=target.date) }}">{{ target.name }}</a></td>
+        <td>{{ target.date or '—' }}</td>
         <td>{{ target.fits_count }}</td>
         <td>{{ target.modified | human_time }}</td>
         <td>
@@ -109,19 +111,22 @@
   {% else %}
   <div class="empty-state">
     <h3>No captures found</h3>
-    <p>Photometry expects per-target subdirectories with FITS files, like:</p>
+    <p>Photometry expects per-target subdirectories with FITS files, organized by night:</p>
     <pre>{{ captures_root }}/
 ├── RR_LYR/
-│   ├── frame001.fits
-│   ├── frame002.fits
-│   └── …
+│   ├── 2026-05-06/
+│   │   ├── frame001.fits
+│   │   └── …
+│   └── 2026-05-13/
+│       └── …
 └── BETA_LYR/
-    └── …</pre>
+    └── 2026-05-06/
+        └── …</pre>
     <p>
-      Configure NINA to write captures into a subdirectory of <code>{{ captures_root }}</code>
-      named after the target (NINA does this automatically when imaging from a
-      Target Scheduler project). You can also point the app at a different
-      root with <code>anomaly-scout webapp --captures-root /path/to/your/NINA/captures</code>.
+      Configure NINA's file pattern to include both target name and date,
+      e.g. <code>$$TARGETNAME$$/$$DATEMINUS12$$/$$IMAGETYPE$$_$$FRAMENR$$</code>.
+      Flat layouts (<code>captures/&lt;TARGET&gt;/*.fits</code> with no date subdir)
+      still work for legacy data and become a single undated session.
     </p>
     <p class="meta">
       Workflow walkthrough: <code>docs/photometry.md</code> in the repo.

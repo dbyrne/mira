@@ -403,6 +403,127 @@ class WebappRoutesTests(TestCase):
         self.assertNotIn("2461165.005", preview)  # truncated
         self.assertIn("more data rows", preview)
 
+    def test_dated_capture_discovery_lists_each_session(self) -> None:
+        # captures/RR_LYR/2026-05-06/ + 2026-05-13/
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        for date in ("2026-05-06", "2026-05-13"):
+            d = target_dir / date
+            d.mkdir()
+            (d / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.get("/photometry")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        # Both dates should appear as separate rows
+        self.assertIn("2026-05-06", body)
+        self.assertIn("2026-05-13", body)
+
+    def test_dated_photometry_target_renders_with_date_query(self) -> None:
+        target_dir = self.captures_root / "AB_AUR"
+        target_dir.mkdir()
+        d = target_dir / "2026-05-06"
+        d.mkdir()
+        (d / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.get("/photometry/AB_AUR?date=2026-05-06")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        self.assertIn("AB AUR", body)
+        self.assertIn("2026-05-06", body)
+
+    def test_dated_target_404s_for_unknown_date(self) -> None:
+        target_dir = self.captures_root / "AB_AUR"
+        target_dir.mkdir()
+        d = target_dir / "2026-05-06"
+        d.mkdir()
+        (d / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.get("/photometry/AB_AUR?date=2026-12-31")
+        self.assertEqual(response.status_code, 404)
+
+    def test_archive_index_renders_empty(self) -> None:
+        response = self.client.get("/archive")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Schedule archive", response.data)
+
+    def test_archive_index_lists_dated_sessions(self) -> None:
+        archive_root = self.output_dir.parent / "archive"
+        d1 = archive_root / "2026-05-06"
+        d1.mkdir(parents=True)
+        (d1 / "session_schedule.html").write_text("<h1>May 6</h1>", encoding="utf-8")
+        (d1 / "session_schedule.csv").write_text("col\nrow1\nrow2\n", encoding="utf-8")
+        d2 = archive_root / "2026-05-13"
+        d2.mkdir(parents=True)
+        (d2 / "session_schedule.html").write_text("<h1>May 13</h1>", encoding="utf-8")
+
+        response = self.client.get("/archive")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"2026-05-06", response.data)
+        self.assertIn(b"2026-05-13", response.data)
+
+    def test_archive_session_serves_html(self) -> None:
+        archive_dir = self.output_dir.parent / "archive" / "2026-05-06"
+        archive_dir.mkdir(parents=True)
+        (archive_dir / "session_schedule.html").write_text("<h1>archived</h1>", encoding="utf-8")
+        response = self.client.get("/archive/2026-05-06")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"archived", response.data)
+
+    def test_data_sessions_renders_with_no_db_rows(self) -> None:
+        response = self.client.get("/data/sessions")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"All photometry sessions", response.data)
+
+    def test_data_sessions_lists_persisted_session(self) -> None:
+        store = self.app.config["SESSION_STORE"]
+        store.upsert_session(
+            run_id="r1", target_name="RR LYR", target_slug="RR_LYR",
+            session_date="2026-05-06", observer_code="ABC", chart_id="X1",
+            observation_count=20, median_mag=7.6, anomaly_level="anomaly",
+            submitted_at=None, created_at="2026-05-06T22:00:00+00:00",
+            observations=[],
+        )
+        response = self.client.get("/data/sessions")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        self.assertIn("RR LYR", body)
+        self.assertIn("anomaly", body)
+
+    def test_data_anomalies_filters(self) -> None:
+        store = self.app.config["SESSION_STORE"]
+        store.upsert_session(run_id="a", target_name="RR", target_slug="RR",
+                            session_date="2026-05-06", observer_code=None, chart_id=None,
+                            observation_count=10, median_mag=7.6, anomaly_level="info",
+                            submitted_at=None, created_at="2026-05-06T22:00:00+00:00",
+                            observations=[])
+        store.upsert_session(run_id="b", target_name="AB", target_slug="AB",
+                            session_date="2026-05-07", observer_code=None, chart_id=None,
+                            observation_count=12, median_mag=9.5, anomaly_level="anomaly",
+                            submitted_at=None, created_at="2026-05-07T22:00:00+00:00",
+                            observations=[])
+        response = self.client.get("/data/anomalies")
+        body = response.data.decode("utf-8")
+        self.assertIn("AB", body)
+        # The "info" row shouldn't appear in the anomaly-only list
+        # We can't strictly assert RR isn't there due to incidental matches in the page,
+        # but check the count is 1
+        store_anomalies = store.list_sessions(anomaly_only=True)
+        self.assertEqual(len(store_anomalies), 1)
+
+    def test_data_sessions_csv_export(self) -> None:
+        store = self.app.config["SESSION_STORE"]
+        store.upsert_session(
+            run_id="r1", target_name="RR LYR", target_slug="RR_LYR",
+            session_date="2026-05-06", observer_code="ABC", chart_id="X1",
+            observation_count=20, median_mag=7.6, anomaly_level="info",
+            submitted_at=None, created_at="2026-05-06T22:00:00+00:00",
+            observations=[],
+        )
+        response = self.client.get("/data/sessions?format=csv")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "text/csv")
+        body = response.data.decode("utf-8")
+        self.assertIn("run_id", body)
+        self.assertIn("RR_LYR", body)
+
     def test_first_light_renders_with_no_state(self) -> None:
         # Empty state: no schedule, no settings, NINA unreachable
         from anomaly_scout.webapp.nina_client import NinaStatus

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ target_name }} history - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>{{ target_name }} — full history</h2>
+  <p class="meta">All observations of this target across every session. Source: SQLite session store.</p>
+
+  {% if sessions %}
+  <h3>Sessions ({{ sessions|length }})</h3>
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Date</th><th>Frames</th><th>Median</th><th>Anomaly</th><th>Submitted</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+        <td>{{ s.session_date or '—' }}</td>
+        <td>{{ s.observation_count or 0 }}</td>
+        <td>{{ '%.2f'|format(s.median_mag) if s.median_mag is not none else '—' }}</td>
+        <td>
+          {% if s.anomaly_level == 'anomaly' %}<span class="frame-flag flag-outlier">anomaly</span>
+          {% elif s.anomaly_level == 'watch' %}<span class="frame-flag flag-pending">watch</span>
+          {% elif s.anomaly_level == 'info' %}<span class="frame-flag flag-ok">consistent</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if s.submitted_at %}<span class="status-done">{{ s.submitted_at[:10] }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('photometry_target', target_slug=s.target_slug, date=s.session_date) }}">open</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">No sessions recorded for this target.</p>
+  {% endif %}
+
+  {% if observations %}
+  <h3>Observations ({{ observations|length }})</h3>
+  <p class="meta">Per-frame measurements across all sessions, ordered by JD. Use this to spot outliers, trends, or coverage gaps.</p>
+  <table class="data">
+    <thead>
+      <tr><th>Date</th><th>JD</th><th>Mag</th><th>±</th><th>Band</th><th>Flag</th></tr>
+    </thead>
+    <tbody>
+      {% for o in observations %}
+      <tr>
+        <td>{{ o.session_date or '—' }}</td>
+        <td>{{ '%.4f'|format(o.julian_date) if o.julian_date is not none else '—' }}</td>
+        <td>{{ '%.3f'|format(o.magnitude) if o.magnitude is not none else '—' }}</td>
+        <td>{{ '%.3f'|format(o.magnitude_error) if o.magnitude_error is not none else '—' }}</td>
+        <td>{{ o.band or '—' }}</td>
+        <td>
+          {% if o.flag %}<span class="frame-flag flag-{{ o.flag }}">{{ o.flag }}</span>{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endblock %}

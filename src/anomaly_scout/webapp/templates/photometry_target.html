@@ -2,14 +2,29 @@
 {% block title %}Photometry: {{ target_name }} - AAVSO Anomaly Scout{% endblock %}
 {% block content %}
 <section class="card">
-  <h2>Photometry: {{ target_name }}</h2>
+  <h2>Photometry: {{ target_name }}{% if session_date %} <small class="meta">({{ session_date }})</small>{% endif %}</h2>
   <p class="meta"><code>{{ target_dir }}</code></p>
+
+  {% if sessions and sessions|length > 1 %}
+  <p class="meta">
+    Sessions:
+    {% for s in sessions|reverse %}
+      {% if s.date == session_date %}
+        <strong>{{ s.date or 'flat' }}</strong>
+      {% else %}
+        <a href="{{ url_for('photometry_target', target_slug=target_slug, date=s.date) }}">{{ s.date or 'flat' }}</a>
+      {% endif %}
+      {% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
 
   {% if error %}
   <p class="error"><strong>Error:</strong> {{ error }}</p>
   {% endif %}
 
   <form action="{{ url_for('trigger_photometry', target_slug=target_slug) }}" method="post" class="kickoff-form">
+    {% if session_date %}<input type="hidden" name="date" value="{{ session_date }}">{% endif %}
     <label class="full-width">
       Target name (used for VSX lookup)
       <input type="text" name="target_name" value="{{ target_name }}">
@@ -44,7 +59,7 @@
     <span class="htmx-indicator" id="phot-poll-indicator">polling…</span>
   </p>
   <div id="phot-status"
-       hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug) }}"
+       hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug, date=session_date) }}"
        hx-trigger="load, every 2s"
        hx-swap="innerHTML"
        hx-indicator="#phot-poll-indicator">
@@ -52,9 +67,6 @@
   </div>
   <script>
   (function() {
-    // Stop polling once the run reaches a terminal state. The deselect form
-    // lives inside the polled partial; if polling kept refreshing, the user's
-    // checkbox toggles would get wiped every 2s.
     var div = document.getElementById('phot-status');
     if (!div) return;
     div.addEventListener('htmx:afterSwap', function () {
@@ -69,10 +81,11 @@
     {% if run and run.status == 'done' %}
       {% if run.result and run.result.submitted_at %}
       <span class="status-done">Submitted to AAVSO ({{ run.result.submitted_at[:10] }})</span>
-      <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn">Re-download file</a>
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug, date=session_date) }}" class="btn">Re-download file</a>
       {% else %}
-      <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn-primary">Download AAVSO file</a>
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug, date=session_date) }}" class="btn-primary">Download AAVSO file</a>
       <form action="{{ url_for('photometry_mark_submitted', target_slug=target_slug) }}" method="post" style="display: inline;">
+        {% if session_date %}<input type="hidden" name="date" value="{{ session_date }}">{% endif %}
         <button type="submit" class="btn">Mark as submitted</button>
       </form>
       {% endif %}

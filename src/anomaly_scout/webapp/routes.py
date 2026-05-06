@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, abort, current_app, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, Response, abort, current_app, redirect, render_template, request, send_from_directory, url_for
 
 from .runs import RunRecord, RunRegistry
 
@@ -116,30 +116,38 @@ def register_routes(app: Flask) -> None:
     @app.route("/photometry/<target_slug>")
     def photometry_target(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None:
             abort(404)
+        resolved_date = _resolved_session_date(target_dir)
         runs: RunRegistry = current_app.config["RUNS"]
-        record = runs.latest(_submit_kind(target_slug))
+        record = runs.latest(_submit_kind(target_slug, resolved_date))
         from .settings import load_settings
 
         settings = load_settings(current_app.config.get("STATE_DIR"))
+        target_root = captures_root / target_slug
+        sessions = _list_capture_sessions(target_root) if target_root.is_dir() else []
         return render_template(
             "photometry_target.html",
             target_slug=target_slug,
             target_dir=target_dir,
-            target_name=_dir_to_target_name(target_dir),
+            target_name=_dir_to_target_name(target_root if target_root.is_dir() else target_dir),
             run=record,
             comp_star_default=_default_comp_stars_path(target_dir),
             saved_observer_code=settings.get("observer_code", ""),
+            session_date=resolved_date,
+            sessions=sessions,
         )
 
     @app.route("/photometry/<target_slug>/run", methods=["POST"])
     def trigger_photometry(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None:
             abort(404)
+        resolved_date = _resolved_session_date(target_dir)
 
         comp_stars_input = request.form.get("comp_stars", "").strip()
         comp_path: Path | None = None
@@ -155,6 +163,8 @@ def register_routes(app: Flask) -> None:
                     run=None,
                     error=f"Comp-stars JSON not found: {candidate}",
                     comp_star_default=_default_comp_stars_path(target_dir),
+                    session_date=resolved_date,
+                    sessions=[],
                 ), 400
             comp_path = candidate
 
@@ -171,16 +181,19 @@ def register_routes(app: Flask) -> None:
                 run=None,
                 error="Observer code is required.",
                 comp_star_default=_default_comp_stars_path(target_dir),
+                session_date=resolved_date,
+                sessions=[],
             ), 400
 
         runs: RunRegistry = current_app.config["RUNS"]
         from .settings import update_setting
 
         update_setting(current_app.config.get("STATE_DIR"), "observer_code", observer_code)
+        session_store = current_app.config.get("SESSION_STORE")
 
         record = runs.submit(
-            kind=_submit_kind(target_slug),
-            label=f"submit: {target_name}",
+            kind=_submit_kind(target_slug, resolved_date),
+            label=f"submit: {target_name}" + (f" [{resolved_date}]" if resolved_date else ""),
             target_callable=lambda rec: _execute_submit(
                 rec,
                 target_dir=target_dir,
@@ -189,23 +202,34 @@ def register_routes(app: Flask) -> None:
                 observer_code=observer_code,
                 chart_id=chart_id,
                 target_slug=target_slug,
+                session_date=resolved_date,
                 runs=runs,
+                session_store=session_store,
             ),
         )
-        return redirect(url_for("photometry_target", target_slug=target_slug))
+        return redirect(url_for("photometry_target", target_slug=target_slug, date=resolved_date))
 
     @app.route("/photometry/<target_slug>/partial")
     def photometry_target_partial(target_slug):
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
+        resolved_date = _resolved_session_date(target_dir) if target_dir else date
         runs: RunRegistry = current_app.config["RUNS"]
-        record = runs.latest(_submit_kind(target_slug))
+        record = runs.latest(_submit_kind(target_slug, resolved_date))
         if record is None:
-            return render_template("photometry_partial.html", run=None, target_slug=target_slug)
-        return render_template("photometry_partial.html", run=record, target_slug=target_slug)
+            return render_template(
+                "photometry_partial.html", run=None, target_slug=target_slug, session_date=resolved_date
+            )
+        return render_template(
+            "photometry_partial.html", run=record, target_slug=target_slug, session_date=resolved_date
+        )
 
     @app.route("/photometry/<target_slug>/lightcurve.png")
     def photometry_lightcurve(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None or not (target_dir / "lightcurve.png").exists():
             abort(404)
         return send_from_directory(str(target_dir), "lightcurve.png")
@@ -213,7 +237,8 @@ def register_routes(app: Flask) -> None:
     @app.route("/photometry/<target_slug>/lightcurve_folded.png")
     def photometry_lightcurve_folded(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None or not (target_dir / "lightcurve_folded.png").exists():
             abort(404)
         return send_from_directory(str(target_dir), "lightcurve_folded.png")
@@ -222,8 +247,13 @@ def register_routes(app: Flask) -> None:
     def photometry_mark_submitted(target_slug):
         from datetime import datetime, timezone
 
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
+        resolved_date = _resolved_session_date(target_dir) if target_dir else date
+
         runs: RunRegistry = current_app.config["RUNS"]
-        record = runs.latest(_submit_kind(target_slug))
+        record = runs.latest(_submit_kind(target_slug, resolved_date))
         if record is None or record.status != "done":
             abort(404)
         if record.result is None:
@@ -231,18 +261,24 @@ def register_routes(app: Flask) -> None:
         record.result["submitted_at"] = datetime.now(timezone.utc).isoformat()
         record.log("Marked as submitted to AAVSO WebObs.")
         runs.persist(record)
-        return redirect(url_for("photometry_target", target_slug=target_slug))
+        # Also flush submission to SQLite if available (Batch V).
+        store = current_app.config.get("SESSION_STORE")
+        if store is not None:
+            store.mark_submitted(record.run_id, record.result["submitted_at"])
+        return redirect(url_for("photometry_target", target_slug=target_slug, date=resolved_date))
 
     @app.route("/photometry/<target_slug>/download-with-selection", methods=["POST"])
     def photometry_download_selected(target_slug):
         from ..photometry import Observation, write_aavso_extended_file
 
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None:
             abort(404)
+        resolved_date = _resolved_session_date(target_dir)
         runs: RunRegistry = current_app.config["RUNS"]
-        record = runs.latest(_submit_kind(target_slug))
+        record = runs.latest(_submit_kind(target_slug, resolved_date))
         if record is None or record.status != "done" or not record.result:
             abort(404)
 
@@ -284,10 +320,13 @@ def register_routes(app: Flask) -> None:
     @app.route("/photometry/<target_slug>/upload")
     def photometry_upload(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
-        target_dir = _resolve_target_dir(captures_root, target_slug)
+        date = _request_date()
+        target_dir = _resolve_target_dir(captures_root, target_slug, date)
         if target_dir is None:
             abort(404)
-        upload_path = target_dir / f"aavso_{_dir_to_target_name(target_dir).replace(' ', '_')}.txt"
+        target_root = captures_root / target_slug
+        target_name = _dir_to_target_name(target_root if target_root.is_dir() else target_dir)
+        upload_path = target_dir / f"aavso_{target_name.replace(' ', '_')}.txt"
         if not upload_path.exists():
             abort(404)
         return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)
@@ -360,6 +399,104 @@ def register_routes(app: Flask) -> None:
             saved = True
         settings = load_settings(state_dir)
         return render_template("settings.html", settings=settings, saved=saved)
+
+    @app.route("/data")
+    @app.route("/data/sessions")
+    def data_sessions():
+        store = current_app.config.get("SESSION_STORE")
+        if store is None:
+            return render_template("data_sessions.html", sessions=[], target_filter=None, anomaly_only=False)
+        target_filter = (request.args.get("target") or "").strip() or None
+        anomaly_only = request.args.get("anomaly") == "1"
+        sessions = store.list_sessions(target_slug=target_filter, anomaly_only=anomaly_only, limit=500)
+        if request.args.get("format") == "csv":
+            from io import StringIO
+            import csv as _csv
+
+            buf = StringIO()
+            fields = ["run_id", "target_name", "target_slug", "session_date", "observer_code",
+                      "chart_id", "observation_count", "median_mag", "anomaly_level",
+                      "submitted_at", "created_at"]
+            writer = _csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
+            writer.writeheader()
+            for s in sessions:
+                writer.writerow(s)
+            return Response(
+                buf.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-Disposition": "attachment; filename=sessions.csv"},
+            )
+        return render_template(
+            "data_sessions.html",
+            sessions=sessions,
+            target_filter=target_filter,
+            anomaly_only=anomaly_only,
+        )
+
+    @app.route("/data/anomalies")
+    def data_anomalies():
+        store = current_app.config.get("SESSION_STORE")
+        sessions = store.list_sessions(anomaly_only=True, limit=200) if store else []
+        return render_template(
+            "data_sessions.html",
+            sessions=sessions,
+            target_filter=None,
+            anomaly_only=True,
+            heading="Flagged anomalies",
+        )
+
+    @app.route("/data/target/<target_slug>")
+    def data_target(target_slug):
+        store = current_app.config.get("SESSION_STORE")
+        if store is None:
+            abort(404)
+        sessions = store.list_sessions(target_slug=target_slug)
+        observations = store.get_observations(target_slug)
+        return render_template(
+            "data_target.html",
+            target_slug=target_slug,
+            target_name=target_slug.replace("_", " "),
+            sessions=sessions,
+            observations=observations,
+        )
+
+    @app.route("/archive")
+    def archive_index():
+        archive_root = current_app.config["OUTPUT_DIR"].parent / "archive"
+        sessions: list[dict] = []
+        if archive_root.is_dir():
+            for entry in sorted(archive_root.iterdir(), reverse=True):
+                if not entry.is_dir() or not _looks_like_date(entry.name):
+                    continue
+                schedule_csv = entry / "session_schedule.csv"
+                target_count = 0
+                if schedule_csv.exists():
+                    try:
+                        with schedule_csv.open(encoding="utf-8") as h:
+                            target_count = sum(1 for _ in h) - 1  # minus header
+                    except OSError:
+                        target_count = 0
+                sessions.append(
+                    {
+                        "date": entry.name,
+                        "target_count": max(0, target_count),
+                        "has_html": (entry / "session_schedule.html").exists(),
+                    }
+                )
+        return render_template("archive.html", sessions=sessions)
+
+    @app.route("/archive/<date>")
+    def archive_session(date):
+        if not _looks_like_date(date):
+            abort(404)
+        archive_root = current_app.config["OUTPUT_DIR"].parent / "archive"
+        archive_dir = archive_root / date
+        if not archive_dir.is_dir():
+            abort(404)
+        schedule_html = archive_dir / "session_schedule.html"
+        if not schedule_html.exists():
+            abort(404)
+        return send_from_directory(str(archive_dir), "session_schedule.html")
 
     # --- Layer 3: NINA monitor ---
 
@@ -501,6 +638,11 @@ def _execute_tonight(record: RunRecord, config_path: str, hours: float, mode: st
     write_session_schedule_outputs(schedule, output_dir, config)
     write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
 
+    # Snapshot tonight's outputs to the dated archive so re-running tomorrow
+    # doesn't trample today's plan.
+    archive_dir = output_dir.parent / "archive" / today.isoformat()
+    _archive_tonight_outputs(output_dir, archive_dir, record)
+
     record.log(f"Scheduled {len(schedule.scheduled)} targets, {len(schedule.overflow)} overflow.")
     record.log(f"Packets: {packet_count}")
     record.set_progress(1.0)
@@ -510,7 +652,29 @@ def _execute_tonight(record: RunRecord, config_path: str, hours: float, mode: st
         "overflow": len(schedule.overflow),
         "packet_count": packet_count,
         "schedule_path": str(output_dir / "session_schedule.html"),
+        "archive_path": str(archive_dir),
+        "session_date": today.isoformat(),
     }
+
+
+def _archive_tonight_outputs(source: Path, archive_dir: Path, record: RunRecord) -> None:
+    """Snapshot every file (and the candidate_packets dir) from `source` to
+    `archive_dir`. Best-effort; failure is logged but doesn't fail the run."""
+    import shutil as _shutil
+
+    try:
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        for entry in source.iterdir():
+            dst = archive_dir / entry.name
+            if entry.is_file():
+                _shutil.copy2(entry, dst)
+            elif entry.is_dir() and entry.name == "candidate_packets":
+                if dst.exists():
+                    _shutil.rmtree(dst)
+                _shutil.copytree(entry, dst)
+        record.log(f"Archived to {archive_dir}")
+    except OSError as exc:
+        record.log(f"Archive copy failed (non-fatal): {exc}")
 
 
 def _execute_submit(
@@ -521,7 +685,9 @@ def _execute_submit(
     observer_code: str,
     chart_id: str,
     target_slug: str | None = None,
+    session_date: str | None = None,
     runs: RunRegistry | None = None,
+    session_store=None,  # webapp.db.SessionStore
 ) -> dict:
     from ..photometry import CompStar, process_capture, write_aavso_extended_file
     from ..vsx import fetch_vsx_target_by_name
@@ -604,6 +770,8 @@ def _execute_submit(
         "median_mag": None,
         "upload_path": None,
         "target_name": target_name,
+        "target_slug": target_slug,
+        "session_date": session_date,
         "observer_code": observer_code,
         "chart_id": chart_id,
     }
@@ -743,6 +911,27 @@ def _execute_submit(
 
     record.result["median_mag"] = median_mag
     record.result["upload_path"] = str(upload_path)
+
+    # Index into the SQLite session store so /data routes can query history.
+    if session_store is not None and target_slug:
+        try:
+            session_store.upsert_session(
+                run_id=record.run_id,
+                target_name=target_name,
+                target_slug=target_slug,
+                session_date=session_date,
+                observer_code=observer_code,
+                chart_id=chart_id,
+                observation_count=len(observations),
+                median_mag=median_mag,
+                anomaly_level=record.result.get("anomaly", {}).get("level") if record.result.get("anomaly") else None,
+                submitted_at=None,
+                created_at=record.created_at.isoformat() if record.created_at else "",
+                observations=record.result.get("observations") or [],
+            )
+        except Exception as exc:  # DB problems shouldn't fail the run
+            record.log(f"Session DB upsert failed (non-fatal): {exc}")
+
     return record.result
 
 
@@ -849,12 +1038,21 @@ def _build_schedule_status(
             target_name = row.get("name", "").strip()
             if not target_name:
                 continue
-            target_dir = _resolve_scheduled_target_dir(captures_root, target_name)
-            slug = target_dir.name if target_dir else target_name.replace(" ", "_")
+            target_root = _resolve_scheduled_target_dir(captures_root, target_name)
+            slug = target_root.name if target_root else target_name.replace(" ", "_")
+
+            # Pick the most-recent capture session (dated subdir) or the flat
+            # layout if no dated subdirs exist.
+            session_date: str | None = None
             fits_count = 0
-            if target_dir:
-                fits_count = len(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
-            run = runs_by_kind.get(f"submit:{slug}")
+            if target_root:
+                sessions = _list_capture_sessions(target_root)
+                if sessions:
+                    latest = sessions[-1]
+                    session_date = latest["date"]
+                    fits_count = latest["fits_count"]
+
+            run = runs_by_kind.get(_submit_kind(slug, session_date))
             stage = _resolve_stage(fits_count, run)
             anomaly_level = None
             observation_count = None
@@ -868,7 +1066,8 @@ def _build_schedule_status(
                     "end_local": row.get("end_local", ""),
                     "name": target_name,
                     "slug": slug,
-                    "has_dir": target_dir is not None,
+                    "session_date": session_date,
+                    "has_dir": target_root is not None,
                     "fits_count": fits_count,
                     "frames_planned": int(row.get("frame_count") or 0),
                     "exposure_seconds": int(row.get("exposure_seconds") or 0),
@@ -944,34 +1143,108 @@ def _resolve_stage(fits_count: int, run) -> str:
 
 
 def _discover_capture_targets(captures_root: Path) -> list[dict]:
-    """Each immediate subdirectory of captures_root that contains FITS files
-    is treated as a target."""
+    """One entry per (target, date) capture session. Walks both layouts:
+
+    - Dated:  captures/<TARGET>/<YYYY-MM-DD>/*.fits
+    - Flat:   captures/<TARGET>/*.fits          (date=None)
+
+    A target with multiple dated subdirs becomes multiple rows. Sorted
+    most-recent first by mtime."""
     if not captures_root.exists():
         return []
     targets = []
     for entry in sorted(captures_root.iterdir()):
         if not entry.is_dir():
             continue
-        fits_files = list(entry.glob("*.fits")) + list(entry.glob("*.fit"))
-        if not fits_files:
-            continue
-        targets.append(
-            {
-                "slug": entry.name,
-                "name": _dir_to_target_name(entry),
-                "fits_count": len(fits_files),
-                "path": entry,
-                "modified": max(f.stat().st_mtime for f in fits_files),
-                "upload_exists": any(entry.glob("aavso_*.txt")),
-            }
-        )
+        sessions = _list_capture_sessions(entry)
+        for session in sessions:
+            targets.append(
+                {
+                    "slug": entry.name,
+                    "date": session["date"],
+                    "name": _dir_to_target_name(entry),
+                    "fits_count": session["fits_count"],
+                    "path": session["path"],
+                    "modified": session["modified"],
+                    "upload_exists": session["upload_exists"],
+                }
+            )
     targets.sort(key=lambda d: d["modified"], reverse=True)
     return targets
 
 
-def _resolve_target_dir(captures_root: Path, slug: str) -> Path | None:
-    """Map a URL slug back to a captures subdirectory. Defensive against
-    path traversal: only allow direct children of captures_root."""
+def _request_date() -> str | None:
+    """Pull a YYYY-MM-DD session marker from the current request (query
+    string for GET, form for POST). Returns None if absent or malformed."""
+    candidate = (request.args.get("date") or request.form.get("date") or "").strip()
+    if candidate and _looks_like_date(candidate):
+        return candidate
+    return None
+
+
+def _resolved_session_date(target_dir: Path | None) -> str | None:
+    """Convert a captures dir to its YYYY-MM-DD session label, or None for
+    flat layouts."""
+    if target_dir is None:
+        return None
+    if _looks_like_date(target_dir.name):
+        return target_dir.name
+    return None
+
+
+def _looks_like_date(name: str) -> bool:
+    """YYYY-MM-DD format check for capture-session subdirectories."""
+    if len(name) != 10 or name[4] != "-" or name[7] != "-":
+        return False
+    return name[:4].isdigit() and name[5:7].isdigit() and name[8:10].isdigit()
+
+
+def _list_capture_sessions(target_dir: Path) -> list[dict]:
+    """Return one entry per dated subdir of `target_dir` containing FITS,
+    plus the flat layout (a single entry with date=None) if FITS sit
+    directly in target_dir. Sorted oldest → newest."""
+    sessions: list[dict] = []
+    try:
+        children = list(target_dir.iterdir())
+    except OSError:
+        return sessions
+    has_dated = False
+    for entry in sorted(children):
+        if entry.is_dir() and _looks_like_date(entry.name):
+            fits = list(entry.glob("*.fits")) + list(entry.glob("*.fit"))
+            if fits:
+                has_dated = True
+                sessions.append({
+                    "date": entry.name,
+                    "path": entry,
+                    "fits_count": len(fits),
+                    "modified": max(f.stat().st_mtime for f in fits),
+                    "upload_exists": any(entry.glob("aavso_*.txt")),
+                })
+    if not has_dated:
+        flat_fits = list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit"))
+        if flat_fits:
+            sessions.append({
+                "date": None,
+                "path": target_dir,
+                "fits_count": len(flat_fits),
+                "modified": max(f.stat().st_mtime for f in flat_fits),
+                "upload_exists": any(target_dir.glob("aavso_*.txt")),
+            })
+    return sessions
+
+
+def _resolve_target_dir(captures_root: Path, slug: str, date: str | None = None) -> Path | None:
+    """Map a URL slug + optional date to the captures dir we should process.
+
+    - If `date` is given (YYYY-MM-DD), returns captures_root/<slug>/<date>/
+      when that subdir exists, else None.
+    - If `date` is None: when the target has dated subdirs, returns the
+      most-recent one. When the layout is flat (FITS at <slug>/), returns
+      the flat dir. Returns None if neither.
+
+    Defensive against path traversal: only resolves children of
+    captures_root."""
     if not captures_root.exists():
         return None
     candidate = captures_root / slug
@@ -983,7 +1256,19 @@ def _resolve_target_dir(captures_root: Path, slug: str) -> Path | None:
         return None
     if captures_root.resolve() not in resolved.parents and resolved != captures_root.resolve():
         return None
-    return resolved
+
+    if date:
+        if not _looks_like_date(date):
+            return None
+        dated = resolved / date
+        if not dated.is_dir():
+            return None
+        return dated
+
+    sessions = _list_capture_sessions(resolved)
+    if not sessions:
+        return resolved if resolved.is_dir() else None
+    return sessions[-1]["path"]
 
 
 def _dir_to_target_name(target_dir: Path) -> str:
@@ -996,5 +1281,9 @@ def _default_comp_stars_path(target_dir: Path) -> str:
     return str(target_dir / "comp_stars.json")
 
 
-def _submit_kind(target_slug: str) -> str:
+def _submit_kind(target_slug: str, date: str | None = None) -> str:
+    """Run-record kind. Dated sessions get a separate kind so each
+    (target, date) tuple has its own latest-run pointer."""
+    if date:
+        return f"submit:{target_slug}:{date}"
     return f"submit:{target_slug}"

@@ -18,6 +18,8 @@
       <a href="{{ url_for('schedule') }}" class="{% if ep == 'schedule' %}active{% endif %}">Schedule</a>
       <a href="{{ url_for('photometry_index') }}" class="{% if ep.startswith('photometry') %}active{% endif %}">Photometry</a>
       <a href="{{ url_for('nina_dashboard') }}" class="{% if ep.startswith('nina') %}active{% endif %}">NINA</a>
+      <a href="{{ url_for('data_sessions') }}" class="{% if ep.startswith('data_') %}active{% endif %}">Data</a>
+      <a href="{{ url_for('archive_index') }}" class="{% if ep.startswith('archive') %}active{% endif %}">Archive</a>
       <a href="{{ url_for('run_history') }}" class="{% if ep == 'run_history' %}active{% endif %}">History</a>
       <a href="{{ url_for('settings_page') }}" class="{% if ep == 'settings_page' %}active{% endif %}">Settings</a>
     </span>

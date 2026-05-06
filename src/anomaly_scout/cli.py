@@ -124,6 +124,21 @@ def main() -> None:
         help="Photometric aperture radius in arcsec (default 6).",
     )
 
+    migrate_parser = subparsers.add_parser(
+        "migrate-runs",
+        help="Walk state_dir/<run_id>.json files and (re-)populate the SQLite session store.",
+    )
+    migrate_parser.add_argument(
+        "--state-dir",
+        default="data/webapp_runs",
+        help="State directory containing run JSON files (default data/webapp_runs).",
+    )
+    migrate_parser.add_argument(
+        "--db-path",
+        default=None,
+        help="Override path to sessions.db (default <state-dir>/sessions.db).",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -149,6 +164,8 @@ def main() -> None:
         tonight(args)
     elif args.command == "submit":
         submit(args)
+    elif args.command == "migrate-runs":
+        migrate_runs(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -159,6 +176,48 @@ def main() -> None:
         webapp(args)
     elif args.command in (None, "run"):
         run(args)
+
+
+def migrate_runs(args: argparse.Namespace) -> None:
+    """Walk state_dir/<run_id>.json and (re-)populate sessions.db. Idempotent
+    via UNIQUE(run_id) — re-running updates rows in place."""
+    import json as _json
+
+    from .webapp.db import SessionStore, from_run_record
+
+    state_dir = Path(args.state_dir)
+    if not state_dir.is_dir():
+        print(f"State directory does not exist: {state_dir}")
+        return
+    db_path = Path(args.db_path) if args.db_path else state_dir / "sessions.db"
+    store = SessionStore(db_path)
+
+    inserted = 0
+    skipped = 0
+    failed = 0
+    for path in sorted(state_dir.glob("*.json")):
+        if path.name == "settings.json":
+            continue
+        try:
+            data = _json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"  {path.name}: parse error ({exc})")
+            failed += 1
+            continue
+        kwargs = from_run_record(data)
+        if kwargs is None:
+            skipped += 1
+            continue
+        try:
+            store.upsert_session(**kwargs)
+            inserted += 1
+        except Exception as exc:
+            print(f"  {path.name}: upsert error ({exc})")
+            failed += 1
+    print(
+        f"Migrated {inserted} sessions to {db_path}. "
+        f"Skipped {skipped} (not photometry submits). Failed {failed}."
+    )
 
 
 def run(args: argparse.Namespace) -> None:

@@ -45,11 +45,15 @@ def create_app(
     runs = RunRegistry(max_workers=2, state_dir=state_dir)
     nina = NinaClient(base_url=nina_base_url)
 
+    from .db import SessionStore
+    session_store = SessionStore(state_dir / "sessions.db")
+
     app.config["OUTPUT_DIR"] = output_dir
     app.config["CAPTURES_ROOT"] = captures_root
     app.config["STATE_DIR"] = state_dir
     app.config["RUNS"] = runs
     app.config["NINA"] = nina
+    app.config["SESSION_STORE"] = session_store
 
     app.jinja_env.filters["human_time"] = _human_time
 

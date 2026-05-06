@@ -16,7 +16,7 @@
     </label>
     <label>
       Observer code (your AAVSO code)
-      <input type="text" name="observer_code" required>
+      <input type="text" name="observer_code" value="{{ saved_observer_code }}" required>
     </label>
     <label>
       Chart ID override (optional)
@@ -43,12 +43,27 @@
   <p class="meta">
     <span class="htmx-indicator" id="phot-poll-indicator">polling…</span>
   </p>
-  <div hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug) }}"
+  <div id="phot-status"
+       hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug) }}"
        hx-trigger="load, every 2s"
        hx-swap="innerHTML"
        hx-indicator="#phot-poll-indicator">
     {% include "photometry_partial.html" %}
   </div>
+  <script>
+  (function() {
+    // Stop polling once the run reaches a terminal state. The deselect form
+    // lives inside the polled partial; if polling kept refreshing, the user's
+    // checkbox toggles would get wiped every 2s.
+    var div = document.getElementById('phot-status');
+    if (!div) return;
+    div.addEventListener('htmx:afterSwap', function () {
+      if (div.querySelector('.status-done, .status-failed')) {
+        div.removeAttribute('hx-trigger');
+      }
+    });
+  })();
+  </script>
 
   <p style="margin-top: 1rem;">
     {% if run and run.status == 'done' %}

@@ -198,6 +198,118 @@ class WebappRoutesTests(TestCase):
         latest = runs.latest("submit:RR_LYR")
         self.assertIsNotNone(latest.result.get("submitted_at"))
 
+    def test_run_history_renders(self) -> None:
+        response = self.client.get("/runs")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Run history", response.data)
+
+    def test_observer_code_persists_across_visits(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+
+        # Initial visit: no saved code
+        response = self.client.get("/photometry/RR_LYR")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b'value="MYABC"', response.data)
+
+        # Drop a settings.json directly to simulate prior submit
+        from anomaly_scout.webapp.settings import save_settings
+        save_settings(self.state_dir, {"observer_code": "MYABC"})
+
+        # Subsequent visit: the form should be pre-populated
+        response = self.client.get("/photometry/RR_LYR")
+        self.assertIn(b'value="MYABC"', response.data)
+
+    def test_download_with_selection_filters_frames(self) -> None:
+        from anomaly_scout.webapp.runs import RunRegistry
+
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+
+        runs: RunRegistry = self.app.config["RUNS"]
+
+        def _quick(record):
+            record.result = {
+                "frames": [
+                    {"filename": "f1.fits", "magnitude": 7.5, "flag": "ok"},
+                    {"filename": "f2.fits", "magnitude": 7.6, "flag": "ok"},
+                    {"filename": "f3.fits", "magnitude": 9.5, "flag": "outlier"},
+                ],
+                "observations": [
+                    {"filename": "f1.fits", "target_name": "RR LYR", "julian_date": 2461165.5,
+                     "magnitude": 7.5, "magnitude_error": 0.05, "band": "TG",
+                     "comp_star_label": "97", "comp_star_mag": 9.7, "chart_id": "X12345"},
+                    {"filename": "f2.fits", "target_name": "RR LYR", "julian_date": 2461165.6,
+                     "magnitude": 7.6, "magnitude_error": 0.05, "band": "TG",
+                     "comp_star_label": "97", "comp_star_mag": 9.7, "chart_id": "X12345"},
+                    {"filename": "f3.fits", "target_name": "RR LYR", "julian_date": 2461165.7,
+                     "magnitude": 9.5, "magnitude_error": 0.10, "band": "TG",
+                     "comp_star_label": "97", "comp_star_mag": 9.7, "chart_id": "X12345"},
+                ],
+                "target_name": "RR LYR",
+                "observer_code": "ABC",
+                "chart_id": "X12345",
+            }
+            return record.result
+
+        record = runs.submit("submit:RR_LYR", "submit: RR LYR", _quick)
+        import time
+        for _ in range(50):
+            if record.status in ("done", "failed"):
+                break
+            time.sleep(0.05)
+        self.assertEqual(record.status, "done")
+
+        # Submit selection: only f1 and f2 (drop the outlier)
+        from werkzeug.datastructures import MultiDict
+        response = self.client.post(
+            "/photometry/RR_LYR/download-with-selection",
+            data=MultiDict([("include", "f1.fits"), ("include", "f2.fits")]),
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        # The AAVSO file must contain f1 + f2 rows but not f3 (the outlier)
+        self.assertIn("RR LYR", body)
+        self.assertIn("2461165.50000", body)
+        self.assertIn("2461165.60000", body)
+        self.assertNotIn("2461165.70000", body)
+
+    def test_download_with_selection_rejects_empty(self) -> None:
+        from anomaly_scout.webapp.runs import RunRegistry
+
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+
+        runs: RunRegistry = self.app.config["RUNS"]
+
+        def _quick(record):
+            record.result = {
+                "frames": [],
+                "observations": [
+                    {"filename": "f1.fits", "target_name": "RR LYR", "julian_date": 2461165.5,
+                     "magnitude": 7.5, "magnitude_error": 0.05, "band": "TG",
+                     "comp_star_label": "97", "comp_star_mag": 9.7, "chart_id": "X12345"},
+                ],
+                "target_name": "RR LYR",
+                "observer_code": "ABC",
+                "chart_id": "X12345",
+            }
+            return record.result
+
+        record = runs.submit("submit:RR_LYR", "submit: RR LYR", _quick)
+        import time
+        for _ in range(50):
+            if record.status in ("done", "failed"):
+                break
+            time.sleep(0.05)
+
+        # Submit no included frames
+        response = self.client.post("/photometry/RR_LYR/download-with-selection", data={})
+        self.assertEqual(response.status_code, 400)
+
     def test_nina_partial_when_connected(self) -> None:
         status = NinaStatus(
             reachable=True,

@@ -61,9 +61,13 @@
 
 {% if run.result.frames %}
 <h3>Per-frame results</h3>
+{% if run.status == 'done' %}
+<form action="{{ url_for('photometry_download_selected', target_slug=target_slug) }}" method="post">
+{% endif %}
 <table class="data frames-table">
   <thead>
     <tr>
+      {% if run.status == 'done' %}<th>Use</th>{% endif %}
       <th>Frame</th>
       <th>JD</th>
       <th>Mag</th>
@@ -75,6 +79,14 @@
   <tbody>
     {% for frame in run.result.frames %}
     <tr class="frame-{{ frame.flag }}">
+      {% if run.status == 'done' %}
+      <td>
+        {% if frame.flag in ('ok', 'outlier') and frame.magnitude is not none %}
+        <input type="checkbox" name="include" value="{{ frame.filename }}"
+               {% if frame.flag == 'ok' %}checked{% endif %}>
+        {% endif %}
+      </td>
+      {% endif %}
       <td><code>{{ frame.filename }}</code></td>
       <td>{{ '%.4f'|format(frame.jd) if frame.jd is not none else '—' }}</td>
       <td>{{ '%.3f'|format(frame.magnitude) if frame.magnitude is not none else '—' }}</td>
@@ -88,6 +100,14 @@
     {% endfor %}
   </tbody>
 </table>
+{% if run.status == 'done' %}
+<p class="meta">
+  Outliers (MAD-based) are unchecked by default. Toggle to include or exclude
+  before regenerating the AAVSO file. Failed frames are not selectable.
+</p>
+<button type="submit" class="btn-primary">Download AAVSO file with selection</button>
+</form>
+{% endif %}
 {% endif %}
 {% endif %}
 

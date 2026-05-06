@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Run history - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Run history</h2>
+  <p class="meta">All pipeline runs and photometry submissions, newest first. Records persist across server restarts.</p>
+  {% if runs %}
+  <table class="data">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Type</th>
+        <th>Label</th>
+        <th>Status</th>
+        <th>Outcome</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr>
+        <td>{{ r.created_at | human_time }}</td>
+        <td>
+          {% if r.kind.startswith('submit:') %}
+          <a href="{{ url_for('photometry_target', target_slug=r.kind.split(':',1)[1]) }}">photometry</a>
+          {% elif r.kind == 'tonight' %}
+          <a href="{{ url_for('run_status', run_id=r.run_id) }}">tonight</a>
+          {% else %}
+          {{ r.kind }}
+          {% endif %}
+        </td>
+        <td>{{ r.label }}</td>
+        <td><span class="status-{{ r.status }}">{{ r.status }}</span></td>
+        <td>
+          {% if r.kind.startswith('submit:') and r.result %}
+            {% if r.result.observation_count %}{{ r.result.observation_count }} obs{% endif %}
+            {% if r.result.median_mag is not none %}, median {{ '%.2f'|format(r.result.median_mag) }}{% endif %}
+            {% if r.result.anomaly %}
+              {% set a = r.result.anomaly %}
+              {% if a.level == 'anomaly' %}<span class="frame-flag flag-outlier">anomaly</span>
+              {% elif a.level == 'watch' %}<span class="frame-flag flag-pending">watch</span>
+              {% endif %}
+            {% endif %}
+            {% if r.result.submitted_at %}<span class="status-done">submitted</span>{% endif %}
+          {% elif r.kind == 'tonight' and r.result %}
+            {% if r.result.scheduled is defined %}{{ r.result.scheduled }} scheduled{% endif %}
+          {% elif r.error %}
+          <span class="meta">{{ r.error[:80] }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">No runs yet. Generate tonight's plan or run photometry on a captured target to populate history.</p>
+  {% endif %}
+</section>
+{% endblock %}

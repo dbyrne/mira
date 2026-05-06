@@ -47,6 +47,7 @@ def create_app(
 
     app.config["OUTPUT_DIR"] = output_dir
     app.config["CAPTURES_ROOT"] = captures_root
+    app.config["STATE_DIR"] = state_dir
     app.config["RUNS"] = runs
     app.config["NINA"] = nina
 
@@ -58,11 +59,15 @@ def create_app(
     return app
 
 
-def _human_time(timestamp: float | None) -> str:
-    """Render a Unix timestamp as 'X min ago', 'X hr ago', or 'YYYY-MM-DD HH:MM'.
-    Used by the photometry index to format mtimes."""
-    if timestamp is None:
+def _human_time(value) -> str:
+    """Render a Unix timestamp or datetime as 'X min ago' / 'YYYY-MM-DD HH:MM'.
+    Accepts a float (Unix epoch) or a datetime instance."""
+    if value is None:
         return ""
+    if isinstance(value, datetime):
+        timestamp = value.timestamp()
+    else:
+        timestamp = float(value)
     now = datetime.now(timezone.utc).timestamp()
     delta = now - timestamp
     if delta < 60:

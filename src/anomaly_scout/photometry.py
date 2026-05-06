@@ -147,6 +147,54 @@ def differential_magnitude(
     return target_mag, target_mag_err
 
 
+def ensemble_magnitude(
+    target_flux: float,
+    target_flux_error: float,
+    comp_results: list[tuple["CompStar", float, float]],
+) -> tuple[float, float, list["CompStar"]]:
+    """Combine per-comp magnitude estimates into a robust ensemble.
+
+    `comp_results` is a list of (comp, flux, flux_error) for comps whose
+    aperture photometry succeeded. Returns (mag, error, comps_used). The
+    algorithm:
+      1. Compute a per-comp target-mag estimate via differential_magnitude.
+      2. Drop estimates >2σ from the median (where σ is MAD-based; floor 0.05).
+      3. Weighted mean weighted by 1/σ_i² of the per-comp magnitude error.
+
+    If only one comp survives, falls back to that single estimate (matches
+    the old single-best-comp behavior). Returns (nan, nan, []) if nothing
+    is usable.
+    """
+    if target_flux <= 0:
+        return float("nan"), float("nan"), []
+    estimates: list[tuple["CompStar", float, float]] = []
+    for comp, flux, err in comp_results:
+        if flux <= 0:
+            continue
+        mag, mag_err = differential_magnitude(target_flux, target_flux_error, flux, err, comp.catalog_mag)
+        if math.isnan(mag) or math.isnan(mag_err):
+            continue
+        estimates.append((comp, mag, max(mag_err, 0.001)))
+    if not estimates:
+        return float("nan"), float("nan"), []
+    if len(estimates) == 1:
+        comp, mag, err = estimates[0]
+        return mag, err, [comp]
+    mags = sorted(m for _, m, _ in estimates)
+    median = mags[len(mags) // 2]
+    deviations = sorted(abs(m - median) for m in mags)
+    mad = deviations[len(deviations) // 2]
+    sigma = max(mad * 1.4826, 0.05)  # floor at ~photometric noise level
+    kept = [(c, m, e) for c, m, e in estimates if abs(m - median) <= 2.0 * sigma]
+    if not kept:
+        kept = estimates
+    weights = [1.0 / (e**2) for _, _, e in kept]
+    total_weight = sum(weights)
+    weighted_mag = sum(m * w for (_, m, _), w in zip(kept, weights)) / total_weight
+    combined_err = math.sqrt(1.0 / total_weight)
+    return weighted_mag, combined_err, [c for c, _, _ in kept]
+
+
 def process_capture(
     fits_path: Path,
     target_name: str,
@@ -158,6 +206,9 @@ def process_capture(
     """Run photometry on one FITS file.
 
     Returns an Observation, or None if photometry failed (no WCS, no signal).
+    Uses a multi-comp weighted ensemble (with MAD-based outlier rejection)
+    when 2+ comps are usable; falls back to single-comp differential when
+    only one survives.
     """
     image, wcs, header = read_fits_with_wcs(fits_path)
     target_flux, target_err = aperture_flux_at_radec(
@@ -166,11 +217,7 @@ def process_capture(
     if target_flux <= 0:
         return None
 
-    # Use the brightest comp star with positive flux. A cleaner pipeline would
-    # use multiple comps and take a weighted mean - left for a future pass.
-    best_comp = None
-    best_flux = -math.inf
-    best_err = math.nan
+    comp_results: list[tuple[CompStar, float, float]] = []
     for comp in comp_stars:
         try:
             comp_flux, comp_err = aperture_flux_at_radec(
@@ -178,28 +225,41 @@ def process_capture(
             )
         except Exception:
             continue
-        if comp_flux > best_flux:
-            best_flux = comp_flux
-            best_err = comp_err
-            best_comp = comp
+        if comp_flux <= 0:
+            continue
+        comp_results.append((comp, comp_flux, comp_err))
 
-    if best_comp is None or best_flux <= 0:
+    if not comp_results:
         return None
 
-    target_mag, target_mag_err = differential_magnitude(
-        target_flux, target_err, best_flux, best_err, best_comp.catalog_mag
+    target_mag, target_mag_err, comps_used = ensemble_magnitude(
+        target_flux, target_err, comp_results
     )
+    if not comps_used or math.isnan(target_mag):
+        return None
 
     julian_date = _header_julian_date(header)
+
+    if len(comps_used) > 1:
+        comp_label = "ENSEMBLE"
+        comp_catalog_mag = sum(c.catalog_mag for c in comps_used) / len(comps_used)
+        # Band: take the most-common band among kept comps (usually all V).
+        bands = [c.catalog_band for c in comps_used]
+        catalog_band = max(set(bands), key=bands.count)
+    else:
+        primary = comps_used[0]
+        comp_label = primary.label
+        comp_catalog_mag = primary.catalog_mag
+        catalog_band = primary.catalog_band
 
     return Observation(
         target_name=target_name,
         julian_date=julian_date,
         magnitude=target_mag,
         magnitude_error=target_mag_err,
-        band=best_comp.catalog_band if best_comp.catalog_band != "V" else "TG",
-        comp_star_label=best_comp.label,
-        comp_star_mag=best_comp.catalog_mag,
+        band=catalog_band if catalog_band != "V" else "TG",
+        comp_star_label=comp_label,
+        comp_star_mag=comp_catalog_mag,
     )
 
 

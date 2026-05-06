@@ -16,6 +16,7 @@ from anomaly_scout.photometry import (
     _datetime_to_jd,
     aperture_flux_at_radec,
     differential_magnitude,
+    ensemble_magnitude,
     process_capture,
     read_fits_with_wcs,
     write_aavso_extended_file,
@@ -103,6 +104,57 @@ class DifferentialMagnitudeTests(TestCase):
     def test_negative_flux_returns_nan(self) -> None:
         target_mag, target_err = differential_magnitude(-100, 10, 1000, 30, 10.0)
         self.assertTrue(math.isnan(target_mag))
+
+
+class EnsembleMagnitudeTests(TestCase):
+    def _comp(self, label: str, mag: float) -> CompStar:
+        return CompStar(label=label, ra_deg=0.0, dec_deg=0.0, catalog_mag=mag, catalog_band="V")
+
+    def test_single_comp_falls_back_to_single_diff(self) -> None:
+        comp = self._comp("100", 10.0)
+        mag, err, kept = ensemble_magnitude(2512, 50, [(comp, 1000, 32)])
+        self.assertEqual(len(kept), 1)
+        self.assertAlmostEqual(mag, 9.0, places=2)
+
+    def test_two_consistent_comps_ensemble(self) -> None:
+        # Both comps should put the target at ~9.0:
+        #   c1: cat 10.0, comp_flux 1000 → target_mag = 10 - 2.5*log10(2512/1000) = 9.0
+        #   c2: cat 10.5, comp_flux 631  → target_mag = 10.5 - 2.5*log10(2512/631) = 9.0
+        c1 = self._comp("100", 10.0)
+        c2 = self._comp("105", 10.5)
+        mag, err, kept = ensemble_magnitude(
+            2512, 50, [(c1, 1000, 32), (c2, 631, 25)]
+        )
+        self.assertEqual(len(kept), 2)
+        self.assertAlmostEqual(mag, 9.0, delta=0.1)
+
+    def test_outlier_comp_dropped(self) -> None:
+        # 4 comps: 3 give ~9.0, 1 gives ~7.0 (way off — should be dropped)
+        c1 = self._comp("100", 10.0)
+        c2 = self._comp("101", 10.0)
+        c3 = self._comp("102", 10.0)
+        bad = self._comp("999", 10.0)
+        good_flux = (1000, 32)
+        # Bad comp: pretend its measured flux is 100 instead of 1000 → target appears 7.0
+        bad_flux = (100, 12)
+        mag, err, kept = ensemble_magnitude(
+            2512, 50, [(c1, *good_flux), (c2, *good_flux), (c3, *good_flux), (bad, *bad_flux)]
+        )
+        # The 3 good comps survive, bad is dropped
+        self.assertEqual(len(kept), 3)
+        self.assertAlmostEqual(mag, 9.0, delta=0.1)
+
+    def test_zero_flux_target_returns_nan(self) -> None:
+        c1 = self._comp("100", 10.0)
+        mag, err, kept = ensemble_magnitude(0, 0, [(c1, 1000, 32)])
+        self.assertTrue(math.isnan(mag))
+        self.assertEqual(kept, [])
+
+    def test_no_usable_comps_returns_nan(self) -> None:
+        c1 = self._comp("100", 10.0)
+        # Comp flux is zero — should be filtered out
+        mag, err, kept = ensemble_magnitude(2512, 50, [(c1, 0, 0)])
+        self.assertTrue(math.isnan(mag))
 
 
 class ProcessCaptureTests(TestCase):

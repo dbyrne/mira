@@ -100,6 +100,9 @@ def register_routes(app: Flask) -> None:
             abort(404)
         runs: RunRegistry = current_app.config["RUNS"]
         record = runs.latest(_submit_kind(target_slug))
+        from .settings import load_settings
+
+        settings = load_settings(current_app.config.get("STATE_DIR"))
         return render_template(
             "photometry_target.html",
             target_slug=target_slug,
@@ -107,6 +110,7 @@ def register_routes(app: Flask) -> None:
             target_name=_dir_to_target_name(target_dir),
             run=record,
             comp_star_default=_default_comp_stars_path(target_dir),
+            saved_observer_code=settings.get("observer_code", ""),
         )
 
     @app.route("/photometry/<target_slug>/run", methods=["POST"])
@@ -149,6 +153,10 @@ def register_routes(app: Flask) -> None:
             ), 400
 
         runs: RunRegistry = current_app.config["RUNS"]
+        from .settings import update_setting
+
+        update_setting(current_app.config.get("STATE_DIR"), "observer_code", observer_code)
+
         record = runs.submit(
             kind=_submit_kind(target_slug),
             label=f"submit: {target_name}",
@@ -202,6 +210,53 @@ def register_routes(app: Flask) -> None:
         runs.persist(record)
         return redirect(url_for("photometry_target", target_slug=target_slug))
 
+    @app.route("/photometry/<target_slug>/download-with-selection", methods=["POST"])
+    def photometry_download_selected(target_slug):
+        from ..photometry import Observation, write_aavso_extended_file
+
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        target_dir = _resolve_target_dir(captures_root, target_slug)
+        if target_dir is None:
+            abort(404)
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.latest(_submit_kind(target_slug))
+        if record is None or record.status != "done" or not record.result:
+            abort(404)
+
+        included = set(request.form.getlist("include"))
+        observations: list[Observation] = []
+        for entry in record.result.get("observations", []):
+            if entry.get("filename") not in included:
+                continue
+            observations.append(
+                Observation(
+                    target_name=entry["target_name"],
+                    julian_date=entry["julian_date"],
+                    magnitude=entry["magnitude"],
+                    magnitude_error=entry["magnitude_error"],
+                    band=entry.get("band", "TG"),
+                    comp_star_label=entry.get("comp_star_label", ""),
+                    comp_star_mag=entry.get("comp_star_mag", 0.0),
+                    chart_id=entry.get("chart_id", "na"),
+                )
+            )
+        if not observations:
+            abort(400, description="At least one frame must be included.")
+
+        target_name = record.result.get("target_name", target_slug)
+        observer_code = record.result.get("observer_code", "")
+        chart_id = record.result.get("chart_id", "na")
+        upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
+        write_aavso_extended_file(
+            observations,
+            upload_path,
+            observer_code=observer_code,
+            chart_id=chart_id,
+        )
+        record.log(f"Re-wrote AAVSO file with {len(observations)} of {len(record.result.get('observations', []))} frames.")
+        runs.persist(record)
+        return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)
+
     @app.route("/photometry/<target_slug>/upload")
     def photometry_upload(target_slug):
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
@@ -212,6 +267,11 @@ def register_routes(app: Flask) -> None:
         if not upload_path.exists():
             abort(404)
         return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)
+
+    @app.route("/runs")
+    def run_history():
+        runs: RunRegistry = current_app.config["RUNS"]
+        return render_template("runs.html", runs=runs.all())
 
     # --- Layer 3: NINA monitor ---
 
@@ -427,12 +487,18 @@ def _execute_submit(
 
     # Live results dict: the photometry template polls record.result['frames']
     # to render a table that fills in as each frame is processed.
+    # `observations` stores the full per-frame data needed to regenerate an
+    # AAVSO file when the user deselects frames before download.
     record.result = {
         "frames": [],
+        "observations": [],
         "observation_count": 0,
         "failures": 0,
         "median_mag": None,
         "upload_path": None,
+        "target_name": target_name,
+        "observer_code": observer_code,
+        "chart_id": chart_id,
     }
     observations = []
     failures = []
@@ -474,6 +540,19 @@ def _execute_submit(
                 "comp_label": obs.comp_star_label,
                 "flag": "pending",  # filled with "ok"/"outlier" after the loop
                 "note": "",
+            }
+        )
+        record.result["observations"].append(
+            {
+                "filename": path.name,
+                "target_name": obs.target_name,
+                "julian_date": obs.julian_date,
+                "magnitude": obs.magnitude,
+                "magnitude_error": obs.magnitude_error,
+                "band": obs.band,
+                "comp_star_label": obs.comp_star_label,
+                "comp_star_mag": obs.comp_star_mag,
+                "chart_id": chart_id,
             }
         )
         record.result["observation_count"] = len(observations)

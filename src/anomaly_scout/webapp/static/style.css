@@ -261,6 +261,29 @@ li { margin: 0.2rem 0; }
   border-radius: 6px;
   margin: 0.5rem 0;
 }
+.walkthrough {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+.walkthrough li {
+  padding: 0.5rem 0.75rem;
+  margin: 0.4rem 0;
+  border-radius: 6px;
+  border-left: 4px solid;
+  background: var(--card-bg);
+}
+.walkthrough .walk-todo { border-left-color: var(--status-queued); }
+.walkthrough .walk-active { border-left-color: var(--status-running); background: rgba(255, 170, 68, 0.08); }
+.walkthrough .walk-done { border-left-color: var(--status-done); background: rgba(102, 204, 119, 0.08); }
+.walkthrough li::before {
+  content: "○ ";
+  color: var(--status-queued);
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+.walkthrough .walk-done::before { content: "✓ "; color: var(--status-done); }
+.walkthrough .walk-active::before { content: "● "; color: var(--status-running); }
 .anomaly-callout {
   padding: 0.75rem 1rem;
   border-radius: 6px;

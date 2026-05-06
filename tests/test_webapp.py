@@ -403,6 +403,75 @@ class WebappRoutesTests(TestCase):
         self.assertNotIn("2461165.005", preview)  # truncated
         self.assertIn("more data rows", preview)
 
+    def test_first_light_renders_with_no_state(self) -> None:
+        # Empty state: no schedule, no settings, NINA unreachable
+        from anomaly_scout.webapp.nina_client import NinaStatus
+        from unittest.mock import patch
+
+        nina = self.app.config["NINA"]
+        with patch.object(nina, "status", return_value=NinaStatus(reachable=False, error="down")):
+            response = self.client.get("/first-light")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"First-light walkthrough", response.data)
+        # All steps default to todo state
+        self.assertIn(b"walk-todo", response.data)
+
+    def test_first_light_marks_steps_done(self) -> None:
+        from anomaly_scout.webapp.nina_client import NinaStatus
+        from anomaly_scout.webapp.settings import save_settings
+        from unittest.mock import patch
+
+        save_settings(self.state_dir, {"observer_code": "ABC"})
+        # Drop a schedule
+        schedule = (
+            "order,start_local,end_local,name,ra_deg,dec_deg,max_mag,var_type,"
+            "exposure_seconds,frame_count,integration_minutes,score,effective_score\n"
+            "1,2026-05-05T20:00:00-04:00,2026-05-05T20:30:00-04:00,RR Lyr,291,42,7.06,RRAB,15,60,15,90,90\n"
+        )
+        (self.output_dir / "session_schedule.csv").write_text(schedule, encoding="utf-8")
+
+        nina = self.app.config["NINA"]
+        with patch.object(nina, "status", return_value=NinaStatus(reachable=True)):
+            response = self.client.get("/first-light")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        # Three of the six steps should be done
+        self.assertGreaterEqual(body.count("walk-done"), 3)
+
+    def test_dashboard_lifetime_stats(self) -> None:
+        from anomaly_scout.webapp.runs import RunRegistry
+
+        runs: RunRegistry = self.app.config["RUNS"]
+
+        def _ok(record):
+            record.result = {"observation_count": 10, "median_mag": 7.5}
+            return record.result
+
+        def _anomaly(record):
+            record.result = {
+                "observation_count": 8,
+                "median_mag": 9.5,
+                "anomaly": {"level": "anomaly", "flags": ["1.5 mag fainter"]},
+            }
+            return record.result
+
+        r1 = runs.submit("submit:RR_LYR", "submit: RR LYR", _ok)
+        r2 = runs.submit("submit:AB_AUR", "submit: AB AUR", _anomaly)
+        import time
+        for _ in range(50):
+            if r1.status == "done" and r2.status == "done":
+                break
+            time.sleep(0.05)
+
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        self.assertIn("Lifetime stats", body)
+        self.assertIn("Photometry sessions", body)
+        # 1 anomaly run should surface in the callout
+        self.assertIn("Most recent anomaly", body)
+        self.assertIn("AB AUR", body)
+
     def test_nina_partial_when_connected(self) -> None:
         status = NinaStatus(
             reachable=True,

@@ -17,9 +17,18 @@ def register_routes(app: Flask) -> None:
 
         runs: RunRegistry = current_app.config["RUNS"]
         latest_run = runs.latest("tonight")
-        latest_photometry = [r for r in runs.all() if r.kind == "submit"][:5]
+        all_submit_runs = [r for r in runs.all() if r.kind.startswith("submit:")]
+        latest_photometry = all_submit_runs[:5]
         schedule_path: Path = current_app.config["OUTPUT_DIR"] / "session_schedule.html"
         settings = load_settings(current_app.config.get("STATE_DIR"))
+
+        # Lifetime stats: total photometry sessions completed, anomalies flagged, submitted to AAVSO.
+        completed = [r for r in all_submit_runs if r.status == "done"]
+        anomaly_runs = [r for r in completed if r.result and (r.result.get("anomaly") or {}).get("level") == "anomaly"]
+        watch_runs = [r for r in completed if r.result and (r.result.get("anomaly") or {}).get("level") == "watch"]
+        submitted_runs = [r for r in completed if r.result and r.result.get("submitted_at")]
+        latest_anomaly = anomaly_runs[0] if anomaly_runs else None
+
         return render_template(
             "index.html",
             latest_run=latest_run,
@@ -29,6 +38,11 @@ def register_routes(app: Flask) -> None:
             captures_root=current_app.config["CAPTURES_ROOT"],
             default_config=settings.get("default_config", "config/s30_pro_jc.yaml"),
             default_hours=settings.get("default_hours", 4),
+            stat_completed=len(completed),
+            stat_anomaly=len(anomaly_runs),
+            stat_watch=len(watch_runs),
+            stat_submitted=len(submitted_runs),
+            latest_anomaly=latest_anomaly,
         )
 
     # --- Layer 1: kick off + view ---
@@ -282,6 +296,50 @@ def register_routes(app: Flask) -> None:
     def run_history():
         runs: RunRegistry = current_app.config["RUNS"]
         return render_template("runs.html", runs=runs.all())
+
+    @app.route("/first-light")
+    def first_light():
+        """Walkthrough page that pulls together status from settings, NINA,
+        schedule, captures, photometry runs into a single checkbox view."""
+        from .settings import load_settings
+
+        runs: RunRegistry = current_app.config["RUNS"]
+        nina = current_app.config["NINA"]
+        captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        output_dir: Path = current_app.config["OUTPUT_DIR"]
+        state_dir: Path | None = current_app.config.get("STATE_DIR")
+
+        settings = load_settings(state_dir)
+        observer_code_set = bool((settings.get("observer_code") or "").strip())
+
+        schedule_csv = output_dir / "session_schedule.csv"
+        schedule_exists = schedule_csv.exists()
+        runs_by_kind = {r.kind: r for r in runs.all() if r.kind.startswith("submit:")}
+        scheduled = _build_schedule_status(schedule_csv, captures_root, runs_by_kind)
+        scheduled_total = len(scheduled)
+        scheduled_captured = sum(1 for s in scheduled if s["fits_count"] > 0)
+        scheduled_processed = sum(1 for s in scheduled if s["stage"] in ("processed", "submitted"))
+        scheduled_submitted = sum(1 for s in scheduled if s["stage"] == "submitted")
+
+        try:
+            nina_status = nina.status()
+        except Exception:
+            nina_status = None
+
+        latest_tonight = runs.latest("tonight")
+
+        return render_template(
+            "first_light.html",
+            observer_code_set=observer_code_set,
+            schedule_exists=schedule_exists,
+            scheduled=scheduled,
+            scheduled_total=scheduled_total,
+            scheduled_captured=scheduled_captured,
+            scheduled_processed=scheduled_processed,
+            scheduled_submitted=scheduled_submitted,
+            nina_status=nina_status,
+            latest_tonight=latest_tonight,
+        )
 
     @app.route("/settings", methods=["GET", "POST"])
     def settings_page():

@@ -47,6 +47,34 @@
 </section>
 {% endif %}
 
+{% if stat_completed > 0 %}
+<section class="card">
+  <h2>Lifetime stats</h2>
+  <dl class="meta-grid">
+    <dt>Photometry sessions</dt><dd>{{ stat_completed }}</dd>
+    <dt>Submitted to AAVSO</dt><dd>{{ stat_submitted }}</dd>
+    <dt>Flagged as anomaly</dt><dd>{{ stat_anomaly }}{% if stat_watch %} (+{{ stat_watch }} watch){% endif %}</dd>
+  </dl>
+  {% if latest_anomaly %}
+  <div class="anomaly-callout anomaly-anomaly">
+    <h3>Most recent anomaly</h3>
+    <p>
+      <strong>{{ latest_anomaly.label }}</strong> on
+      {{ latest_anomaly.created_at.strftime('%Y-%m-%d') if latest_anomaly.created_at else '?' }}.
+    </p>
+    {% if latest_anomaly.result.anomaly.flags %}
+    <ul>
+      {% for flag in latest_anomaly.result.anomaly.flags %}<li>{{ flag }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <p>
+      <a href="{{ url_for('photometry_target', target_slug=latest_anomaly.kind.split(':',1)[1]) }}" class="btn">Open</a>
+    </p>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Recent photometry</h2>
   {% if latest_photometry %}

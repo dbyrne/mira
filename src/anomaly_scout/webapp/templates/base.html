@@ -14,6 +14,7 @@
     {% set ep = request.endpoint or '' %}
     <a href="{{ url_for('index') }}" class="brand">🔭 <span class="brand-text">AAVSO Scout</span></a>
     <span class="nav-links">
+      <a href="{{ url_for('first_light') }}" class="{% if ep == 'first_light' %}active{% endif %}">Tonight</a>
       <a href="{{ url_for('schedule') }}" class="{% if ep == 'schedule' %}active{% endif %}">Schedule</a>
       <a href="{{ url_for('photometry_index') }}" class="{% if ep.startswith('photometry') %}active{% endif %}">Photometry</a>
       <a href="{{ url_for('nina_dashboard') }}" class="{% if ep.startswith('nina') %}active{% endif %}">NINA</a>

@@ -1,28 +1,31 @@
-# AAVSO Anomaly Scout Handoff
+# AAVSO Anomaly Scout — Handoff
 
-This document is the clean context handoff for continuing the project on a new
-computer or in a fresh Codex thread.
+Clean context for continuing the project on a new machine or in a fresh
+thread. README.md covers user-facing intent; this document covers
+*current state of the system* and *what to read first*.
 
-## Project Goal
+## Project goal
 
-Build a practical amateur astronomy workflow for Jersey City, NJ:
+End-to-end variable-star observing pipeline:
 
-- find known VSX variable stars that are under-observed or under-characterized
-- keep only targets that are plausible from an urban site
-- produce candidate packets that are easy to vet before observing
-- bias toward useful AAVSO follow-up, not one-off novelty theater
-
-The current project scope is deliberately narrow: known VSX objects, public
-archive metadata, and practical follow-up triage.
+1. **Pick** — find VSX targets worth amateur follow-up (urban-friendly,
+   under-observed, possibly off-baseline) and score them.
+2. **Plan** — schedule a session for tonight's window with greedy +
+   urgency selection; export a Target Scheduler CSV for NINA.
+3. **Capture** — NINA Target Scheduler imports the CSV and images each
+   target. The webapp's NINA monitor shows live status.
+4. **Process** — aperture photometry on each FITS, comp stars
+   auto-fetched from AAVSO VSP, multi-comp ensemble.
+5. **Assess** — quantitative anomaly check against catalog range and
+   AAVSO recent baseline. AAVSO Extended File ready for upload.
 
 ## Repository
 
-- GitHub: `https://github.com/dbyrne/aavso-anomaly-scout`
-- Visibility: private
+- GitHub: `https://github.com/dbyrne/aavso-anomaly-scout` (private)
 - Default branch: `master`
 - Python package entry point: `anomaly-scout`
 
-## Setup On A New Computer
+## Setup on a new computer
 
 ```powershell
 git clone https://github.com/dbyrne/aavso-anomaly-scout.git
@@ -31,145 +34,158 @@ python -m pip install -e .
 python -m unittest discover -s tests
 ```
 
-If the editable install fails, check that Python 3.11+ is active.
+Python 3.11+ is required.
 
-## Main Run Commands
+## Two ways to drive it
 
-Fast smoke test:
-
-```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --gaia-top 5 --ztf-top 0 --start-date 2026-05-04
-```
-
-Current useful run:
+### Webapp (recommended for live observing)
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --gaia-top 20 --ztf-top 0 --start-date 2026-05-04
+anomaly-scout webapp
 ```
 
-Selective ZTF enrichment:
+Then open `http://localhost:8000` (or via Tailscale on phone). Five
+tabs:
+
+- **Tonight** (`/first-light`) — walkthrough page that turns each step
+  green as it completes (settings → NINA → schedule → captures →
+  photometry → submission).
+- **Schedule** (`/schedule`) — phone-readable session schedule with a
+  CSS timeline, per-target cards, AAVSO chart links.
+- **Photometry** (`/photometry`) — each scheduled target with status,
+  click to run photometry. Result page shows light curve, phase-folded
+  plot, anomaly callout, AAVSO file preview, frame-deselect form.
+- **NINA** (`/nina`) — live status from the Advanced API plugin, plus
+  experimental "push schedule to NINA" button.
+- **History** (`/runs`) — all past runs with outcomes.
+- **Settings** (`/settings`) — observer code, default config, default
+  hours.
+
+### CLI (scriptable)
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 300 --top 20 --aavso-top 20 --simbad-top 20 --gaia-top 20 --ztf-top 3 --start-date 2026-05-04
+anomaly-scout run --config config/multi_site.yaml
+anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+anomaly-scout submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
+anomaly-scout target "RR Lyr" --config config/multi_site.yaml --start-date 2026-09-15 --ztf
 ```
 
-ZTF/IRSA calls are often slow or unavailable. The tool should keep running and
-mark the packet with an unavailable status when ZTF does not cooperate.
+## Outputs to read first
 
-AAVSO recent-coverage checks can also be flaky. The current code falls back to
-matching cached AAVSO responses when a live request fails, and marks those rows
-as `ok-cached`.
+- `output/<config>/tonight/session_schedule.html` — primary phone-
+  readable plan (also served at `/schedule`).
+- `output/<config>/tonight/research_notes.md` — top-line summary.
+- `output/<config>/tonight/candidate_queue.csv` — ranked queue.
+- `output/<config>/tonight/candidate_packets/*.md` — per-target review.
 
-## Outputs To Read First
+## Current architecture
 
-- `output/research_notes.md`: highest-signal human summary
-- `output/candidate_queue.csv`: ranked machine-readable queue
-- `output/candidate_packets/*.md`: per-target review packets
+```
+cli.py / __main__.py    Command-line orchestration
+config.py               YAML → frozen dataclasses
+vsx.py                  VSX/VizieR fetch (RA-bin sampling, retry)
+observability.py        Site-specific altitude/window calculations
+scoring.py              Filtering + score reasons
+aavso.py                Recent AAVSO coverage + Lomb-Scargle period
+simbad.py               SIMBAD TAP cross-IDs
+gaia.py                 Gaia DR3 color/parallax/RUWE
+ztf.py                  Optional ZTF light curves + period analysis
+period_analysis.py      Lomb-Scargle shared between AAVSO + ZTF
+scheduler.py            Greedy session schedule with urgency bonus
+session_plan.py         Menu (all viable targets) writer
+session_schedule.py     Schedule (picked subset) writer + NINA CSV
+nightly_html.py         session_schedule.html (timeline + cards)
+report.py               Research notes, candidate packets, queue CSVs
 
-Generated outputs are committed because they are useful handoff artifacts.
-`data/cache/` is ignored because it only stores repeatable archive/API responses.
+photometry.py           FITS aperture photometry, multi-comp ensemble,
+                        AAVSO Extended File writer
+vsp.py                  AAVSO VSP comp-star auto-fetch
+lightcurve.py           matplotlib plots (JD-vs-mag, phase-folded)
+                        with AAVSO + prior-session overlays
+anomaly.py              Catalog + baseline anomaly assessment
 
-## Current Top Candidates
+webapp/__init__.py      Flask factory
+webapp/routes.py        All routes (dashboard, photometry, NINA, runs, settings)
+webapp/runs.py          RunRegistry (ThreadPoolExecutor + JSON persistence)
+webapp/settings.py      Persistent app-level settings
+webapp/nina_client.py   NINA Advanced API client (status + push)
+webapp/static/          style.css, htmx.min.js, favicon.svg
+webapp/templates/       Jinja2 templates (base.html + page templates)
 
-As of the current generated output:
+cache.py                File-based HTTP cache under data/cache/
+models.py               Shared dataclasses (VsxTarget, Observability,
+                        AavsoStats, SimbadStats, GaiaStats, ZtfStats)
+tests/                  unittest suite (155+ tests)
+```
 
-1. `ASASSN-V J160002.35+453848.8`
-   - VSX: `SR`
-   - SIMBAD: `2MASS J16000234+4538488`, type `S*?`
-   - Recent AAVSO observations: `0`
-   - Best as long-cadence monitoring.
+## Hardware setup (single observer)
 
-2. `WISE J120003.9+632552`
-   - VSX: `EW|EA`
-   - SIMBAD: `TYC 4157-625-1`, type `EB*`
-   - Recent AAVSO observations: `0`
-   - Best as a time-series target.
+- Seestar S30 Pro (30 mm OSC, IMX585) on equatorial wedge
+- Polar-aligned via Seestar app
+- NINA controlling capture via ASCOM Alpaca, Advanced API on :1888
+- Tailscale magic DNS for phone access:
+  `gaming-rig-windows.tail4ab263.ts.net:8000`
 
-3. `ASASSN-V J180001.26+355054.1`
-   - VSX: `SR`
-   - SIMBAD: `TYC 2633-490-1`, type `*`
-   - Recent AAVSO observations: `0`
-   - Best as long-cadence monitoring.
+## Important implementation notes
 
-4. `IRAS 07557+6048`
-   - VSX: `SRS`
-   - SIMBAD: `IRAS 07557+6048`, type `*`
-   - Recent AAVSO observations: `0`
-   - Best as long-cadence monitoring.
+- VSX RA-bin sampling matters — do not switch to a single bulk query
+  without preserving both bin sampling and per-bin oversample.
+- `_get_with_retries` in vsx.py does 3 attempts with backoff; transient
+  network failures look identical to "not found" without it.
+- Period analysis (`period_analysis.py`) is shared between AAVSO and
+  ZTF; period disagreement is gated by min/max search range and a
+  configurable peak-power threshold.
+- Score-affecting bonuses applied AFTER `build_candidates` must use
+  `apply_target_bonus` / `apply_target_reason` so per-site scores stay
+  in sync with the global score.
+- Photometry uses a multi-comp weighted ensemble (`ensemble_magnitude`
+  in photometry.py): per-comp mag estimates, MAD-based >2σ outlier
+  drop, weighted mean by 1/σ². CNAME=ENSEMBLE in the AAVSO file when
+  2+ comps survive.
+- VSP auto-fetch (`vsp.py`) is the default; manual JSON path is
+  optional override.
+- Anomaly thresholds (`anomaly.py`): catalog-range tolerance ±0.3 mag;
+  baseline σ-cutoffs 2σ (watch) / 3σ (anomaly); minimum 10 AAVSO
+  samples to trust the baseline.
+- RunRegistry persists to `state_dir/<run_id>.json`; in-flight runs at
+  startup are marked failed.
+- `_human_time` Jinja filter accepts both float (Unix epoch) and
+  datetime.
 
-Treat these as candidates, not claims. The next human step is to check finder
-charts, comparison stars, field crowding, and recent literature before observing.
+## Known caveats
 
-## Architecture Map
-
-- `src/anomaly_scout/cli.py`: command-line orchestration
-- `src/anomaly_scout/config.py`: YAML config dataclasses
-- `src/anomaly_scout/vsx.py`: VSX/VizieR fetch and parse
-- `src/anomaly_scout/observability.py`: Jersey City altitude/window calculations
-- `src/anomaly_scout/scoring.py`: candidate filtering and score reasons
-- `src/anomaly_scout/aavso.py`: recent AAVSO observation count
-- `src/anomaly_scout/simbad.py`: SIMBAD TAP context and cross-identifiers
-- `src/anomaly_scout/gaia.py`: Gaia DR3 color, parallax, and RUWE context
-- `src/anomaly_scout/ztf.py`: optional ZTF light-curve enrichment
-- `src/anomaly_scout/report.py`: CSV, research notes, and packets
-- `src/anomaly_scout/cache.py`: simple HTTP response cache
-- `tests/`: unit tests for core parsing/geometry helpers
-
-## Important Implementation Notes
-
-- Observability uses a practical local window from `20:00` to `01:00`.
-- `minutes_above_minimum` is now the best single-night time above the altitude
-  floor, not a sum across all configured nights.
-- VSX rows are sampled in RA bins so the query is not biased toward RA 0.
-- SIMBAD and AAVSO enrichment are intentionally shallow but useful for triage.
-- Gaia enrichment adds color/parallax/RUWE metadata for sanity-checking object
-  type and possible red-giant behavior.
-- AAVSO coverage affects ranking: sparse targets get a bonus; heavily covered
-  targets receive a penalty.
-- If AAVSO live coverage is unavailable, cached successful responses can still
-  preserve the previous coverage counts for repeat local runs.
-- AAVSO finder-chart links are generated in packets and research notes.
-- ZTF is optional because IRSA calls can time out; do not make it mandatory for
-  the main queue.
-
-## Known Caveats
-
-- The current scoring is heuristic, not a statistical novelty model.
-- It does not yet check field crowding from images.
-- It does not yet verify AAVSO comparison-star availability beyond linking VSP.
-- It does not perform period analysis or folded light-curve fitting yet.
-- Gaia DR3 context is basic; it is not yet used for full color-magnitude
-  classification or distance-quality filtering.
-- It does not yet create observing-night schedules by weather or moon phase.
-
-## Recommended Next Work
-
-1. Add a `--target` command to enrich and regenerate one candidate packet.
-2. Add Gaia DR3 context: color, parallax, absolute magnitude, RUWE if available.
-3. Add a real period-check module for ZTF/TESS light curves.
-4. Add VSP/finder-chart validation or at least chart ID extraction.
-5. Add a field-crowding check from Pan-STARRS/DSS cutouts.
-6. Split practice targets from novelty targets in the report.
-7. Add weather/moon-aware nightly observing queues for Jersey City.
+- Scheduler doesn't optimize slew time between targets (constant 3-min
+  buffer).
+- NINA push is experimental — Advanced API doesn't standardize a
+  Target Scheduler import endpoint. Manual CSV import is the reliable
+  path.
+- Anomaly check requires AAVSO baseline of 10+ recent obs; deep-sky
+  targets with sparse coverage skip the baseline check entirely.
+- Photometry assumes ADU ≈ counts for noise propagation. For accurate
+  errors, plumb GAIN from the FITS header.
+- VSX lookup returns None on both "not found" and "transient network
+  error after 3 retries" — error message acknowledges both.
 
 ## Verification
-
-Current test command:
 
 ```powershell
 python -m unittest discover -s tests
 ```
 
-This currently covers observability sanity checks plus AAVSO and SIMBAD parsing.
-Broaden tests before changing scoring or parser behavior substantially.
+155+ tests as of this writing. Cover observability geometry, parsing
+(VSX/AAVSO/SIMBAD/Gaia/ZTF/VSP), scheduler, scoring, photometry math,
+ensemble photometry, webapp routes, anomaly thresholds, settings
+persistence.
 
-## Git Notes
+## Git notes
 
-Before switching machines, make sure the working tree is clean:
+Before switching machines, ensure the working tree is clean:
 
 ```powershell
 git status --short --branch
 git push
 ```
 
-On the new machine, clone the private repo and run the setup commands above.
+On the new machine, clone the private repo and run the setup commands
+above. Generated outputs in `output/` are committed as handoff
+artifacts; `data/cache/` is gitignored.

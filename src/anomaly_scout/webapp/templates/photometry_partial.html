@@ -51,6 +51,17 @@
 </div>
 {% endif %}
 
+{% if run.status == 'done' and run.result.upload_path %}
+<details {% if run.result.aavso_preview %}open{% endif %}>
+  <summary>AAVSO upload file preview</summary>
+  {% if run.result.aavso_preview %}
+  <pre class="log">{{ run.result.aavso_preview }}</pre>
+  {% else %}
+  <p class="meta">File at <code>{{ run.result.upload_path }}</code> — preview unavailable.</p>
+  {% endif %}
+</details>
+{% endif %}
+
 {% if run.result.lightcurve_path %}
 <h3>Light curve</h3>
 <img class="lightcurve" src="{{ url_for('photometry_lightcurve', target_slug=target_slug) }}?t={{ run.run_id }}" alt="Light curve for {{ run.label }}">

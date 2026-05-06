@@ -310,6 +310,99 @@ class WebappRoutesTests(TestCase):
         response = self.client.post("/photometry/RR_LYR/download-with-selection", data={})
         self.assertEqual(response.status_code, 400)
 
+    def test_settings_page_renders_and_saves(self) -> None:
+        # Initial GET shows the form with empty values
+        response = self.client.get("/settings")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Settings", response.data)
+
+        # POST persists
+        response = self.client.post("/settings", data={
+            "observer_code": "ABC123",
+            "default_config": "config/multi_site.yaml",
+            "default_hours": "6",
+        })
+        self.assertEqual(response.status_code, 200)
+
+        from anomaly_scout.webapp.settings import load_settings
+        settings = load_settings(self.state_dir)
+        self.assertEqual(settings.get("observer_code"), "ABC123")
+        self.assertEqual(settings.get("default_config"), "config/multi_site.yaml")
+        self.assertAlmostEqual(settings.get("default_hours"), 6.0)
+
+    def test_settings_clamp_hours_range(self) -> None:
+        # Out-of-range hours get clamped
+        self.client.post("/settings", data={
+            "observer_code": "X",
+            "default_config": "config/x.yaml",
+            "default_hours": "0.1",
+        })
+        from anomaly_scout.webapp.settings import load_settings
+        self.assertAlmostEqual(load_settings(self.state_dir).get("default_hours"), 0.5)
+
+        self.client.post("/settings", data={
+            "observer_code": "X",
+            "default_config": "config/x.yaml",
+            "default_hours": "99",
+        })
+        self.assertAlmostEqual(load_settings(self.state_dir).get("default_hours"), 14.0)
+
+    def test_dashboard_uses_saved_defaults(self) -> None:
+        from anomaly_scout.webapp.settings import save_settings
+        save_settings(self.state_dir, {
+            "default_config": "config/zerg.yaml",
+            "default_hours": 7.5,
+        })
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"config/zerg.yaml", response.data)
+        self.assertIn(b'value="7.5"', response.data)
+
+    def test_overflow_section_appears_on_photometry_index(self) -> None:
+        overflow = (
+            "name,ra_deg,dec_deg,max_mag,var_type,score,best_local_time\n"
+            "FF Dra,180.0,55.0,8.67,LB,73.3,21:30\n"
+            "VV Leo,170.0,30.0,9.30,SR,72.7,21:30\n"
+        )
+        (self.output_dir / "session_overflow.csv").write_text(overflow, encoding="utf-8")
+        response = self.client.get("/photometry")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Deferred", response.data)
+        self.assertIn(b"FF Dra", response.data)
+        self.assertIn(b"VV Leo", response.data)
+
+    def test_nina_push_returns_failed_when_unreachable(self) -> None:
+        from anomaly_scout.webapp.nina_client import NinaClient
+        from unittest.mock import patch
+
+        # No schedule yet → no-schedule outcome
+        response = self.client.post("/nina/push-schedule", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"No schedule found", response.data)
+
+        # With schedule but NINA unreachable → failed outcome
+        (self.output_dir / "nina_targets.csv").write_text("Type,Name\nVariable Star,RR Lyr\n", encoding="utf-8")
+        nina = self.app.config["NINA"]
+        with patch.object(nina, "push_schedule", return_value={"ok": False, "status_code": None, "message": "down", "endpoint_tried": "/api/v2/sequence/load"}):
+            response = self.client.post("/nina/push-schedule", follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"NINA rejected the push", response.data)
+
+    def test_aavso_preview_helper_truncates_data_rows(self) -> None:
+        from anomaly_scout.webapp.routes import _read_aavso_preview
+        path = self.output_dir / "preview.txt"
+        rows = ["#TYPE=Extended", "#OBSCODE=ABC", "#NAME,DATE,MAG,MERR,FILT"]
+        for i in range(10):
+            rows.append(f"RR LYR,2461165.{i:03d},7.{i:03d},0.05,TG,NO,STD,97,9.7,na,0.0,na,na,na,na")
+        path.write_text("\n".join(rows), encoding="utf-8")
+        preview = _read_aavso_preview(path, max_rows=3)
+        # Preview must contain headers + 3 data rows + ellipsis
+        self.assertIn("#TYPE=Extended", preview)
+        self.assertIn("2461165.000", preview)
+        self.assertIn("2461165.002", preview)
+        self.assertNotIn("2461165.005", preview)  # truncated
+        self.assertIn("more data rows", preview)
+
     def test_nina_partial_when_connected(self) -> None:
         status = NinaStatus(
             reachable=True,

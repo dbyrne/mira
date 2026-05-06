@@ -31,16 +31,47 @@ def write_session_schedule_outputs(
     output_dir: Path,
     config: Any,
 ) -> tuple[Path, Path, Path]:
-    """Write all three schedule files. Returns (md_path, csv_path, nina_path)."""
+    """Write all three schedule files. Returns (md_path, csv_path, nina_path).
+    Also writes session_overflow.csv (deferred candidates) when overflow is
+    non-empty; that file is consumed by the photometry index UI."""
     output_dir.mkdir(parents=True, exist_ok=True)
     md_path = output_dir / "session_schedule.md"
     csv_path = output_dir / "session_schedule.csv"
     nina_path = output_dir / "nina_targets.csv"
+    overflow_path = output_dir / "session_overflow.csv"
 
     write_session_schedule_md(schedule, md_path, config)
     write_session_schedule_csv(schedule, csv_path)
     write_nina_targets_scheduled_csv(schedule, nina_path)
+    write_session_overflow_csv(schedule, overflow_path)
     return md_path, csv_path, nina_path
+
+
+def write_session_overflow_csv(schedule: ScheduleResult, path: Path) -> None:
+    """Viable candidates that didn't fit the schedule. The webapp reads this
+    so the user can see deferred options (e.g. if conditions or timing
+    change, they can still image one)."""
+    fields = ["name", "ra_deg", "dec_deg", "max_mag", "var_type", "score", "best_local_time"]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for candidate in schedule.overflow:
+            target = candidate.target
+            best = candidate.best_observability
+            best_time = ""
+            if best and best.best_local_time:
+                best_time = best.best_local_time.strftime("%H:%M")
+            writer.writerow(
+                {
+                    "name": target.name,
+                    "ra_deg": f"{target.ra_deg:.6f}",
+                    "dec_deg": f"{target.dec_deg:.6f}",
+                    "max_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
+                    "var_type": target.var_type or "",
+                    "score": f"{candidate.score:.1f}",
+                    "best_local_time": best_time,
+                }
+            )
 
 
 def write_session_schedule_md(schedule: ScheduleResult, path: Path, config: Any) -> None:

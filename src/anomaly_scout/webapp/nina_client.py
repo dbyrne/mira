@@ -81,6 +81,42 @@ class NinaClient:
 
         return result
 
+    def push_schedule(self, csv_path: str) -> dict[str, Any]:
+        """Best-effort push of a Target Scheduler CSV to NINA.
+
+        The Advanced API plugin exposes /api/v2/sequence/load in newer
+        versions; older versions and the Target Scheduler plugin itself
+        require manual CSV import. We try the POST and report whatever
+        comes back so the UI can render a useful message either way.
+
+        Returns a dict with keys: ok (bool), status_code (int|None),
+        message (str), endpoint_tried (str).
+        """
+        endpoint = "/api/v2/sequence/load"
+        try:
+            response = requests.post(
+                f"{self.base_url}{endpoint}",
+                json={"path": csv_path},
+                timeout=self.timeout,
+            )
+            try:
+                body = response.json()
+            except ValueError:
+                body = {"text": response.text[:200]}
+            return {
+                "ok": response.status_code < 400,
+                "status_code": response.status_code,
+                "message": str(body),
+                "endpoint_tried": endpoint,
+            }
+        except requests.RequestException as exc:
+            return {
+                "ok": False,
+                "status_code": None,
+                "message": f"NINA unreachable: {exc}",
+                "endpoint_tried": endpoint,
+            }
+
     def _get(self, path: str) -> dict[str, Any]:
         response = requests.get(f"{self.base_url}{path}", timeout=self.timeout)
         response.raise_for_status()

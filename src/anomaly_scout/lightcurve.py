@@ -26,10 +26,12 @@ def plot_session_light_curve(
     target_name: str,
     output_path: Path,
     aavso_recent: list[tuple[float, float, str]] | None = None,
+    prior_sessions: list[tuple[float, float, str]] | None = None,
 ) -> Path | None:
     """Plot the night's observations as JD vs magnitude with error bars,
-    optionally overlaid on recent AAVSO submissions. Returns the path written,
-    or None if there's nothing plottable."""
+    optionally overlaid on (a) recent AAVSO submissions and (b) the user's
+    own prior sessions of this target. Returns the path written, or None
+    if there's nothing plottable."""
     obs_list = [o for o in observations if o.julian_date is not None]
     if not obs_list:
         return None
@@ -47,6 +49,16 @@ def plot_session_light_curve(
             alpha=0.45,
             s=18,
             label=f"AAVSO recent ({len(aavso_recent)})",
+        )
+    if prior_sessions:
+        ax.scatter(
+            [s[0] for s in prior_sessions],
+            [s[1] for s in prior_sessions],
+            color="tab:orange",
+            alpha=0.7,
+            s=22,
+            marker="s",
+            label=f"Your prior sessions ({len(prior_sessions)})",
         )
     ax.errorbar(
         jds,
@@ -77,9 +89,11 @@ def plot_phase_folded(
     period_days: float,
     output_path: Path,
     aavso_recent: list[tuple[float, float, str]] | None = None,
+    prior_sessions: list[tuple[float, float, str]] | None = None,
 ) -> Path | None:
-    """Plot tonight's points and AAVSO history phase-folded at period_days.
-    Two cycles are drawn for visual continuity. Returns the path or None."""
+    """Plot tonight's points + AAVSO history + user's prior sessions
+    phase-folded at period_days. Two cycles drawn for visual continuity.
+    Returns the path or None."""
     obs_list = [o for o in observations if o.julian_date is not None]
     if not obs_list or period_days <= 0:
         return None
@@ -100,6 +114,18 @@ def plot_phase_folded(
                 alpha=0.35,
                 s=18,
                 label=f"AAVSO recent ({len(aavso_recent)})" if offset == 0.0 else None,
+            )
+    if prior_sessions:
+        prior_phases = [((s[0] - epoch) / period_days) % 1.0 for s in prior_sessions]
+        for offset in (0.0, 1.0):
+            ax.scatter(
+                [p + offset for p in prior_phases],
+                [s[1] for s in prior_sessions],
+                color="tab:orange",
+                alpha=0.7,
+                s=22,
+                marker="s",
+                label=f"Your prior sessions ({len(prior_sessions)})" if offset == 0.0 else None,
             )
     for offset in (0.0, 1.0):
         ax.errorbar(

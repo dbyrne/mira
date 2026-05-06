@@ -55,6 +55,32 @@
 </section>
 {% endif %}
 
+{% if overflow %}
+<section class="card">
+  <h2>Deferred ({{ overflow|length }})</h2>
+  <p class="meta">Viable candidates that didn't fit tonight's window. Image one of these instead if conditions or timing change.</p>
+  <details>
+    <summary>Show deferred targets</summary>
+    <table class="data">
+      <thead>
+        <tr><th>Target</th><th>Mag</th><th>Type</th><th>Peaks</th><th>Score</th></tr>
+      </thead>
+      <tbody>
+        {% for o in overflow %}
+        <tr>
+          <td>{{ o.name }}</td>
+          <td>{{ o.max_mag }}</td>
+          <td>{{ o.var_type }}</td>
+          <td>{{ o.best_local_time }}</td>
+          <td>{{ o.score }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Captured target directories</h2>
   <p class="meta">Scanning <code>{{ captures_root }}</code></p>

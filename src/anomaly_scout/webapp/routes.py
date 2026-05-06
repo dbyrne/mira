@@ -13,10 +13,13 @@ from .runs import RunRecord, RunRegistry
 def register_routes(app: Flask) -> None:
     @app.route("/")
     def index():
+        from .settings import load_settings
+
         runs: RunRegistry = current_app.config["RUNS"]
         latest_run = runs.latest("tonight")
         latest_photometry = [r for r in runs.all() if r.kind == "submit"][:5]
         schedule_path: Path = current_app.config["OUTPUT_DIR"] / "session_schedule.html"
+        settings = load_settings(current_app.config.get("STATE_DIR"))
         return render_template(
             "index.html",
             latest_run=latest_run,
@@ -24,6 +27,8 @@ def register_routes(app: Flask) -> None:
             schedule_exists=schedule_path.exists(),
             output_dir=current_app.config["OUTPUT_DIR"],
             captures_root=current_app.config["CAPTURES_ROOT"],
+            default_config=settings.get("default_config", "config/s30_pro_jc.yaml"),
+            default_hours=settings.get("default_hours", 4),
         )
 
     # --- Layer 1: kick off + view ---
@@ -84,12 +89,14 @@ def register_routes(app: Flask) -> None:
         photometry_runs = {r.label: r for r in runs.all() if r.kind == "submit"}
         runs_by_kind = {r.kind: r for r in runs.all() if r.kind.startswith("submit:")}
         scheduled = _build_schedule_status(output_dir / "session_schedule.csv", captures_root, runs_by_kind)
+        overflow = _read_overflow_targets(output_dir / "session_overflow.csv")
         return render_template(
             "photometry_index.html",
             targets=targets,
             captures_root=captures_root,
             photometry_runs=photometry_runs,
             scheduled=scheduled,
+            overflow=overflow,
         )
 
     @app.route("/photometry/<target_slug>")
@@ -167,6 +174,8 @@ def register_routes(app: Flask) -> None:
                 comp_path=comp_path,
                 observer_code=observer_code,
                 chart_id=chart_id,
+                target_slug=target_slug,
+                runs=runs,
             ),
         )
         return redirect(url_for("photometry_target", target_slug=target_slug))
@@ -254,6 +263,7 @@ def register_routes(app: Flask) -> None:
             chart_id=chart_id,
         )
         record.log(f"Re-wrote AAVSO file with {len(observations)} of {len(record.result.get('observations', []))} frames.")
+        record.result["aavso_preview"] = _read_aavso_preview(upload_path, max_rows=5)
         runs.persist(record)
         return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)
 
@@ -273,17 +283,54 @@ def register_routes(app: Flask) -> None:
         runs: RunRegistry = current_app.config["RUNS"]
         return render_template("runs.html", runs=runs.all())
 
+    @app.route("/settings", methods=["GET", "POST"])
+    def settings_page():
+        from .settings import load_settings, save_settings
+
+        state_dir: Path | None = current_app.config.get("STATE_DIR")
+        saved = False
+        if request.method == "POST":
+            current = load_settings(state_dir)
+            current["observer_code"] = request.form.get("observer_code", "").strip()
+            current["default_config"] = request.form.get("default_config", "").strip() or "config/s30_pro_jc.yaml"
+            try:
+                hours = float(request.form.get("default_hours", "4"))
+            except ValueError:
+                hours = 4.0
+            current["default_hours"] = max(0.5, min(14.0, hours))
+            save_settings(state_dir, current)
+            saved = True
+        settings = load_settings(state_dir)
+        return render_template("settings.html", settings=settings, saved=saved)
+
     # --- Layer 3: NINA monitor ---
 
     @app.route("/nina")
     def nina_dashboard():
-        return render_template("nina.html", base_url=current_app.config["NINA"].base_url)
+        nina_targets_path = current_app.config["OUTPUT_DIR"] / "nina_targets.csv"
+        return render_template(
+            "nina.html",
+            base_url=current_app.config["NINA"].base_url,
+            nina_targets_exists=nina_targets_path.exists(),
+            nina_targets_path=str(nina_targets_path),
+            nina_push_result=request.args.get("push_result"),
+        )
 
     @app.route("/nina/partial")
     def nina_partial():
         nina = current_app.config["NINA"]
         status = nina.status()
         return render_template("nina_partial.html", status=status, base_url=nina.base_url)
+
+    @app.route("/nina/push-schedule", methods=["POST"])
+    def nina_push_schedule():
+        nina = current_app.config["NINA"]
+        csv_path = current_app.config["OUTPUT_DIR"] / "nina_targets.csv"
+        if not csv_path.exists():
+            return redirect(url_for("nina_dashboard", push_result="no-schedule"))
+        result = nina.push_schedule(str(csv_path))
+        outcome = "ok" if result.get("ok") else "failed"
+        return redirect(url_for("nina_dashboard", push_result=outcome))
 
 
 # --- Background-task implementations ---
@@ -415,6 +462,8 @@ def _execute_submit(
     comp_path: Path | None,
     observer_code: str,
     chart_id: str,
+    target_slug: str | None = None,
+    runs: RunRegistry | None = None,
 ) -> dict:
     from ..photometry import CompStar, process_capture, write_aavso_extended_file
     from ..vsx import fetch_vsx_target_by_name
@@ -590,6 +639,7 @@ def _execute_submit(
     )
 
     record.log(f"Median mag {median_mag:.3f}; wrote {upload_path.name}")
+    record.result["aavso_preview"] = _read_aavso_preview(upload_path, max_rows=5)
 
     # Pull recent AAVSO obs for context overlay; failure is non-fatal.
     aavso_recent = _fetch_aavso_recent_samples(target_name)
@@ -609,8 +659,12 @@ def _execute_submit(
 
     from ..lightcurve import plot_phase_folded, plot_session_light_curve
 
+    prior_sessions = _collect_prior_session_observations(runs, target_slug, record.run_id)
+    if prior_sessions:
+        record.log(f"Overlaying {len(prior_sessions)} observations from prior sessions of this target.")
+
     lightcurve_path = target_dir / "lightcurve.png"
-    if plot_session_light_curve(observations, target_name, lightcurve_path, aavso_recent):
+    if plot_session_light_curve(observations, target_name, lightcurve_path, aavso_recent, prior_sessions=prior_sessions):
         record.result["lightcurve_path"] = str(lightcurve_path)
         record.log(f"Wrote light curve: {lightcurve_path.name}")
 
@@ -622,6 +676,7 @@ def _execute_submit(
             vsx_target.period_days,
             folded_path,
             aavso_recent,
+            prior_sessions=prior_sessions,
         ):
             record.result["folded_path"] = str(folded_path)
             record.log(f"Wrote phase-folded light curve: {folded_path.name}")
@@ -631,6 +686,63 @@ def _execute_submit(
     record.result["median_mag"] = median_mag
     record.result["upload_path"] = str(upload_path)
     return record.result
+
+
+def _collect_prior_session_observations(
+    runs: RunRegistry | None,
+    target_slug: str | None,
+    current_run_id: str,
+) -> list[tuple[float, float, str]] | None:
+    """Pull (jd, mag, band) tuples from prior `submit:<slug>` runs so the
+    light curve can overlay the user's own multi-night history."""
+    if runs is None or target_slug is None:
+        return None
+    kind = f"submit:{target_slug}"
+    samples: list[tuple[float, float, str]] = []
+    for prior in runs.all():
+        if prior.kind != kind:
+            continue
+        if prior.run_id == current_run_id:
+            continue
+        if prior.status != "done" or not prior.result:
+            continue
+        for entry in prior.result.get("observations", []) or []:
+            jd = entry.get("julian_date")
+            mag = entry.get("magnitude")
+            band = entry.get("band") or "TG"
+            if jd is None or mag is None:
+                continue
+            samples.append((float(jd), float(mag), band))
+    return samples or None
+
+
+def _read_aavso_preview(path: Path, max_rows: int = 5) -> str:
+    """Return the AAVSO Extended File header lines plus the first few data
+    rows, so the user can sanity-check the upload before downloading. Header
+    lines start with '#' (TYPE/OBSCODE/SOFTWARE/DELIM/DATE/OBSTYPE/column
+    spec); after that we keep up to `max_rows` data rows."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    lines = text.splitlines()
+    out: list[str] = []
+    data_rows = 0
+    for line in lines:
+        if line.startswith("#"):
+            out.append(line)
+            continue
+        if not line.strip():
+            continue
+        if data_rows < max_rows:
+            out.append(line)
+            data_rows += 1
+        else:
+            remaining = sum(1 for rest in lines[lines.index(line):] if rest.strip() and not rest.startswith("#"))
+            if remaining > max_rows:
+                out.append(f"… ({remaining - max_rows} more data rows)")
+            break
+    return "\n".join(out)
 
 
 def _fetch_aavso_recent_samples(target_name: str) -> list[tuple[float, float, str]] | None:
@@ -708,6 +820,34 @@ def _build_schedule_status(
                 }
             )
     out.sort(key=lambda r: r["order"])
+    return out
+
+
+def _read_overflow_targets(overflow_csv: Path) -> list[dict]:
+    """Read the overflow CSV (deferred candidates) for the photometry index.
+    Returns [] if the file doesn't exist yet (no schedule run, or no overflow)."""
+    if not overflow_csv.exists():
+        return []
+    import csv as _csv
+
+    out: list[dict] = []
+    try:
+        with overflow_csv.open(encoding="utf-8") as handle:
+            for row in _csv.DictReader(handle):
+                name = row.get("name", "").strip()
+                if not name:
+                    continue
+                out.append(
+                    {
+                        "name": name,
+                        "var_type": row.get("var_type", "") or "—",
+                        "max_mag": row.get("max_mag", "") or "—",
+                        "best_local_time": row.get("best_local_time", "") or "—",
+                        "score": row.get("score", "") or "—",
+                    }
+                )
+    except OSError:
+        return []
     return out
 
 

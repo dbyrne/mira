@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Settings - AAVSO Anomaly Scout{% endblock %}
+{% block content %}
+<section class="card primary">
+  <h2>Settings</h2>
+  {% if saved %}
+  <p class="status-done" style="display: inline-block; padding: 0.4rem 0.8rem;">Saved.</p>
+  {% endif %}
+  <form action="{{ url_for('settings_page') }}" method="post" class="kickoff-form">
+    <label class="full-width">
+      Observer code (your AAVSO code)
+      <input type="text" name="observer_code" value="{{ settings.observer_code or '' }}">
+    </label>
+    <label class="full-width">
+      Default config file (used by Generate tonight's plan)
+      <input type="text" name="default_config" value="{{ settings.default_config or 'config/s30_pro_jc.yaml' }}">
+    </label>
+    <label>
+      Default look-ahead hours
+      <input type="number" name="default_hours" min="0.5" max="14" step="0.5" value="{{ settings.default_hours or 4 }}">
+    </label>
+    <div></div>
+    <button type="submit" class="btn-primary full-width">Save settings</button>
+  </form>
+  <p class="meta">Settings are persisted to <code>state_dir/settings.json</code> and survive server restarts.</p>
+</section>
+{% endblock %}

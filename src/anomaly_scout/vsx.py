@@ -10,7 +10,7 @@ from typing import Iterable
 
 import requests
 
-from .cache import cached_get
+from .cache import CachedResponse, cached_get
 from .config import VsxQueryConfig
 from .models import VsxTarget
 
@@ -78,7 +78,9 @@ def _sample_bin(rows: list[VsxTarget], target_count: int, seed: int) -> list[Vsx
     return rng.sample(rows, target_count)
 
 
-def _get_with_retries(params: dict[str, str], timeout_seconds: int, attempts: int = 3) -> requests.Response | None:
+def _get_with_retries(
+    params: dict[str, str], timeout_seconds: int, attempts: int = 3
+) -> requests.Response | CachedResponse | None:
     for attempt in range(1, attempts + 1):
         try:
             response = cached_get(VIZIER_ASU_TSV_URL, params=params, timeout=timeout_seconds, namespace="vsx")

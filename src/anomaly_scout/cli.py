@@ -6,8 +6,6 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-_run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 from .aavso import apply_aavso_score, enrich_candidates_with_aavso, fetch_recent_observation_count
 from .config import load_config
 from .gaia import apply_gaia_score, enrich_candidates_with_gaia, fetch_gaia_match
@@ -21,6 +19,8 @@ from .scoring import apply_ztf_score, build_candidates, build_single_candidate, 
 from .simbad import enrich_candidates_with_simbad, fetch_simbad_match
 from .vsx import fetch_vsx_target_by_name, fetch_vsx_targets
 from .ztf import enrich_with_ztf
+
+_run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main() -> None:
@@ -376,12 +376,6 @@ def run(args: argparse.Namespace) -> None:
         candidates.sort(key=candidate_sort_key)
         print(f"Fetched Gaia DR3 context for {gaia_count} candidates")
 
-    gaia_top = config.gaia.enrich_top if args.gaia_top is None else max(0, int(args.gaia_top))
-    if config.gaia.enabled and gaia_top:
-        checked = min(gaia_top, len(candidates))
-        print(f"Fetching Gaia DR3 context for top {checked} candidates...")
-        enrich_candidates_with_gaia(candidates, config, limit=gaia_top)
-
     ztf_top = max(0, int(args.ztf_top or 0))
     ztf_count = 0
     if config.ztf.enabled and ztf_top:
@@ -444,7 +438,7 @@ def webapp(args: argparse.Namespace) -> None:
         nina_base_url=args.nina_url,
     )
 
-    print(f"AAVSO Anomaly Scout webapp")
+    print("AAVSO Anomaly Scout webapp")
     print(f"  Output dir:    {output_dir}")
     print(f"  Captures root: {captures_root}")
     print(f"  NINA API:      {args.nina_url}")
@@ -590,6 +584,11 @@ def submit(args: argparse.Namespace) -> None:
     observations = []
     failures = []
     for fits_path in fits_files:
+        skipped_comps: list[str] = []
+
+        def _skip_log(comp, reason: str, _skipped=skipped_comps) -> None:
+            _skipped.append(f"{comp.label}: {reason}")
+
         try:
             obs = process_capture(
                 fits_path,
@@ -598,7 +597,10 @@ def submit(args: argparse.Namespace) -> None:
                 vsx_target.dec_deg,
                 comps,
                 aperture_radius_arcsec=args.aperture_arcsec,
+                on_comp_skipped=_skip_log,
             )
+            if skipped_comps:
+                print(f"  {fits_path.name}: skipped {len(skipped_comps)} comp(s) — {'; '.join(skipped_comps[:3])}")
         except Exception as exc:
             failures.append((fits_path.name, str(exc)))
             continue
@@ -633,7 +635,7 @@ def submit(args: argparse.Namespace) -> None:
         f"{median_mag:.3f} (range {min(mags):.3f}–{max(mags):.3f})"
     )
     print(f"Wrote {output_path}")
-    print(f"Verify the file, then upload at: https://www.aavso.org/webobs/file")
+    print("Verify the file, then upload at: https://www.aavso.org/webobs/file")
 
 
 def tonight(args: argparse.Namespace) -> None:

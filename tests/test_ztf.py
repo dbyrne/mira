@@ -5,13 +5,13 @@ from unittest import TestCase
 
 import numpy as np
 
-from anomaly_scout.ztf import (
+from anomaly_scout.period_analysis import (
     PERIOD_MAX_DAYS,
     PERIOD_MIN_DAYS,
     assess_period_disagreement,
-    estimate_period_from_rows,
     period_disagreement,
 )
+from anomaly_scout.ztf import estimate_period_from_rows
 
 
 class PeriodEstimationTests(TestCase):

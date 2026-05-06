@@ -18,7 +18,6 @@ from typing import Any
 
 from .scheduler import ScheduledTarget, ScheduleResult
 from .session_plan import (
-    MagnitudeSummary,
     dec_to_dms,
     expected_magnitude_summary,
     ra_to_hms,
@@ -326,7 +325,6 @@ def write_session_schedule_html(
     site = config.sites[0]
     duration = (schedule.window_end - schedule.window_start).total_seconds() / 3600.0
     total_integration = sum(t.integration_minutes for t in schedule.scheduled)
-    total_slew = sum(t.slew_minutes for t in schedule.scheduled[:-1]) if len(schedule.scheduled) > 1 else 0.0
     metadata = metadata or {}
 
     parts: list[str] = [
@@ -771,7 +769,7 @@ def _fmt(value: float | None, digits: int = 3) -> str:
 def _jd_to_iso(jd: float | None) -> str | None:
     if jd is None:
         return None
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     unix_secs = (jd - 2440587.5) * 86400
     try:

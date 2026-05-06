@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 from flask import Flask, Response, abort, current_app, redirect, render_template, request, send_from_directory, url_for
 
@@ -191,7 +190,7 @@ def register_routes(app: Flask) -> None:
         update_setting(current_app.config.get("STATE_DIR"), "observer_code", observer_code)
         session_store = current_app.config.get("SESSION_STORE")
 
-        record = runs.submit(
+        runs.submit(
             kind=_submit_kind(target_slug, resolved_date),
             label=f"submit: {target_name}" + (f" [{resolved_date}]" if resolved_date else ""),
             target_callable=lambda rec: _execute_submit(
@@ -565,7 +564,7 @@ def register_routes(app: Flask) -> None:
 def _execute_tonight(record: RunRecord, config_path: str, hours: float, mode: str | None, output_dir: Path) -> dict:
     """Run the same logic as anomaly-scout tonight, reporting progress on the record."""
     from dataclasses import replace as dc_replace
-    from datetime import date, datetime, timedelta
+    from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
 
     from ..aavso import enrich_candidates_with_aavso
@@ -810,6 +809,11 @@ def _execute_submit(
     observations = []
     failures = []
     for index, path in enumerate(fits_files):
+        skipped_comps: list[str] = []
+
+        def _skip_log(comp, reason: str, _path=path, _skipped=skipped_comps) -> None:
+            _skipped.append(f"{comp.label}: {reason}")
+
         try:
             obs = process_capture(
                 path,
@@ -817,7 +821,10 @@ def _execute_submit(
                 vsx_target.ra_deg,
                 vsx_target.dec_deg,
                 comps,
+                on_comp_skipped=_skip_log,
             )
+            if skipped_comps:
+                record.log(f"  {path.name}: skipped {len(skipped_comps)} comp(s) — {'; '.join(skipped_comps[:3])}")
         except Exception as exc:
             failures.append((path.name, str(exc)))
             record.log(f"  {path.name}: failed ({exc})")
@@ -1006,20 +1013,21 @@ def _read_aavso_preview(path: Path, max_rows: int = 5) -> str:
         return ""
     lines = text.splitlines()
     out: list[str] = []
-    data_rows = 0
+    total_data_rows = sum(1 for line in lines if line.strip() and not line.startswith("#"))
+    data_rows_kept = 0
     for line in lines:
         if line.startswith("#"):
             out.append(line)
             continue
         if not line.strip():
             continue
-        if data_rows < max_rows:
+        if data_rows_kept < max_rows:
             out.append(line)
-            data_rows += 1
+            data_rows_kept += 1
         else:
-            remaining = sum(1 for rest in lines[lines.index(line):] if rest.strip() and not rest.startswith("#"))
-            if remaining > max_rows:
-                out.append(f"… ({remaining - max_rows} more data rows)")
+            remaining = total_data_rows - data_rows_kept
+            if remaining > 0:
+                out.append(f"… ({remaining} more data rows)")
             break
     return "\n".join(out)
 

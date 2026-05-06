@@ -39,8 +39,8 @@ def build_candidates(targets: list[VsxTarget], config: ScoutConfig, start_date=N
                 continue
             if abs(observability.galactic_latitude_deg) < site.filters.min_galactic_latitude_abs_deg:
                 continue
-            site_score, site_reasons = score_candidate(target, site, observability, config)
-            viable.append((site, observability, site_score, site_reasons))
+            score_for_site, reasons_for_site = score_candidate(target, site, observability, config)
+            viable.append((site, observability, score_for_site, reasons_for_site))
 
         if not viable:
             continue
@@ -125,7 +125,7 @@ def build_single_candidate(
                 others = [n for n in viable_names if n != site_name]
                 if others:
                     reasons.append(f"also observable from {', '.join(others)}")
-        best_site_name = max(site_scores, key=site_scores.get)
+        best_site_name = max(site_scores, key=lambda name: site_scores[name])
         global_score = site_scores[best_site_name]
         global_reasons = list(site_reasons[best_site_name])
     else:
@@ -145,8 +145,12 @@ def build_single_candidate(
 
 def candidate_sort_key(candidate: Candidate) -> tuple:
     aavso = candidate.aavso
-    aavso_known = aavso is not None and aavso.status in ("ok", "ok-cached")
-    aavso_recent = aavso.recent_observations if aavso_known else 10**9
+    if aavso is not None and aavso.status in ("ok", "ok-cached"):
+        aavso_known = True
+        aavso_recent = aavso.recent_observations
+    else:
+        aavso_known = False
+        aavso_recent = 10**9
     obs = candidate.best_observability
     amplitude = candidate.target.catalog_amplitude
     return (

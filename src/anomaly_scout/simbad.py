@@ -4,7 +4,6 @@ import csv
 import io
 from urllib.parse import urlencode
 
-import requests
 
 from .cache import cached_get
 from .config import ScoutConfig, SimbadConfig

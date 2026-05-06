@@ -12,10 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .models import Candidate, Observability
 from .scheduler import ScheduledTarget, ScheduleResult
 from .session_plan import (
-    MagnitudeSummary,
     dec_to_dms,
     dec_to_target_scheduler_dms,
     expected_magnitude_summary,
@@ -477,7 +475,7 @@ def _format_optional(value: float | None, digits: int = 3) -> str:
 def _jd_to_iso(jd: float | None) -> str | None:
     if jd is None:
         return None
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     unix_secs = (jd - 2440587.5) * 86400
     try:

@@ -3,10 +3,8 @@ from __future__ import annotations
 import csv
 import io
 from pathlib import Path
-from urllib.parse import urlencode
 
 import matplotlib.pyplot as plt
-import requests
 
 from .cache import cached_get
 from .config import ZtfConfig
@@ -16,7 +14,6 @@ from .period_analysis import (
     PERIOD_MIN_DAYS,
     assess_period_disagreement,
     estimate_period,
-    period_disagreement,
 )
 
 ZTF_LIGHT_CURVE_URL = "https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves"
@@ -35,8 +32,10 @@ def enrich_with_ztf(candidate: Candidate, config: ZtfConfig, packet_dir: Path) -
         note = "; ".join(errors) if errors else "no ZTF rows returned"
         return ZtfStats(status="unavailable", note=note)
 
-    mags = [_parse_float(row.get("mag") or row.get("MAG")) for row in rows]
-    mags = [mag for mag in mags if mag is not None]
+    mags: list[float] = [
+        m for m in (_parse_float(row.get("mag") or row.get("MAG")) for row in rows)
+        if m is not None
+    ]
     bands = sorted({(row.get("filtercode") or row.get("band") or row.get("BAND") or "").strip() for row in rows})
     if not mags:
         return ZtfStats(status="parsed-no-magnitudes", observations=len(rows), bands=tuple(bands))
@@ -143,7 +142,6 @@ def fetch_ztf_light_curve(ra_deg: float, dec_deg: float, band: str, config: ZtfC
         "BAD_CATFLAGS_MASK": str(config.bad_catflags_mask),
         "FORMAT": "csv",
     }
-    url = f"{ZTF_LIGHT_CURVE_URL}?{urlencode(params)}"
     response = cached_get(ZTF_LIGHT_CURVE_URL, params=params, timeout=config.timeout_seconds, namespace="ztf")
     response.raise_for_status()
     return parse_light_curve_table(response.text)

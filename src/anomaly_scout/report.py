@@ -138,8 +138,12 @@ def _per_site_sort_key(candidate: Candidate, site_name: str) -> tuple:
         # Should never happen - caller filters first - but be defensive.
         return candidate_sort_key(candidate)
     aavso = candidate.aavso
-    aavso_known = aavso is not None and aavso.status in ("ok", "ok-cached")
-    aavso_recent = aavso.recent_observations if aavso_known else 10**9
+    if aavso is not None and aavso.status in ("ok", "ok-cached"):
+        aavso_known = True
+        aavso_recent = aavso.recent_observations
+    else:
+        aavso_known = False
+        aavso_recent = 10**9
     amplitude = candidate.target.catalog_amplitude
     site_score = candidate.site_scores.get(site_name, candidate.score)
     return (

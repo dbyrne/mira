@@ -4,7 +4,7 @@ import csv
 import io
 import json
 import xml.etree.ElementTree as ET
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote_plus
 

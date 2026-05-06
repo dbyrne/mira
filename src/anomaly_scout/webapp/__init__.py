@@ -14,15 +14,13 @@ in-flight work, which is fine for a personal observing tool.
 """
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from datetime import datetime, timezone
+from pathlib import Path
 
-from flask import Flask, render_template, request, redirect, url_for, abort, send_file, Response
+from flask import Flask
 
-from .runs import RunRegistry
 from .nina_client import NinaClient
+from .runs import RunRegistry
 
 
 def create_app(

@@ -14,16 +14,13 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import numpy as np
 from astropy.io import fits
-from astropy.stats import sigma_clipped_stats
 from astropy.wcs import WCS
 from photutils.aperture import (
     ApertureStats,
-    CircularAnnulus,
-    CircularAperture,
     SkyCircularAnnulus,
     SkyCircularAperture,
     aperture_photometry,
@@ -70,9 +67,9 @@ def read_fits_with_wcs(path: Path) -> tuple[np.ndarray, WCS, dict]:
     with fits.open(path) as hdul:
         # NINA writes single-extension FITS (PrimaryHDU). Some pipelines write
         # the image in extension 1 instead. Look in both.
-        image = None
-        wcs = None
-        header = None
+        image: np.ndarray | None = None
+        wcs: WCS | None = None
+        header: dict = {}
         for hdu in hdul:
             if hdu.data is not None and hdu.data.ndim >= 2:
                 image = np.asarray(hdu.data, dtype=float)
@@ -202,6 +199,7 @@ def process_capture(
     target_dec_deg: float,
     comp_stars: list[CompStar],
     aperture_radius_arcsec: float = 6.0,
+    on_comp_skipped: Callable[[CompStar, str], None] | None = None,
 ) -> Observation | None:
     """Run photometry on one FITS file.
 
@@ -209,6 +207,11 @@ def process_capture(
     Uses a multi-comp weighted ensemble (with MAD-based outlier rejection)
     when 2+ comps are usable; falls back to single-comp differential when
     only one survives.
+
+    `on_comp_skipped(comp, reason)` is invoked when a comp star can't be
+    used for this frame (out of bounds, exception, non-positive flux).
+    Default is silent; callers should pass a logger so the user knows
+    why the ensemble is smaller than they expected.
     """
     image, wcs, header = read_fits_with_wcs(fits_path)
     target_flux, target_err = aperture_flux_at_radec(
@@ -223,9 +226,13 @@ def process_capture(
             comp_flux, comp_err = aperture_flux_at_radec(
                 image, wcs, comp.ra_deg, comp.dec_deg, aperture_radius_arcsec
             )
-        except Exception:
+        except Exception as exc:
+            if on_comp_skipped is not None:
+                on_comp_skipped(comp, f"aperture failed: {exc}")
             continue
         if comp_flux <= 0:
+            if on_comp_skipped is not None:
+                on_comp_skipped(comp, f"non-positive flux ({comp_flux:.1f})")
             continue
         comp_results.append((comp, comp_flux, comp_err))
 

@@ -11,7 +11,6 @@ can be rebuilt at any time by walking the JSON files).
 from __future__ import annotations
 
 import contextlib
-import json
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -105,7 +104,7 @@ class SessionStore:
         observations: Iterable[dict[str, Any]],
     ) -> int:
         with self._lock, self._connect() as conn:
-            cur = conn.execute(
+            conn.execute(
                 """
                 INSERT INTO sessions (
                     run_id, target_name, target_slug, session_date, observer_code,
@@ -129,10 +128,14 @@ class SessionStore:
                     submitted_at, created_at,
                 ),
             )
-            session_id = cur.lastrowid
-            if session_id == 0:  # UPDATE path; fetch existing id
-                row = conn.execute("SELECT id FROM sessions WHERE run_id = ?", (run_id,)).fetchone()
-                session_id = row["id"]
+            # `lastrowid` reflects the INSERT path's new row id; on the UPDATE
+            # branch of ON CONFLICT it can be 0 or stale, so always re-resolve
+            # from the canonical `run_id` lookup. Raise rather than silently
+            # writing observations to session_id=0 (orphan rows).
+            row = conn.execute("SELECT id FROM sessions WHERE run_id = ?", (run_id,)).fetchone()
+            if row is None:
+                raise RuntimeError(f"upsert_session: failed to resolve session id for run {run_id!r}")
+            session_id = int(row["id"])
 
             # Replace observations for this session (simpler than diffing).
             conn.execute("DELETE FROM observations WHERE session_id = ?", (session_id,))

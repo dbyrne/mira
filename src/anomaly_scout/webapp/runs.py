@@ -18,6 +18,20 @@ from typing import Any, Callable, Literal
 RunStatus = Literal["queued", "running", "done", "failed"]
 
 
+def _deep_snapshot(value: Any) -> Any:
+    """Return a copy that won't share mutable state with the source. Used by
+    ``RunRecord.to_dict()`` so a serialized snapshot doesn't observe writes
+    that land between the snapshot start and its consumption (e.g.
+    ``json.dumps`` iterating a list mid-append)."""
+    if isinstance(value, dict):
+        return {key: _deep_snapshot(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_deep_snapshot(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_deep_snapshot(item) for item in value)
+    return value
+
+
 @dataclass
 class RunRecord:
     run_id: str
@@ -45,19 +59,38 @@ class RunRecord:
         with self._lock:
             self.progress = max(0.0, min(1.0, fraction))
 
+    def update_result(self, mutator: Callable[[Any], Any]) -> None:
+        """Atomically mutate ``self.result`` under the lock. Use this from
+        background tasks instead of manipulating ``record.result`` directly,
+        so that concurrent ``to_dict()`` snapshots don't see a torn state."""
+        with self._lock:
+            self.result = mutator(self.result)
+
     def to_dict(self) -> dict[str, Any]:
+        # Snapshot every mutable field under the lock so ``_persist()`` can't
+        # serialize a half-updated state while a background thread mutates
+        # log_lines / result / progress.
+        with self._lock:
+            log_snapshot = list(self.log_lines)
+            result_snapshot = _deep_snapshot(self.result)
+            progress = self.progress
+            status = self.status
+            error = self.error
+            created = self.created_at
+            started = self.started_at
+            finished = self.finished_at
         return {
             "run_id": self.run_id,
             "kind": self.kind,
             "label": self.label,
-            "status": self.status,
-            "progress": self.progress,
-            "log_lines": list(self.log_lines),
-            "result": self.result,
-            "error": self.error,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "status": status,
+            "progress": progress,
+            "log_lines": log_snapshot,
+            "result": result_snapshot,
+            "error": error,
+            "created_at": created.isoformat() if created else None,
+            "started_at": started.isoformat() if started else None,
+            "finished_at": finished.isoformat() if finished else None,
         }
 
     @classmethod

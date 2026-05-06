@@ -140,7 +140,7 @@ def apply_gaia_score(candidate: Candidate, config: ScoutConfig) -> None:
         return
     flag = color_type_disagreement(candidate.target.var_type, gaia.bp_rp)
     if flag:
-        candidate.gaia.color_anomaly = flag
+        gaia.color_anomaly = flag
         apply_target_bonus(
             candidate,
             config.scoring.gaia_color_anomaly_bonus,

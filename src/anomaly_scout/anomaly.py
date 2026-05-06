@@ -95,7 +95,7 @@ def assess_session_anomaly(
         assessment.baseline_median = baseline_median
         assessment.baseline_sigma = baseline_sigma
         assessment.baseline_n = len(aavso_recent)
-        if baseline_sigma is not None and baseline_sigma > 0:
+        if baseline_median is not None and baseline_sigma is not None and baseline_sigma > 0:
             deviation = abs(session_median - baseline_median) / baseline_sigma
             assessment.deviation_sigma = deviation
             base_level, base_flag = _check_baseline_deviation(
@@ -167,8 +167,12 @@ def _check_baseline_deviation(
 
 def _baseline_median_and_sigma(
     samples: list[tuple[float, float, str]],
-) -> tuple[float, float | None]:
-    """Robust median and MAD-based sigma estimate of the magnitude column."""
+) -> tuple[float | None, float | None]:
+    """Robust median and MAD-based sigma estimate of the magnitude column.
+    Returns (None, None) if the sample is empty so the caller can branch
+    cleanly instead of catching IndexError."""
+    if not samples:
+        return None, None
     mags = sorted(s[1] for s in samples)
     median = mags[len(mags) // 2]
     deviations = sorted(abs(m - median) for m in mags)

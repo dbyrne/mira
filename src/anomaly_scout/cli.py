@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace as dc_replace
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from .aavso import apply_aavso_score, enrich_candidates_with_aavso, fetch_recent_observation_count
 from .config import load_config
@@ -639,140 +637,56 @@ def submit(args: argparse.Namespace) -> None:
 
 
 def tonight(args: argparse.Namespace) -> None:
-    config = load_config(args.config)
-    if args.mode is not None:
-        config = _apply_mode(config, args.mode)
-        print(f"Mode: {args.mode}")
+    """Drive the shared tonight pipeline; both this and the webapp's
+    `/run` POST end up in the same orchestration to avoid drift."""
+    from .tonight_pipeline import PrintReporter, TonightOptions, run_tonight_pipeline
 
-    # Override each site to look at tonight only.
-    new_sites = tuple(
-        dc_replace(site, observing_window=dc_replace(site.observing_window, nights=1))
-        for site in config.sites
+    base_output = Path(args.output_dir) if args.output_dir else None
+    if base_output is not None:
+        # Match the historical CLI behavior: --output-dir is a *base* dir,
+        # the pipeline writes into <base>/tonight/. clean_previous_outputs
+        # only on this CLI path; the webapp doesn't clean.
+        clean_previous_outputs(base_output / "tonight")
+
+    opts = TonightOptions(
+        config_path=args.config,
+        hours=args.hours,
+        mode=args.mode,
+        output_dir=base_output,
+        top_packets=args.top,
+        aavso_top=args.aavso_top,
+        simbad_top=args.simbad_top,
+        gaia_top=args.gaia_top,
+        archive=False,
+        extra_metadata={"run_started_utc": _run_timestamp},
     )
-    config = dc_replace(config, sites=new_sites)
-
-    top_packets = args.top if args.top is not None else config.output.top_packets
-    base_output = Path(args.output_dir) if args.output_dir else config.output.directory
-    output_dir = base_output / "tonight"
-    packet_dir = output_dir / "candidate_packets"
-    clean_previous_outputs(output_dir)
-
-    today = date.today()
-    primary_tz = ZoneInfo(config.sites[0].observer.timezone)
-    now_local = datetime.now(primary_tz)
-    window_end = now_local + timedelta(hours=args.hours)
-
-    print(
-        f"Tonight: {today.isoformat()}, looking ahead {args.hours:g}h "
-        f"({now_local.strftime('%H:%M')} -> {window_end.strftime('%H:%M %Z')})"
-    )
-
-    print(f"Fetching up to {config.vsx_query.row_limit} VSX rows from VizieR...")
-    targets = fetch_vsx_targets(config.vsx_query)
-    candidates = build_candidates(targets, config, start_date=today)
-    print(f"{len(candidates)} targets passed site filters for tonight")
-
-    candidates = _filter_to_window(candidates, now_local, window_end)
-    print(f"{len(candidates)} targets observable in the next {args.hours:g}h")
-
-    if not candidates:
+    result = run_tonight_pipeline(opts, PrintReporter())
+    if result is None:
         print(
             "Nothing in the next window. Try: increase --hours, run later when "
             "stars are higher, or use 'anomaly-scout run' to see the multi-night queue."
         )
         return
 
-    site_names = [site.name for site in config.sites]
-    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
-
-    aavso_top = config.aavso.enrich_top if args.aavso_top is None else max(0, int(args.aavso_top))
-    aavso_count = 0
-    if config.aavso.enabled and (aavso_top or union_oids):
-        aavso_count = enrich_candidates_with_aavso(candidates, config, limit=aavso_top, extra_oids=union_oids)
-        print(f"AAVSO enriched: {aavso_count}")
-
-    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
-    simbad_top = config.simbad.enrich_top if args.simbad_top is None else max(0, int(args.simbad_top))
-    simbad_count = 0
-    if config.simbad.enabled and (simbad_top or union_oids):
-        simbad_count = enrich_candidates_with_simbad(candidates, config, limit=simbad_top, extra_oids=union_oids)
-        print(f"SIMBAD enriched: {simbad_count}")
-
-    gaia_top = config.gaia.enrich_top if args.gaia_top is None else max(0, int(args.gaia_top))
-    gaia_count = 0
-    if config.gaia.enabled and (gaia_top or union_oids):
-        gaia_count = enrich_candidates_with_gaia(candidates, config, limit=gaia_top, extra_oids=union_oids)
-        candidates.sort(key=candidate_sort_key)
-        print(f"Gaia enriched: {gaia_count}")
-
-    metadata = {
-        "config_path": args.config,
-        "output_dir": str(output_dir),
-        "start_date": today.isoformat(),
-        "mode": args.mode or "(yaml defaults)",
-        "vsx_row_limit": config.vsx_query.row_limit,
-        "candidates_after_filters": len(candidates),
-        "aavso_enriched": aavso_count,
-        "simbad_enriched": simbad_count,
-        "gaia_enriched": gaia_count,
-        "ztf_enriched": 0,
-        "top_packets_per_view": top_packets,
-        "run_started_utc": _run_timestamp,
-        "tonight_window_start": now_local.isoformat(),
-        "tonight_window_end": window_end.isoformat(),
-        "tonight_hours": args.hours,
-    }
-
-    packet_count = write_outputs(
-        candidates,
-        output_dir,
-        top_packets,
-        site_names=site_names,
-        metadata=metadata,
-    )
-
-    from .nightly_html import write_session_schedule_html
-    from .scheduler import build_session_schedule
-    from .session_plan import write_session_plan
-    from .session_schedule import write_session_schedule_outputs
-
-    plan_targets = candidates[:top_packets]
-    write_session_plan(plan_targets, output_dir, now_local, window_end, config)
-
-    schedule = build_session_schedule(
-        candidates,
-        window_start=now_local,
-        window_end=window_end,
-    )
-    write_session_schedule_outputs(schedule, output_dir, config)
-    write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
-
+    output_dir = result.output_dir
     print(f"Wrote {output_dir / 'candidate_queue.csv'}")
     print(f"Wrote {output_dir / 'session_plan.md'} (full menu)")
     print(f"Wrote {output_dir / 'session_plan.csv'}")
     print(
         f"Wrote {output_dir / 'session_schedule.md'} "
-        f"({len(schedule.scheduled)} targets scheduled, {len(schedule.overflow)} overflow)"
+        f"({result.scheduled} targets scheduled, {result.overflow} overflow)"
     )
     print(f"Wrote {output_dir / 'session_schedule.csv'}")
     print(f"Wrote {output_dir / 'session_schedule.html'} (phone-readable)")
     print(f"Wrote {output_dir / 'nina_targets.csv'} (scheduled targets in execution order)")
-    print(f"Wrote {packet_count} packets in {packet_dir}")
+    print(f"Wrote {result.packet_count} packets in {output_dir / 'candidate_packets'}")
 
 
 def _filter_to_window(candidates, now_local: datetime, window_end: datetime) -> list:
-    """Keep candidates with at least one observability whose best_local_time
-    falls in [now-1h, window_end]. The 1h hindsight tolerance accounts for
-    'best moment is just past, target is still observable.'
-    """
-    earliest = now_local - timedelta(hours=1)
-    return [
-        c for c in candidates
-        if any(
-            obs.best_local_time and earliest <= obs.best_local_time <= window_end
-            for obs in c.observabilities
-        )
-    ]
+    """Backwards-compat shim — delegates to tonight_pipeline.filter_to_window
+    so existing callers (and any tests) keep working through the import."""
+    from .tonight_pipeline import filter_to_window
+    return filter_to_window(candidates, now_local, window_end)
 
 
 def target(args: argparse.Namespace) -> None:

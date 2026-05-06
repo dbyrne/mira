@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import date
 from pathlib import Path
 
 from flask import Flask, Response, abort, current_app, redirect, render_template, request, send_from_directory, url_for
@@ -561,151 +560,45 @@ def register_routes(app: Flask) -> None:
 
 # --- Background-task implementations ---
 
+class _RecordReporter:
+    """Adapt RunRecord.log/set_progress onto the tonight_pipeline.Reporter
+    protocol so the webapp can use the shared pipeline."""
+
+    def __init__(self, record: RunRecord) -> None:
+        self._record = record
+
+    def log(self, message: str) -> None:
+        self._record.log(message)
+
+    def progress(self, fraction: float) -> None:
+        self._record.set_progress(fraction)
+
+
 def _execute_tonight(record: RunRecord, config_path: str, hours: float, mode: str | None, output_dir: Path) -> dict:
-    """Run the same logic as anomaly-scout tonight, reporting progress on the record."""
-    from dataclasses import replace as dc_replace
-    from datetime import datetime, timedelta
-    from zoneinfo import ZoneInfo
+    """Webapp wrapper around the shared tonight pipeline. `output_dir` is
+    the *base* directory (e.g. ``output/s30_pro_jc/``); the pipeline writes
+    to ``<base>/tonight/``."""
+    from ..tonight_pipeline import TonightOptions, run_tonight_pipeline
 
-    from ..aavso import enrich_candidates_with_aavso
-    from ..config import load_config
-    from ..gaia import enrich_candidates_with_gaia
-    from ..nightly_html import write_session_schedule_html
-    from ..report import compute_packet_union_oids, write_outputs
-    from ..scheduler import build_session_schedule
-    from ..scoring import build_candidates, candidate_sort_key
-    from ..session_plan import write_session_plan
-    from ..session_schedule import write_session_schedule_outputs
-    from ..simbad import enrich_candidates_with_simbad
-    from ..vsx import fetch_vsx_targets
-
-    record.set_progress(0.05)
-    record.log(f"Loading config: {config_path}")
-    config = load_config(config_path)
-
-    # Apply mode if given
-    if mode:
-        from ..cli import _apply_mode
-        config = _apply_mode(config, mode)
-        record.log(f"Mode: {mode}")
-
-    # Override sites to nights=1
-    new_sites = tuple(
-        dc_replace(site, observing_window=dc_replace(site.observing_window, nights=1))
-        for site in config.sites
+    base_output = output_dir.parent if output_dir.name == "tonight" else output_dir
+    opts = TonightOptions(
+        config_path=config_path,
+        hours=hours,
+        mode=mode,
+        output_dir=base_output,
+        archive=True,
     )
-    config = dc_replace(config, sites=new_sites)
-
-    today = date.today()
-    primary_tz = ZoneInfo(config.sites[0].observer.timezone)
-    now_local = datetime.now(primary_tz)
-    window_end = now_local + timedelta(hours=hours)
-
-    record.log(f"Tonight = {today}; window = {now_local.strftime('%H:%M')} -> {window_end.strftime('%H:%M %Z')}")
-    record.set_progress(0.1)
-
-    record.log(f"Fetching up to {config.vsx_query.row_limit} VSX rows...")
-    targets = fetch_vsx_targets(config.vsx_query)
-    record.log(f"Fetched {len(targets)} catalog rows.")
-    record.set_progress(0.25)
-
-    candidates = build_candidates(targets, config, start_date=today)
-    record.log(f"{len(candidates)} targets passed site filters.")
-
-    earliest = now_local - timedelta(hours=1)
-    candidates = [
-        c for c in candidates
-        if any(
-            obs.best_local_time and earliest <= obs.best_local_time <= window_end
-            for obs in c.observabilities
-        )
-    ]
-    record.log(f"{len(candidates)} observable in the next {hours:g}h.")
-    record.set_progress(0.35)
-
-    if not candidates:
-        record.log("Nothing observable; widen --hours or run later.")
+    result = run_tonight_pipeline(opts, _RecordReporter(record))
+    if result is None:
         return {"scheduled": 0, "schedule_path": ""}
-
-    site_names = [s.name for s in config.sites]
-    top_packets = config.output.top_packets
-
-    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
-    aavso_count = enrich_candidates_with_aavso(candidates, config, limit=config.aavso.enrich_top, extra_oids=union_oids)
-    record.log(f"AAVSO enriched: {aavso_count}")
-    record.set_progress(0.55)
-
-    union_oids = compute_packet_union_oids(candidates, top_packets, site_names)
-    simbad_count = enrich_candidates_with_simbad(candidates, config, limit=config.simbad.enrich_top, extra_oids=union_oids)
-    record.log(f"SIMBAD enriched: {simbad_count}")
-    record.set_progress(0.7)
-
-    gaia_count = enrich_candidates_with_gaia(candidates, config, limit=config.gaia.enrich_top, extra_oids=union_oids)
-    candidates.sort(key=candidate_sort_key)
-    record.log(f"Gaia enriched: {gaia_count}")
-    record.set_progress(0.85)
-
-    metadata = {
-        "config_path": config_path,
-        "output_dir": str(output_dir),
-        "start_date": today.isoformat(),
-        "mode": mode or "(yaml defaults)",
-        "vsx_row_limit": config.vsx_query.row_limit,
-        "candidates_after_filters": len(candidates),
-        "aavso_enriched": aavso_count,
-        "simbad_enriched": simbad_count,
-        "gaia_enriched": gaia_count,
-        "ztf_enriched": 0,
-        "top_packets_per_view": top_packets,
-        "tonight_window_start": now_local.isoformat(),
-        "tonight_window_end": window_end.isoformat(),
-        "tonight_hours": hours,
-    }
-
-    packet_count = write_outputs(candidates, output_dir, top_packets, site_names=site_names, metadata=metadata)
-    plan_targets = candidates[:top_packets]
-    write_session_plan(plan_targets, output_dir, now_local, window_end, config)
-    schedule = build_session_schedule(candidates, window_start=now_local, window_end=window_end)
-    write_session_schedule_outputs(schedule, output_dir, config)
-    write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
-
-    # Snapshot tonight's outputs to the dated archive so re-running tomorrow
-    # doesn't trample today's plan.
-    archive_dir = output_dir.parent / "archive" / today.isoformat()
-    _archive_tonight_outputs(output_dir, archive_dir, record)
-
-    record.log(f"Scheduled {len(schedule.scheduled)} targets, {len(schedule.overflow)} overflow.")
-    record.log(f"Packets: {packet_count}")
-    record.set_progress(1.0)
-
     return {
-        "scheduled": len(schedule.scheduled),
-        "overflow": len(schedule.overflow),
-        "packet_count": packet_count,
-        "schedule_path": str(output_dir / "session_schedule.html"),
-        "archive_path": str(archive_dir),
-        "session_date": today.isoformat(),
+        "scheduled": result.scheduled,
+        "overflow": result.overflow,
+        "packet_count": result.packet_count,
+        "schedule_path": str(result.schedule_html_path),
+        "archive_path": str(result.archive_path) if result.archive_path else "",
+        "session_date": result.session_date,
     }
-
-
-def _archive_tonight_outputs(source: Path, archive_dir: Path, record: RunRecord) -> None:
-    """Snapshot every file (and the candidate_packets dir) from `source` to
-    `archive_dir`. Best-effort; failure is logged but doesn't fail the run."""
-    import shutil as _shutil
-
-    try:
-        archive_dir.mkdir(parents=True, exist_ok=True)
-        for entry in source.iterdir():
-            dst = archive_dir / entry.name
-            if entry.is_file():
-                _shutil.copy2(entry, dst)
-            elif entry.is_dir() and entry.name == "candidate_packets":
-                if dst.exists():
-                    _shutil.rmtree(dst)
-                _shutil.copytree(entry, dst)
-        record.log(f"Archived to {archive_dir}")
-    except OSError as exc:
-        record.log(f"Archive copy failed (non-fatal): {exc}")
 
 
 def _execute_submit(

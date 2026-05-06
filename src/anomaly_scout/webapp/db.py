@@ -186,7 +186,8 @@ class SessionStore:
             sql += " WHERE " + " AND ".join(clauses)
         sql += " ORDER BY session_date DESC, created_at DESC"
         if limit:
-            sql += f" LIMIT {int(limit)}"
+            sql += " LIMIT ?"
+            params.append(int(limit))
         with self._lock, self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]

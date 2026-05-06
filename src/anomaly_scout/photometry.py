@@ -316,6 +316,16 @@ def _datetime_to_jd(dt: datetime) -> float:
     )
 
 
+def aavso_filename(target_name: str) -> str:
+    """File-system-safe filename for the per-target AAVSO upload file.
+    Strips spaces, slashes, colons, asterisks, question marks, quotes,
+    and pipe characters so the result is safe on Windows + POSIX. Used
+    by both the CLI submit command and the webapp's photometry route."""
+    forbidden = ' /\\:*?"<>|'
+    safe = "".join("_" if ch in forbidden else ch for ch in target_name)
+    return f"aavso_{safe}.txt"
+
+
 def write_aavso_extended_file(
     observations: Iterable[Observation],
     path: Path,

@@ -76,7 +76,7 @@ def execute_submit(
     layered concerns the CLI doesn't have: live frame streaming onto
     ``record.result``, anomaly assessment, plot generation, and SQLite
     upsert into the session store."""
-    from ..photometry import write_aavso_extended_file
+    from ..photometry import aavso_filename, write_aavso_extended_file
     from ..submit_pipeline import (
         FrameRecord,
         frame_to_dict,
@@ -228,7 +228,7 @@ def execute_submit(
     record.update_result(_apply_flags)
 
     median_mag = result.median_mag
-    upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
+    upload_path = target_dir / aavso_filename(target_name)
     write_aavso_extended_file(
         result.observations,
         upload_path,

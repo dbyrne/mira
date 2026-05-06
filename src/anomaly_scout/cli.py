@@ -487,7 +487,7 @@ def _print_tailscale_urls(port: int) -> None:
 def submit(args: argparse.Namespace) -> None:
     """Run photometry on captured FITS files and produce an AAVSO upload file.
     Delegates to submit_pipeline so the math matches the webapp."""
-    from .photometry import write_aavso_extended_file
+    from .photometry import aavso_filename, write_aavso_extended_file
     from .submit_pipeline import (
         FrameRecord,
         preflight_fits_dir,
@@ -597,7 +597,7 @@ def submit(args: argparse.Namespace) -> None:
         print("\nNo successful observations. Verify FITS files have a celestial WCS (NINA must plate-solve).")
         return
 
-    output_path = captures_dir / f"aavso_{args.target.replace(' ', '_').replace('/', '_')}.txt"
+    output_path = captures_dir / aavso_filename(args.target)
     write_aavso_extended_file(
         result.observations,
         output_path,

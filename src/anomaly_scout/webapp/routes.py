@@ -122,7 +122,6 @@ def register_routes(app: Flask) -> None:
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
         output_dir: Path = current_app.config["OUTPUT_DIR"]
         targets = discover_capture_targets(captures_root)
-        photometry_runs = {r.label: r for r in runs.all() if r.kind == "submit"}
         runs_by_kind = {r.kind: r for r in runs.all() if r.kind.startswith("submit:")}
         scheduled = build_schedule_status(output_dir / "session_schedule.csv", captures_root, runs_by_kind)
         overflow = read_overflow_targets(output_dir / "session_overflow.csv")
@@ -130,7 +129,6 @@ def register_routes(app: Flask) -> None:
             "photometry_index.html",
             targets=targets,
             captures_root=captures_root,
-            photometry_runs=photometry_runs,
             scheduled=scheduled,
             overflow=overflow,
         )
@@ -176,6 +174,9 @@ def register_routes(app: Flask) -> None:
         if comp_stars_input:
             candidate = Path(comp_stars_input).resolve()
             if not candidate.exists():
+                # Don't echo the resolved path back: probing for which
+                # files exist on the server is exactly the kind of
+                # information leak we don't want from a form input.
                 return render_template(
                     "photometry_target.html",
                     target_slug=target_slug,
@@ -183,7 +184,7 @@ def register_routes(app: Flask) -> None:
                     target_name=request.form.get("target_name", "").strip()
                     or dir_to_target_name(target_dir),
                     run=None,
-                    error=f"Comp-stars JSON not found: {candidate}",
+                    error="Comp-stars JSON not found at the path you provided.",
                     comp_star_default=default_comp_stars_path(target_dir),
                     session_date=resolved_date,
                     sessions=[],
@@ -291,7 +292,7 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/photometry/<target_slug>/download-with-selection", methods=["POST"])
     def photometry_download_selected(target_slug):
-        from ..photometry import Observation, write_aavso_extended_file
+        from ..photometry import Observation, aavso_filename, write_aavso_extended_file
 
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
         date = request_date()
@@ -327,7 +328,7 @@ def register_routes(app: Flask) -> None:
         target_name = record.result.get("target_name", target_slug)
         observer_code = record.result.get("observer_code", "")
         chart_id = record.result.get("chart_id", "na")
-        upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
+        upload_path = target_dir / aavso_filename(target_name)
         write_aavso_extended_file(
             observations,
             upload_path,
@@ -341,6 +342,8 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/photometry/<target_slug>/upload")
     def photometry_upload(target_slug):
+        from ..photometry import aavso_filename
+
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
         date = request_date()
         target_dir = resolve_target_dir(captures_root, target_slug, date)
@@ -348,7 +351,7 @@ def register_routes(app: Flask) -> None:
             abort(404)
         target_root = captures_root / target_slug
         target_name = dir_to_target_name(target_root if target_root.is_dir() else target_dir)
-        upload_path = target_dir / f"aavso_{target_name.replace(' ', '_')}.txt"
+        upload_path = target_dir / aavso_filename(target_name)
         if not upload_path.exists():
             abort(404)
         return send_from_directory(str(target_dir), upload_path.name, as_attachment=True)

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json as _json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable
 
 from .photometry import CompStar, Observation, process_capture, read_fits_with_wcs
 
@@ -268,23 +268,3 @@ def observation_to_dict(obs: Observation, chart_id: str) -> dict:
     }
 
 
-def observations_to_dicts(
-    frames: Iterable[FrameRecord],
-    observations: Iterable[Observation],
-    chart_id: str,
-) -> list[dict]:
-    """Pair FrameRecord (for filename) with Observation (for everything
-    else) and produce the per-frame dict list that webapp routes need."""
-    obs_iter = iter(observations)
-    out: list[dict] = []
-    for frame in frames:
-        if frame.flag in ("failed", "no-signal"):
-            continue
-        try:
-            obs = next(obs_iter)
-        except StopIteration:
-            break
-        entry = observation_to_dict(obs, chart_id)
-        entry["filename"] = frame.filename
-        out.append(entry)
-    return out

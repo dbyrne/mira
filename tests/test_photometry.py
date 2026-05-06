@@ -157,6 +157,27 @@ class EnsembleMagnitudeTests(TestCase):
         self.assertTrue(math.isnan(mag))
 
 
+class AavsoFilenameTests(TestCase):
+    def test_strips_spaces_and_slashes(self) -> None:
+        from anomaly_scout.photometry import aavso_filename
+        self.assertEqual(aavso_filename("RR Lyr"), "aavso_RR_Lyr.txt")
+        self.assertEqual(aavso_filename("AB AUR"), "aavso_AB_AUR.txt")
+        self.assertEqual(aavso_filename("V/W Cyg"), "aavso_V_W_Cyg.txt")
+
+    def test_strips_windows_forbidden_characters(self) -> None:
+        from anomaly_scout.photometry import aavso_filename
+        # Windows forbids \ : * ? " < > |
+        self.assertEqual(
+            aavso_filename('weird:name*test?<>"|\\path'),
+            "aavso_weird_name_test______path.txt",
+        )
+
+    def test_preserves_safe_punctuation(self) -> None:
+        # Hyphens, underscores, and dots are safe and should pass through
+        from anomaly_scout.photometry import aavso_filename
+        self.assertEqual(aavso_filename("ASASSN-V_J160002"), "aavso_ASASSN-V_J160002.txt")
+
+
 class AavsoFileRoundTripTests(TestCase):
     """Write an AAVSO Extended File, parse it back, and assert each row
     matches the source Observation. Catches header/column drift that

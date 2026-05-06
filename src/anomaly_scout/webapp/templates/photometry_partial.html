@@ -19,6 +19,38 @@
   {% endif %}
 </dl>
 
+{% if run.result.anomaly %}
+{% set a = run.result.anomaly %}
+<div class="anomaly-callout anomaly-{{ a.level }}">
+  <h3>
+    {% if a.level == 'anomaly' %}Possible anomaly
+    {% elif a.level == 'watch' %}Worth a closer look
+    {% else %}Consistent with expectations
+    {% endif %}
+  </h3>
+  {% if a.flags %}
+  <ul>
+    {% for flag in a.flags %}<li>{{ flag }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <dl class="meta-grid">
+    {% if a.session_median is not none %}<dt>Session median</dt><dd>{{ '%.2f'|format(a.session_median) }}</dd>{% endif %}
+    {% if a.expected_min is not none and a.expected_max is not none %}
+    <dt>Catalog range</dt><dd>{{ '%.2f'|format(a.expected_min) }} – {{ '%.2f'|format(a.expected_max) }}</dd>
+    {% elif a.expected_min is not none %}
+    <dt>Catalog max</dt><dd>{{ '%.2f'|format(a.expected_min) }}</dd>
+    {% endif %}
+    {% if a.baseline_median is not none %}
+    <dt>AAVSO baseline</dt>
+    <dd>{{ '%.2f'|format(a.baseline_median) }}{% if a.baseline_sigma is not none %} ± {{ '%.2f'|format(a.baseline_sigma) }}{% endif %} ({{ a.baseline_n }} obs, last 90d)</dd>
+    {% endif %}
+    {% if a.deviation_sigma is not none %}
+    <dt>Deviation</dt><dd>{{ '%.1f'|format(a.deviation_sigma) }}σ from baseline</dd>
+    {% endif %}
+  </dl>
+</div>
+{% endif %}
+
 {% if run.result.lightcurve_path %}
 <h3>Light curve</h3>
 <img class="lightcurve" src="{{ url_for('photometry_lightcurve', target_slug=target_slug) }}?t={{ run.run_id }}" alt="Light curve for {{ run.label }}">

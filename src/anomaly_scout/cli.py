@@ -339,7 +339,11 @@ def submit(args: argparse.Namespace) -> None:
     print(f"Looking up '{args.target}' in VSX...")
     vsx_target = fetch_vsx_target_by_name(args.target)
     if vsx_target is None:
-        print(f"Target '{args.target}' not found in VSX. Cannot proceed without RA/Dec.")
+        print(
+            f"Could not resolve '{args.target}' — either the name doesn't match a VSX "
+            "entry or VizieR was unreachable after 3 attempts. Check the spelling and "
+            "your network."
+        )
         return
     print(
         f"Target: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, "
@@ -392,6 +396,24 @@ def submit(args: argparse.Namespace) -> None:
     if not fits_files:
         print(f"No FITS files found in {captures_dir}.")
         return
+
+    from .photometry import read_fits_with_wcs
+
+    try:
+        read_fits_with_wcs(fits_files[0])
+    except ValueError as exc:
+        print(
+            f"First FITS ({fits_files[0].name}) is missing a celestial WCS: {exc}\n"
+            "NINA must plate-solve before saving. Re-run capture with plate-solve "
+            "enabled or solve frames manually before retrying."
+        )
+        return
+    print(f"WCS pre-flight OK on {fits_files[0].name}.")
+    if any(c.catalog_band == "V" for c in comps):
+        print(
+            "Note: V-band comps will be reported as TG band per AAVSO OSC convention "
+            "(green channel ≈ V but counts as a separate band)."
+        )
     print(f"Processing {len(fits_files)} FITS files...")
 
     observations = []

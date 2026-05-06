@@ -343,7 +343,10 @@ def _execute_submit(
     record.log(f"Looking up '{target_name}' in VSX...")
     vsx_target = fetch_vsx_target_by_name(target_name)
     if vsx_target is None:
-        raise RuntimeError(f"Target '{target_name}' not found in VSX.")
+        raise RuntimeError(
+            f"Could not resolve '{target_name}' — either the name doesn't match a VSX entry "
+            "or VizieR was unreachable after 3 attempts. Check the spelling and your network."
+        )
     record.log(f"Found: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, Dec {vsx_target.dec_deg:.5f}")
 
     if comp_path is not None:
@@ -382,6 +385,25 @@ def _execute_submit(
     fits_files = sorted(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
     if not fits_files:
         raise RuntimeError(f"No FITS files found in {target_dir}")
+
+    # Pre-flight: peek at the first FITS to fail fast on missing WCS rather
+    # than churning through every frame just to report the same error.
+    from ..photometry import read_fits_with_wcs
+
+    try:
+        read_fits_with_wcs(fits_files[0])
+    except ValueError as exc:
+        raise RuntimeError(
+            f"First FITS ({fits_files[0].name}) is missing a celestial WCS: {exc}. "
+            "NINA must plate-solve before saving — re-run capture with plate-solve enabled "
+            "or solve frames manually before retrying."
+        )
+    record.log(f"WCS pre-flight OK on {fits_files[0].name}.")
+    if any(c.catalog_band == "V" for c in comps):
+        record.log(
+            "Note: V-band comps will be reported as TG band per AAVSO OSC convention "
+            "(green channel ≈ V but counts as a separate band)."
+        )
     record.log(f"Processing {len(fits_files)} FITS files...")
 
     # Live results dict: the photometry template polls record.result['frames']
@@ -475,6 +497,17 @@ def _execute_submit(
     aavso_recent = _fetch_aavso_recent_samples(target_name)
     if aavso_recent:
         record.log(f"Fetched {len(aavso_recent)} recent AAVSO observations for overlay.")
+
+    from ..anomaly import assess_session_anomaly
+
+    assessment = assess_session_anomaly(observations, vsx_target, aavso_recent)
+    record.result["anomaly"] = assessment.to_dict()
+    if assessment.level == "anomaly":
+        record.log("FLAG: " + " · ".join(assessment.flags))
+    elif assessment.level == "watch":
+        record.log("WATCH: " + " · ".join(assessment.flags))
+    else:
+        record.log(assessment.flags[0] if assessment.flags else "Consistent with expectations.")
 
     from ..lightcurve import plot_phase_folded, plot_session_light_curve
 

@@ -52,7 +52,15 @@
 
   <p style="margin-top: 1rem;">
     {% if run and run.status == 'done' %}
-    <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn-primary">Download AAVSO file</a>
+      {% if run.result and run.result.submitted_at %}
+      <span class="status-done">Submitted to AAVSO ({{ run.result.submitted_at[:10] }})</span>
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn">Re-download file</a>
+      {% else %}
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug) }}" class="btn-primary">Download AAVSO file</a>
+      <form action="{{ url_for('photometry_mark_submitted', target_slug=target_slug) }}" method="post" style="display: inline;">
+        <button type="submit" class="btn">Mark as submitted</button>
+      </form>
+      {% endif %}
     {% endif %}
     <a href="{{ url_for('photometry_index') }}" class="btn">← All targets</a>
   </p>

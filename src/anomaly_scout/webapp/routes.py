@@ -79,13 +79,17 @@ def register_routes(app: Flask) -> None:
     def photometry_index():
         runs: RunRegistry = current_app.config["RUNS"]
         captures_root: Path = current_app.config["CAPTURES_ROOT"]
+        output_dir: Path = current_app.config["OUTPUT_DIR"]
         targets = _discover_capture_targets(captures_root)
         photometry_runs = {r.label: r for r in runs.all() if r.kind == "submit"}
+        runs_by_kind = {r.kind: r for r in runs.all() if r.kind.startswith("submit:")}
+        scheduled = _build_schedule_status(output_dir / "session_schedule.csv", captures_root, runs_by_kind)
         return render_template(
             "photometry_index.html",
             targets=targets,
             captures_root=captures_root,
             photometry_runs=photometry_runs,
+            scheduled=scheduled,
         )
 
     @app.route("/photometry/<target_slug>")
@@ -182,6 +186,21 @@ def register_routes(app: Flask) -> None:
         if target_dir is None or not (target_dir / "lightcurve_folded.png").exists():
             abort(404)
         return send_from_directory(str(target_dir), "lightcurve_folded.png")
+
+    @app.route("/photometry/<target_slug>/mark-submitted", methods=["POST"])
+    def photometry_mark_submitted(target_slug):
+        from datetime import datetime, timezone
+
+        runs: RunRegistry = current_app.config["RUNS"]
+        record = runs.latest(_submit_kind(target_slug))
+        if record is None or record.status != "done":
+            abort(404)
+        if record.result is None:
+            record.result = {}
+        record.result["submitted_at"] = datetime.now(timezone.utc).isoformat()
+        record.log("Marked as submitted to AAVSO WebObs.")
+        runs.persist(record)
+        return redirect(url_for("photometry_target", target_slug=target_slug))
 
     @app.route("/photometry/<target_slug>/upload")
     def photometry_upload(target_slug):
@@ -560,6 +579,92 @@ def _fetch_aavso_recent_samples(target_name: str) -> list[tuple[float, float, st
 
 
 # --- helpers ---
+
+def _build_schedule_status(
+    schedule_csv: Path,
+    captures_root: Path,
+    runs_by_kind: dict,
+) -> list[dict]:
+    """Read tonight's schedule CSV and join it with on-disk captures + run
+    records so the photometry index can show "what tonight's plan called for
+    and where each target stands." Returns [] if no schedule has been
+    generated yet."""
+    if not schedule_csv.exists():
+        return []
+    import csv as _csv
+
+    out: list[dict] = []
+    with schedule_csv.open(encoding="utf-8") as handle:
+        reader = _csv.DictReader(handle)
+        for row in reader:
+            target_name = row.get("name", "").strip()
+            if not target_name:
+                continue
+            target_dir = _resolve_scheduled_target_dir(captures_root, target_name)
+            slug = target_dir.name if target_dir else target_name.replace(" ", "_")
+            fits_count = 0
+            if target_dir:
+                fits_count = len(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
+            run = runs_by_kind.get(f"submit:{slug}")
+            stage = _resolve_stage(fits_count, run)
+            anomaly_level = None
+            observation_count = None
+            if run and run.result:
+                anomaly_level = (run.result.get("anomaly") or {}).get("level")
+                observation_count = run.result.get("observation_count")
+            out.append(
+                {
+                    "order": int(row.get("order") or 0),
+                    "start_local": row.get("start_local", ""),
+                    "end_local": row.get("end_local", ""),
+                    "name": target_name,
+                    "slug": slug,
+                    "has_dir": target_dir is not None,
+                    "fits_count": fits_count,
+                    "frames_planned": int(row.get("frame_count") or 0),
+                    "exposure_seconds": int(row.get("exposure_seconds") or 0),
+                    "stage": stage,
+                    "anomaly_level": anomaly_level,
+                    "observation_count": observation_count,
+                }
+            )
+    out.sort(key=lambda r: r["order"])
+    return out
+
+
+def _resolve_scheduled_target_dir(captures_root: Path, target_name: str) -> Path | None:
+    """Case-insensitive directory match for a scheduled target. Tries
+    `target_name.replace(" ", "_")` against each subdir of captures_root,
+    matching either case."""
+    if not captures_root.exists():
+        return None
+    needle = target_name.replace(" ", "_").lower()
+    try:
+        for entry in captures_root.iterdir():
+            if entry.is_dir() and entry.name.lower() == needle:
+                return entry
+    except OSError:
+        return None
+    return None
+
+
+def _resolve_stage(fits_count: int, run) -> str:
+    """Stage rolls up to one of: awaiting / captured / running / processed /
+    submitted / failed."""
+    if fits_count == 0:
+        return "awaiting"
+    if run is None:
+        return "captured"
+    if run.status == "running":
+        return "running"
+    if run.status == "failed":
+        return "failed"
+    if run.status == "done":
+        if run.result and run.result.get("submitted_at"):
+            return "submitted"
+        return "processed"
+    return "captured"
+
 
 def _discover_capture_targets(captures_root: Path) -> list[dict]:
     """Each immediate subdirectory of captures_root that contains FITS files

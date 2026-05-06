@@ -143,6 +143,61 @@ class WebappRoutesTests(TestCase):
         self.assertEqual(loaded.status, "failed")
         self.assertIn("lost on server restart", loaded.error)
 
+    def test_photometry_index_shows_scheduled_status(self) -> None:
+        # Drop a session_schedule.csv into output_dir so the index can pick it up
+        schedule = (
+            "order,start_local,end_local,name,ra_deg,dec_deg,max_mag,var_type,"
+            "exposure_seconds,frame_count,integration_minutes,score,effective_score\n"
+            "1,2026-05-05T20:00:00-04:00,2026-05-05T20:30:00-04:00,RR Lyr,291.366,42.785,7.06,RRAB,15,60,15,90.0,90.0\n"
+            "2,2026-05-05T20:33:00-04:00,2026-05-05T21:03:00-04:00,RU Leo,163.289,24.358,10.30,LB,30,60,30,85.0,85.0\n"
+        )
+        (self.output_dir / "session_schedule.csv").write_text(schedule, encoding="utf-8")
+
+        # RR Lyr has captures, RU Leo doesn't
+        rr_lyr = self.captures_root / "RR_Lyr"
+        rr_lyr.mkdir()
+        (rr_lyr / "frame001.fits").write_bytes(b"\x00" * 100)
+
+        response = self.client.get("/photometry")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode("utf-8")
+        self.assertIn("Tonight's plan", body)
+        self.assertIn("RR Lyr", body)
+        self.assertIn("RU Leo", body)
+        # RR Lyr captured but not processed → "ready for photometry"
+        self.assertIn("ready for photometry", body)
+        # RU Leo no captures → "awaiting capture"
+        self.assertIn("awaiting capture", body)
+
+    def test_mark_submitted_persists_timestamp(self) -> None:
+        from anomaly_scout.webapp.runs import RunRegistry
+
+        # Set up a target with captures and a "done" run record
+        rr_lyr = self.captures_root / "RR_LYR"
+        rr_lyr.mkdir()
+        (rr_lyr / "frame001.fits").write_bytes(b"\x00" * 100)
+
+        runs: RunRegistry = self.app.config["RUNS"]
+
+        def _quick(record):
+            record.log("done")
+            return {"observation_count": 1, "median_mag": 7.5}
+
+        record = runs.submit("submit:RR_LYR", "submit: RR LYR", _quick)
+        # Wait for completion
+        import time
+        for _ in range(50):
+            if record.status in ("done", "failed"):
+                break
+            time.sleep(0.05)
+        self.assertEqual(record.status, "done")
+
+        response = self.client.post("/photometry/RR_LYR/mark-submitted")
+        self.assertIn(response.status_code, (302, 303))
+
+        latest = runs.latest("submit:RR_LYR")
+        self.assertIsNotNone(latest.result.get("submitted_at"))
+
     def test_nina_partial_when_connected(self) -> None:
         status = NinaStatus(
             reachable=True,

@@ -1,98 +1,138 @@
 # AAVSO Anomaly Scout
 
-AAVSO Anomaly Scout finds variable-star follow-up candidates that are practical
-to observe from Jersey City, NJ. The first version focuses on known VSX objects:
-bright, observable, uncrowded enough for urban photometry, and plausibly worth
-human review because their catalog metadata suggests uncertainty, stale periods,
-or good amateur follow-up value.
+End-to-end variable-star observing tool: it picks targets worth a closer
+look, schedules a session, runs photometry on the captured frames, and
+flags whether the result deviates from expectations. Tuned for amateur
+gear from urban sites (Jersey City, NJ baseline) but multi-site with a
+dark-sky example (Fairbanks, AK) included.
 
-The project intentionally produces a short observing queue rather than a giant
-catalog. The useful artifact is a candidate packet that another observer can
-inspect, challenge, or follow up.
+For a clean continuation in a fresh thread or on another computer, start
+with [`HANDOFF.md`](HANDOFF.md). For Claude Code instances, see
+[`CLAUDE.md`](CLAUDE.md).
 
-For a clean continuation in a fresh thread or on another computer, start with
-[`HANDOFF.md`](HANDOFF.md).
+## What it does
 
-## What It Does
+1. **Pick** — Queries VSX through VizieR (`B/vsx/vsx`), enriches top
+   candidates with AAVSO recent coverage, SIMBAD context, Gaia DR3
+   crowding/color, and optionally ZTF light curves. Scores for amateur
+   follow-up value, with a Lomb-Scargle pass that flags catalog/observed
+   period disagreement.
+2. **Plan** — Greedy session scheduler picks the highest-value targets
+   that fit in tonight's window, biasing toward setting-soon urgency.
+   Output: a chronological schedule with per-target packets.
+3. **Capture** — NINA Target Scheduler ingests the exported CSV directly
+   in execution order. The webapp's NINA monitor shows live status.
+4. **Process** — Differential aperture photometry on each FITS frame,
+   comparison stars auto-fetched from AAVSO VSP. Outputs an AAVSO
+   Extended File Format submission file.
+5. **Assess** — Compares your session median to the VSX catalog range
+   and AAVSO recent baseline; surfaces a quantitative anomaly callout
+   (consistent / watch / anomaly) so unusual results don't get lost in
+   the data.
 
-- Queries the public AAVSO VSX catalog via VizieR (`B/vsx/vsx`).
-- Samples VSX in RA bins so the first-pass queue is not biased to RA 0.
-- Filters targets for Jersey City observability.
-- Avoids low-altitude and crowded Galactic-plane fields.
-- Checks recent AAVSO coverage for top candidates.
-- Adds SIMBAD context and cross-identifiers for candidate review.
-- Adds Gaia DR3 color/parallax/RUWE context for top candidates.
-- Caches successful archive/API calls in `data/cache/` for repeatable runs.
-- Scores targets for amateur follow-up value.
-- Optionally fetches ZTF light curves for top-ranked candidates.
-- Writes CSV and Markdown candidate packets.
-
-## Quick Start
-
-```powershell
-python -m pip install -e .
-anomaly-scout run --config config/jersey_city.yaml
-```
-
-For a small smoke-test run:
+## Quick start
 
 ```powershell
 python -m pip install -e .
-anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --gaia-top 5 --ztf-top 0
 ```
 
-Outputs are written to `output/` by default:
-
-- `candidate_queue.csv`: ranked observing queue.
-- `research_notes.md`: short triage notes for the highest-ranked candidates.
-- `candidate_packets/*.md`: one review packet per top candidate.
-- `candidate_packets/*.png`: light-curve plots when ZTF enrichment succeeds.
-
-## Recommended First Use
-
-Start without ZTF enrichment, review the queue, then enrich a few candidates:
+### Generate a queue (research mode)
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 25 --aavso-top 25 --simbad-top 25 --gaia-top 25 --ztf-top 0
-anomaly-scout run --config config/jersey_city.yaml --limit 500 --top 10 --aavso-top 10 --simbad-top 10 --gaia-top 10 --ztf-top 5
+anomaly-scout run --config config/multi_site.yaml
 ```
 
-ZTF calls can be slow or occasionally time out. That is expected; the Scout will
-keep going and mark the ZTF status in the candidate packet.
+Outputs in `output/`: `candidate_queue.csv`, `best_<site>.csv`,
+`shared_targets.csv`, `research_notes.md`, and per-target packets.
 
-Successful network calls are cached under `data/cache/`. Delete that directory
-when you want to force fresh archive queries.
-
-If AAVSO live coverage checks fail, cached successful responses may be used and
-reported as `ok-cached`.
-
-To evaluate a specific observing season:
+### Plan tonight's session
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --start-date 2026-05-04
+anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
 ```
 
-## Jersey City Assumptions
+Outputs in `output/s30_pro_jc/tonight/`:
+- `session_schedule.html` — the primary phone-readable doc, with a
+  horizontal timeline at the top, a quick-glance schedule table, and a
+  detailed card per target.
+- `nina_targets.csv` — NINA Target Scheduler import, in execution order.
+- The standard candidate-queue artifacts (CSVs, packets) restricted to
+  tonight's window.
 
-The default config assumes:
+### Webapp (recommended for live use)
 
-- Location: Jersey City, NJ (`40.7178`, `-74.0431`)
-- Practical observing window: 8 PM to 1 AM local time
-- Target altitude floor: `45 deg`
-- First-pass target brightness: brighter than magnitude `15`
-- Declination lower bound: `-10 deg`
-- Galactic latitude floor: `|b| >= 12 deg`
+```powershell
+anomaly-scout webapp
+```
 
-These are deliberately conservative for urban differential photometry.
+Three layers, no auth (single-user, single-machine assumption):
+- **Dashboard** (`/`) — kick off `tonight`, view the schedule.
+- **Photometry** (`/photometry`) — see tonight's plan with per-target
+  status (awaiting / captured / processing / processed / submitted),
+  click a target to run photometry. Light curves plus phase-folded
+  versions render in the result, anomaly callout shows whether the
+  observation is consistent with catalog + AAVSO baseline.
+- **NINA monitor** (`/nina`) — live status from NINA's Advanced API
+  plugin (sequence progress, equipment, current target). Polls every 5s.
 
-## Data Sources
+Bind on `0.0.0.0` (default) so Tailscale peers can reach the dashboard
+from your phone in the field.
+
+## Photometry workflow
+
+NINA captures FITS files into per-target subdirectories under
+`captures/`. The webapp's `/photometry/<target>/` page asks only for an
+observer code; comp stars and chart ID are pulled from AAVSO VSP at run
+time. Process detail is in [`docs/photometry.md`](docs/photometry.md).
+
+CLI equivalent:
+
+```powershell
+anomaly-scout submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
+```
+
+Pass `--comp-stars path/to/file.json` to override the auto-fetched
+sequence with a hand-curated one.
+
+## Modes
+
+`--mode novelty` biases toward survey-prefixed (Gaia DR3 NNN…)
+targets. `--mode practice` biases toward classical GCVS variables.
+`--mode mixed` is half-and-half. The intended workflow is two passes:
+
+```powershell
+anomaly-scout run --config config/multi_site.yaml --output-dir output/practice
+anomaly-scout run --config config/multi_site.yaml --mode novelty --ztf-top 20 --output-dir output/novelty
+```
+
+Generated packets are starting points for human review, not discovery
+claims. Always inspect VSX, SIMBAD, recent literature, field crowding,
+and your own calibrated photometry before submitting anything new.
+
+## Sites
+
+Defaults assume Jersey City, NJ (urban: 45° altitude floor, mag ≤ 14,
+|b| ≥ 12°) and Fairbanks, AK (dark: 25° floor, mag ≤ 16.5, |b| ≥ 5°).
+Note Fairbanks has no astronomical darkness from roughly early May
+through early August — pick a `--start-date` accordingly.
+
+## Data sources
 
 - VSX through VizieR: `B/vsx/vsx`
 - AAVSO recent coverage through the VSX object API
+- AAVSO comparison-star sequences through VSP:
+  `https://app.aavso.org/vsp/api/v2/chart/`
 - SIMBAD context through the CDS SIMBAD TAP service
 - Gaia DR3 context through VizieR `I/355/gaiadr3`
-- ZTF light curves through IRSA: `https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves`
+- ZTF light curves through IRSA:
+  `https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves`
+- NINA Advanced API plugin (default `http://localhost:1888`)
 
-Use the generated packets as starting points, not as discovery claims. Before
-submitting anything to VSX or AAVSO, manually check VSX, SIMBAD, recent
-literature, field crowding, and your own calibrated photometry.
+Successful network calls are cached under `data/cache/` (gitignored).
+Delete to force fresh archive queries.
+
+## Tests
+
+```powershell
+python -m unittest discover -s tests
+```

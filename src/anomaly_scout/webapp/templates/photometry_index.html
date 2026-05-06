@@ -1,6 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Photometry - AAVSO Anomaly Scout{% endblock %}
 {% block content %}
+{% if scheduled %}
+<section class="card primary">
+  <h2>Tonight's plan ({{ scheduled|length }} targets)</h2>
+  <p class="meta">Status of each scheduled target. Tap one with captures to run photometry.</p>
+  <table class="data">
+    <thead>
+      <tr><th>#</th><th>Time</th><th>Target</th><th>Frames</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for s in scheduled %}
+      <tr>
+        <td>{{ s.order }}</td>
+        <td>{{ s.start_local[11:16] }}–{{ s.end_local[11:16] }}</td>
+        <td>
+          {% if s.fits_count > 0 %}
+          <a href="{{ url_for('photometry_target', target_slug=s.slug) }}">{{ s.name }}</a>
+          {% else %}
+          {{ s.name }}
+          {% endif %}
+        </td>
+        <td>
+          {% if s.fits_count > 0 %}
+          {{ s.fits_count }} / {{ s.frames_planned }}
+          {% else %}
+          <span class="meta">0 / {{ s.frames_planned }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if s.stage == 'awaiting' %}
+          <span class="status-queued">awaiting capture</span>
+          {% elif s.stage == 'captured' %}
+          <span class="status-running">ready for photometry</span>
+          {% elif s.stage == 'running' %}
+          <span class="status-running">processing</span>
+          {% elif s.stage == 'failed' %}
+          <span class="status-failed">failed</span>
+          {% elif s.stage == 'processed' %}
+          <span class="status-done">processed</span>
+          {% if s.anomaly_level == 'anomaly' %}
+          <span class="frame-flag flag-outlier">anomaly</span>
+          {% elif s.anomaly_level == 'watch' %}
+          <span class="frame-flag flag-pending">watch</span>
+          {% endif %}
+          {% elif s.stage == 'submitted' %}
+          <span class="status-done">submitted</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Captured target directories</h2>
   <p class="meta">Scanning <code>{{ captures_root }}</code></p>

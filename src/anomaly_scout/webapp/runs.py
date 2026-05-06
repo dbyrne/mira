@@ -152,6 +152,11 @@ class RunRegistry:
 
     # --- Persistence ---
 
+    def persist(self, record: RunRecord) -> None:
+        """Public accessor to write a record to disk after external mutation
+        (e.g., the photometry route marking a run as submitted)."""
+        self._persist(record)
+
     def _persist(self, record: RunRecord) -> None:
         if self._state_dir is None:
             return

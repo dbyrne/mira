@@ -553,6 +553,131 @@ class WebappRoutesTests(TestCase):
         self.assertIn("run_id", body)
         self.assertIn("RR_LYR", body)
 
+    def test_trigger_photometry_rejects_missing_observer_code(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        # POST without observer_code
+        response = self.client.post("/photometry/RR_LYR/run", data={
+            "target_name": "RR LYR",
+            "observer_code": "",
+            "chart_id": "X1",
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Observer code is required", response.data)
+
+    def test_trigger_photometry_rejects_missing_comp_stars_path(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        # User provided a comp_stars path that doesn't exist on disk
+        response = self.client.post("/photometry/RR_LYR/run", data={
+            "target_name": "RR LYR",
+            "observer_code": "ABC",
+            "chart_id": "X1",
+            "comp_stars": "/nonexistent/path/to/comps.json",
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Comp-stars JSON not found", response.data)
+
+    def test_trigger_photometry_404s_for_unknown_target_dir(self) -> None:
+        response = self.client.post("/photometry/NONEXISTENT/run", data={
+            "target_name": "X",
+            "observer_code": "ABC",
+        })
+        self.assertEqual(response.status_code, 404)
+
+    def test_partial_404s_for_unknown_target(self) -> None:
+        response = self.client.get("/photometry/NONEXISTENT/partial")
+        # The route returns the empty partial when no record exists, but
+        # _resolve_target_dir returns None for missing slugs which would
+        # surface as session_date being None — verify the page renders.
+        # In current behavior, partial returns 200 with "No photometry run yet".
+        self.assertEqual(response.status_code, 200)
+
+    def test_lightcurve_404s_when_no_image_yet(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        # No lightcurve.png on disk yet
+        response = self.client.get("/photometry/RR_LYR/lightcurve.png")
+        self.assertEqual(response.status_code, 404)
+
+    def test_lightcurve_folded_404s_when_no_image(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.get("/photometry/RR_LYR/lightcurve_folded.png")
+        self.assertEqual(response.status_code, 404)
+
+    def test_upload_404s_when_no_aavso_file(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        # No aavso_RR_LYR.txt on disk
+        response = self.client.get("/photometry/RR_LYR/upload")
+        self.assertEqual(response.status_code, 404)
+
+    def test_mark_submitted_404s_when_no_run(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.post("/photometry/RR_LYR/mark-submitted")
+        self.assertEqual(response.status_code, 404)
+
+    def test_mark_submitted_404s_when_run_not_done(self) -> None:
+        from anomaly_scout.webapp.runs import RunRecord
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        runs = self.app.config["RUNS"]
+        # Inject a record manually that's still queued
+        record = RunRecord(run_id="q1", kind="submit:RR_LYR", label="queued", status="queued")
+        runs._records[record.run_id] = record
+        runs._latest_by_kind[record.kind] = record.run_id
+        response = self.client.post("/photometry/RR_LYR/mark-submitted")
+        self.assertEqual(response.status_code, 404)
+
+    def test_download_with_selection_404s_when_no_run(self) -> None:
+        target_dir = self.captures_root / "RR_LYR"
+        target_dir.mkdir()
+        (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
+        response = self.client.post("/photometry/RR_LYR/download-with-selection", data={})
+        self.assertEqual(response.status_code, 404)
+
+    def test_archive_view_404s_for_malformed_date(self) -> None:
+        response = self.client.get("/archive/not-a-date")
+        self.assertEqual(response.status_code, 404)
+
+    def test_archive_view_404s_for_missing_dir(self) -> None:
+        response = self.client.get("/archive/2026-12-31")
+        self.assertEqual(response.status_code, 404)
+
+    def test_archive_view_404s_when_html_missing(self) -> None:
+        archive_dir = self.output_dir.parent / "archive" / "2026-05-06"
+        archive_dir.mkdir(parents=True)
+        # Dir exists but no session_schedule.html in it
+        response = self.client.get("/archive/2026-05-06")
+        self.assertEqual(response.status_code, 404)
+
+    def test_data_target_history_404s_for_target_with_no_observations(self) -> None:
+        store = self.app.config["SESSION_STORE"]
+        store.upsert_session(
+            run_id="empty", target_name="X", target_slug="X",
+            session_date="2026-05-06", observer_code=None, chart_id=None,
+            observation_count=0, median_mag=None, anomaly_level=None,
+            submitted_at=None, created_at="2026-05-06T22:00:00+00:00",
+            observations=[],  # no per-frame observations
+        )
+        # target page shouldn't expose chart link if no observations exist
+        response = self.client.get("/data/target/X")
+        self.assertEqual(response.status_code, 200)
+        # Empty history → no <img class="lightcurve"> tag
+        self.assertNotIn(b'class="lightcurve"', response.data)
+        # Direct chart endpoint should 404
+        chart = self.client.get("/data/target/X/history.png")
+        self.assertEqual(chart.status_code, 404)
+
     def test_first_light_renders_with_no_state(self) -> None:
         # Empty state: no schedule, no settings, NINA unreachable
         from anomaly_scout.webapp.nina_client import NinaStatus

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flask import Flask, Response, abort, current_app, redirect, render_template, request, send_from_directory, url_for
@@ -613,7 +612,14 @@ def _execute_submit(
     runs: RunRegistry | None = None,
     session_store=None,  # webapp.db.SessionStore
 ) -> dict:
-    from ..photometry import CompStar, process_capture, write_aavso_extended_file
+    from ..photometry import write_aavso_extended_file
+    from ..submit_pipeline import (
+        FrameRecord,
+        frame_to_dict,
+        preflight_fits_dir,
+        resolve_comps,
+        run_photometry_loop,
+    )
     from ..vsx import fetch_vsx_target_by_name
 
     record.log(f"Looking up '{target_name}' in VSX...")
@@ -625,57 +631,42 @@ def _execute_submit(
         )
     record.log(f"Found: {vsx_target.name} at RA {vsx_target.ra_deg:.5f}, Dec {vsx_target.dec_deg:.5f}")
 
-    if comp_path is not None:
-        with comp_path.open(encoding="utf-8") as handle:
-            comp_data = json.load(handle)
-        comps = [
-            CompStar(
-                label=str(item["label"]),
-                ra_deg=float(item["ra_deg"]),
-                dec_deg=float(item["dec_deg"]),
-                catalog_mag=float(item["catalog_mag"]),
-                catalog_band=str(item.get("catalog_band", "V")),
-            )
-            for item in comp_data
-        ]
-        record.log(f"Loaded {len(comps)} comparison stars from {comp_path.name}.")
-    else:
-        from ..vsp import fetch_vsp_chart, filter_comps_for_target
-
-        record.log("Auto-fetching comp stars from AAVSO VSP...")
-        try:
-            chart = fetch_vsp_chart(target_name)
-        except Exception as exc:
-            raise RuntimeError(f"VSP fetch failed: {exc}. Provide a comp-stars JSON to retry.")
-        target_mag = vsx_target.max_mag
-        comps = filter_comps_for_target(chart.comps, target_mag)
-        if not comps:
-            comps = chart.comps[:6]
-        if not chart_id or chart_id == "na":
-            chart_id = chart.chart_id
-        record.log(
-            f"VSP chart {chart.chart_id}: {len(comps)} comps selected of {len(chart.comps)} "
-            f"(mags {min(c.catalog_mag for c in comps):.2f}–{max(c.catalog_mag for c in comps):.2f})."
+    try:
+        resolution = resolve_comps(
+            target_name=target_name,
+            target_max_mag=vsx_target.max_mag,
+            comp_path=comp_path,
+            chart_id_override=chart_id,
         )
-
-    fits_files = sorted(list(target_dir.glob("*.fits")) + list(target_dir.glob("*.fit")))
-    if not fits_files:
-        raise RuntimeError(f"No FITS files found in {target_dir}")
-
-    # Pre-flight: peek at the first FITS to fail fast on missing WCS rather
-    # than churning through every frame just to report the same error.
-    from ..photometry import read_fits_with_wcs
+    except Exception as exc:
+        raise RuntimeError(f"Comp-star resolution failed: {exc}. Provide a comp-stars JSON to retry.")
+    chart_id = resolution.chart_id
+    if resolution.source == "json" and comp_path is not None:
+        record.log(f"Loaded {len(resolution.comps)} comparison stars from {comp_path.name}.")
+    elif resolution.source == "vsp":
+        mags = [c.catalog_mag for c in resolution.comps]
+        record.log(
+            f"VSP chart {resolution.chart_id}: {len(resolution.comps)} comps selected of "
+            f"{resolution.chart_total} (mags {min(mags):.2f}–{max(mags):.2f})."
+        )
+    elif resolution.source == "vsp-fallback":
+        record.log(
+            f"VSP chart {resolution.chart_id} returned {resolution.chart_total} comps, "
+            f"none within mag tolerance; using brightest {len(resolution.comps)}."
+        )
 
     try:
-        read_fits_with_wcs(fits_files[0])
+        fits_files = preflight_fits_dir(target_dir)
     except ValueError as exc:
-        raise RuntimeError(
-            f"First FITS ({fits_files[0].name}) is missing a celestial WCS: {exc}. "
-            "NINA must plate-solve before saving — re-run capture with plate-solve enabled "
-            "or solve frames manually before retrying."
-        )
+        msg = str(exc)
+        if "celestial WCS" in msg:
+            raise RuntimeError(
+                f"{msg}. NINA must plate-solve before saving — re-run capture with "
+                "plate-solve enabled or solve frames manually before retrying."
+            )
+        raise RuntimeError(msg)
     record.log(f"WCS pre-flight OK on {fits_files[0].name}.")
-    if any(c.catalog_band == "V" for c in comps):
+    if any(c.catalog_band == "V" for c in resolution.comps):
         record.log(
             "Note: V-band comps will be reported as TG band per AAVSO OSC convention "
             "(green channel ≈ V but counts as a separate band)."
@@ -699,102 +690,94 @@ def _execute_submit(
         "observer_code": observer_code,
         "chart_id": chart_id,
     }
-    observations = []
-    failures = []
-    for index, path in enumerate(fits_files):
-        skipped_comps: list[str] = []
+    total_frames = len(fits_files)
+    progress_state = {"index": 0}
 
-        def _skip_log(comp, reason: str, _path=path, _skipped=skipped_comps) -> None:
-            _skipped.append(f"{comp.label}: {reason}")
-
-        try:
-            obs = process_capture(
-                path,
-                target_name,
-                vsx_target.ra_deg,
-                vsx_target.dec_deg,
-                comps,
-                on_comp_skipped=_skip_log,
+    def _on_frame(frame: FrameRecord) -> None:
+        progress_state["index"] += 1
+        if frame.skipped_comps:
+            record.log(
+                f"  {frame.filename}: skipped {len(frame.skipped_comps)} comp(s) — "
+                f"{'; '.join(frame.skipped_comps[:3])}"
             )
-            if skipped_comps:
-                record.log(f"  {path.name}: skipped {len(skipped_comps)} comp(s) — {'; '.join(skipped_comps[:3])}")
-        except Exception as exc:
-            failures.append((path.name, str(exc)))
-            record.log(f"  {path.name}: failed ({exc})")
-            record.result["frames"].append(
-                {"filename": path.name, "magnitude": None, "magnitude_error": None,
-                 "comp_label": "", "flag": "failed", "note": str(exc)}
+        if frame.flag == "failed":
+            record.log(f"  {frame.filename}: failed ({frame.note})")
+        elif frame.flag == "no-signal":
+            record.log(f"  {frame.filename}: no usable signal")
+        else:
+            record.log(
+                f"  {frame.filename}: mag {frame.magnitude:.3f} +/- "
+                f"{frame.magnitude_error:.3f} via comp {frame.comp_label}"
             )
-            record.result["failures"] = len(failures)
-            continue
-        if obs is None:
-            failures.append((path.name, "no usable signal"))
-            record.log(f"  {path.name}: no usable signal")
-            record.result["frames"].append(
-                {"filename": path.name, "magnitude": None, "magnitude_error": None,
-                 "comp_label": "", "flag": "no-signal", "note": "no usable signal"}
-            )
-            record.result["failures"] = len(failures)
-            continue
-        obs.chart_id = chart_id
-        observations.append(obs)
-        record.result["frames"].append(
-            {
-                "filename": path.name,
-                "jd": obs.julian_date,
-                "magnitude": obs.magnitude,
-                "magnitude_error": obs.magnitude_error,
-                "comp_label": obs.comp_star_label,
-                "flag": "pending",  # filled with "ok"/"outlier" after the loop
-                "note": "",
-            }
-        )
-        record.result["observations"].append(
-            {
-                "filename": path.name,
-                "target_name": obs.target_name,
-                "julian_date": obs.julian_date,
-                "magnitude": obs.magnitude,
-                "magnitude_error": obs.magnitude_error,
-                "band": obs.band,
-                "comp_star_label": obs.comp_star_label,
-                "comp_star_mag": obs.comp_star_mag,
+        # Stream the frame onto record.result["frames"] under the lock so
+        # the polling UI partial sees a coherent prefix.
+        frame_dict = frame_to_dict(frame)
+        is_failure = frame.flag in ("failed", "no-signal")
+        obs_dict = None
+        if not is_failure:
+            from ..photometry import Observation
+            obs_dict = {
+                "filename": frame.filename,
+                "target_name": target_name,
+                "julian_date": frame.julian_date,
+                "magnitude": frame.magnitude,
+                "magnitude_error": frame.magnitude_error,
+                "band": frame.band,
+                "comp_star_label": frame.comp_label,
+                "comp_star_mag": frame.comp_mag,
                 "chart_id": chart_id,
             }
-        )
-        record.result["observation_count"] = len(observations)
-        record.log(f"  {path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
-        record.set_progress(0.1 + 0.85 * (index + 1) / len(fits_files))
+            del Observation  # silence unused import warning while keeping the block tidy
 
-    if not observations:
+        def _mutate(current: dict, frame_dict=frame_dict, obs_dict=obs_dict) -> dict:
+            new = {**current}
+            new["frames"] = list(current["frames"]) + [frame_dict]
+            if obs_dict is not None:
+                new["observations"] = list(current["observations"]) + [obs_dict]
+                new["observation_count"] = len(new["observations"])
+            else:
+                new["failures"] = current.get("failures", 0) + 1
+            return new
+
+        record.update_result(_mutate)
+        record.set_progress(0.1 + 0.85 * progress_state["index"] / max(total_frames, 1))
+
+    result = run_photometry_loop(
+        target_name=target_name,
+        target_ra_deg=vsx_target.ra_deg,
+        target_dec_deg=vsx_target.dec_deg,
+        fits_files=fits_files,
+        comps=resolution.comps,
+        chart_id=chart_id,
+        on_frame=_on_frame,
+    )
+
+    if not result.observations:
         raise RuntimeError("No successful observations.")
 
-    # Flag outliers: |mag - median| > 3 * 1.4826 * MAD (robust sigma estimate).
-    mags = [o.magnitude for o in observations]
-    median_mag = sorted(mags)[len(mags) // 2]
-    if len(mags) >= 5:
-        deviations = sorted(abs(m - median_mag) for m in mags)
-        mad = deviations[len(deviations) // 2]
-        sigma = mad * 1.4826
-        for frame in record.result["frames"]:
-            if frame["flag"] == "pending":
-                if sigma > 0 and abs(frame["magnitude"] - median_mag) > 3 * sigma:
-                    frame["flag"] = "outlier"
-                else:
-                    frame["flag"] = "ok"
-    else:
-        # Too few frames to meaningfully flag outliers.
-        for frame in record.result["frames"]:
-            if frame["flag"] == "pending":
-                frame["flag"] = "ok"
+    # The pipeline already flagged outliers on its FrameRecord list. Mirror
+    # those flags onto the dict copies the template renders.
+    flag_by_filename = {f.filename: f.flag for f in result.frames}
 
+    def _apply_flags(current: dict, flag_by_filename=flag_by_filename) -> dict:
+        new = {**current, "frames": [{**f} for f in current["frames"]]}
+        for f in new["frames"]:
+            updated_flag = flag_by_filename.get(f["filename"])
+            if updated_flag and f["flag"] == "pending":
+                f["flag"] = updated_flag
+        return new
+
+    record.update_result(_apply_flags)
+
+    median_mag = result.median_mag
     upload_path = target_dir / f"aavso_{target_name.replace(' ', '_').replace('/', '_')}.txt"
     write_aavso_extended_file(
-        observations,
+        result.observations,
         upload_path,
         observer_code=observer_code,
         chart_id=chart_id,
     )
+    observations = result.observations
 
     record.log(f"Median mag {median_mag:.3f}; wrote {upload_path.name}")
     record.result["aavso_preview"] = _read_aavso_preview(upload_path, max_rows=5)

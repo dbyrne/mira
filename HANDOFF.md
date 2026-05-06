@@ -113,10 +113,69 @@ webapp/static/          style.css, htmx.min.js, favicon.svg
 webapp/templates/       Jinja2 templates (base.html + page templates)
 
 cache.py                File-based HTTP cache under data/cache/
+tonight_pipeline.py     Shared tonight orchestration (CLI + webapp)
 models.py               Shared dataclasses (VsxTarget, Observability,
                         AavsoStats, SimbadStats, GaiaStats, ZtfStats)
-tests/                  unittest suite (155+ tests)
+tests/                  unittest suite (280+ tests)
 ```
+
+## Storage layout
+
+The system writes to seven distinct roots, each with its own lifecycle.
+Knowing what lives where matters for backups, debugging, and cleanup.
+
+```
+output/
+└── <config>/
+    ├── tonight/                      # current generated session
+    │   ├── session_schedule.{html,md,csv}
+    │   ├── session_overflow.csv
+    │   ├── nina_targets.csv          # → import into NINA Target Scheduler
+    │   ├── candidate_queue.csv
+    │   ├── candidate_packets/        # one .md per top candidate
+    │   └── research_notes.md
+    └── archive/                      # snapshots of past tonight runs
+        └── 2026-05-06/               # date-stamped copy of tonight/
+            └── …
+
+captures/                             # NINA writes here; we read here
+└── <TARGET>/                         # e.g., RR_LYR/
+    └── 2026-05-06/                   # one dated subdir per session
+        ├── frame001.fits
+        ├── frame002.fits
+        ├── aavso_<TARGET>.txt        # photometry output
+        ├── lightcurve.png            # photometry output
+        └── lightcurve_folded.png     # photometry output
+
+data/                                 # gitignored (regenerable)
+├── cache/                            # HTTP response cache, 30-day TTL
+│   ├── vsx/<digest>.json
+│   ├── aavso/<digest>.json
+│   ├── simbad/<digest>.json
+│   ├── gaia/<digest>.json
+│   ├── vsp/<digest>.json
+│   └── ztf/<digest>.json
+└── webapp_runs/                      # webapp state, configurable via --state-dir
+    ├── <run_id>.json                 # one per pipeline/photometry run; canonical source of truth
+    ├── sessions.db                   # SQLite index of finished photometry sessions
+    ├── settings.json                 # observer code, default config, default hours
+    └── history-charts/<slug>.png     # cached multi-night trend plots
+```
+
+**Lifecycles:**
+- `output/<config>/tonight/` is overwritten every time `anomaly-scout tonight` runs.
+- `output/<config>/archive/<DATE>/` is written once per night and never edited.
+- `captures/<TARGET>/<DATE>/` is appended to during a NINA session; photometry
+  re-writes the AAVSO file + plots in place when the user re-runs.
+- `data/cache/` is purged by `anomaly-scout cleanup --cache --older-than Nd`.
+- `data/webapp_runs/<run_id>.json` is the canonical run record. Submitted
+  sessions are protected from `cleanup --runs`; everything else ages out.
+- `data/webapp_runs/sessions.db` is a queryable index that can be rebuilt
+  any time from the JSON files via `anomaly-scout migrate-runs`.
+
+**Gitignore:** `data/cache/` and `data/webapp_runs/` are gitignored.
+`output/` is *committed* as handoff artifacts so a fresh clone has
+example outputs to inspect.
 
 ## Hardware setup (single observer)
 

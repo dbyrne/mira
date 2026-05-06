@@ -11,6 +11,15 @@ Layers:
 Single user, single machine, no auth. Background tasks run in a
 ThreadPoolExecutor; state is in-memory. Restarting the server cancels
 in-flight work, which is fine for a personal observing tool.
+
+Storage roots (see HANDOFF.md "Storage layout" for the full diagram):
+  output_dir     ─ generated session artifacts (tonight/ + archive/<DATE>/)
+  captures_root  ─ NINA-captured FITS, organized as <TARGET>/<DATE>/
+  state_dir      ─ webapp persistence: <run_id>.json, sessions.db,
+                   settings.json, history-charts/. Configurable so
+                   tests can use a temp dir.
+  data/cache/    ─ HTTP response cache (always relative to cwd, shared
+                   between CLI and webapp)
 """
 from __future__ import annotations
 

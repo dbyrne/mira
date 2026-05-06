@@ -485,13 +485,14 @@ def _print_tailscale_urls(port: int) -> None:
 
 
 def submit(args: argparse.Namespace) -> None:
-    """Run photometry on captured FITS files and produce an AAVSO upload file."""
-    import json as _json
-
-    from .photometry import (
-        CompStar,
-        process_capture,
-        write_aavso_extended_file,
+    """Run photometry on captured FITS files and produce an AAVSO upload file.
+    Delegates to submit_pipeline so the math matches the webapp."""
+    from .photometry import write_aavso_extended_file
+    from .submit_pipeline import (
+        FrameRecord,
+        preflight_fits_dir,
+        resolve_comps,
+        run_photometry_loop,
     )
 
     captures_dir = Path(args.captures)
@@ -513,124 +514,101 @@ def submit(args: argparse.Namespace) -> None:
         f"Dec {vsx_target.dec_deg:.5f}"
     )
 
-    chart_id = args.chart_id
-    if args.comp_stars:
-        comp_path = Path(args.comp_stars)
-        if not comp_path.exists():
-            print(f"Comparison-star file '{comp_path}' does not exist.")
-            return
-        with comp_path.open(encoding="utf-8") as handle:
-            comp_data = _json.load(handle)
-        comps = [
-            CompStar(
-                label=str(item["label"]),
-                ra_deg=float(item["ra_deg"]),
-                dec_deg=float(item["dec_deg"]),
-                catalog_mag=float(item["catalog_mag"]),
-                catalog_band=str(item.get("catalog_band", "V")),
-            )
-            for item in comp_data
-        ]
-        print(f"Loaded {len(comps)} comparison stars from {comp_path}.")
-    else:
-        from .vsp import fetch_vsp_chart, filter_comps_for_target
-
-        print("Auto-fetching comp stars from AAVSO VSP...")
-        try:
-            chart = fetch_vsp_chart(args.target)
-        except Exception as exc:
-            print(f"VSP fetch failed: {exc}")
-            print("Re-run with --comp-stars <path.json> to use a manual sequence.")
-            return
-        target_mag = vsx_target.max_mag if vsx_target.max_mag is not None else None
-        comps = filter_comps_for_target(chart.comps, target_mag)
-        if not comps:
-            print(f"VSP chart {chart.chart_id} returned {len(chart.comps)} comps, none within mag tolerance.")
-            comps = chart.comps[:6]
-        print(
-            f"VSP chart {chart.chart_id}: {len(chart.comps)} candidate comps, "
-            f"{len(comps)} selected (mags {min(c.catalog_mag for c in comps):.2f}–"
-            f"{max(c.catalog_mag for c in comps):.2f})."
+    comp_path = Path(args.comp_stars) if args.comp_stars else None
+    if comp_path is not None and not comp_path.exists():
+        print(f"Comparison-star file '{comp_path}' does not exist.")
+        return
+    try:
+        resolution = resolve_comps(
+            target_name=args.target,
+            target_max_mag=vsx_target.max_mag,
+            comp_path=comp_path,
+            chart_id_override=args.chart_id,
         )
-        if not chart_id or chart_id == "na":
-            chart_id = chart.chart_id
-
-    fits_files = sorted(list(captures_dir.glob("*.fits")) + list(captures_dir.glob("*.fit")))
-    if not fits_files:
-        print(f"No FITS files found in {captures_dir}.")
+    except Exception as exc:
+        print(f"Comp-star resolution failed: {exc}")
+        if comp_path is None:
+            print("Re-run with --comp-stars <path.json> to use a manual sequence.")
         return
 
-    from .photometry import read_fits_with_wcs
+    if resolution.source == "json":
+        print(f"Loaded {len(resolution.comps)} comparison stars from {comp_path}.")
+    elif resolution.source == "vsp":
+        mags = [c.catalog_mag for c in resolution.comps]
+        print(
+            f"VSP chart {resolution.chart_id}: {resolution.chart_total} candidate comps, "
+            f"{len(resolution.comps)} selected (mags {min(mags):.2f}–{max(mags):.2f})."
+        )
+    elif resolution.source == "vsp-fallback":
+        print(
+            f"VSP chart {resolution.chart_id} returned "
+            f"{resolution.chart_total} comps, none within mag tolerance; "
+            f"using brightest {len(resolution.comps)}."
+        )
 
     try:
-        read_fits_with_wcs(fits_files[0])
+        fits_files = preflight_fits_dir(captures_dir)
     except ValueError as exc:
-        print(
-            f"First FITS ({fits_files[0].name}) is missing a celestial WCS: {exc}\n"
-            "NINA must plate-solve before saving. Re-run capture with plate-solve "
-            "enabled or solve frames manually before retrying."
-        )
+        msg = str(exc)
+        if "celestial WCS" in msg:
+            print(
+                f"{msg}\nNINA must plate-solve before saving. Re-run capture "
+                "with plate-solve enabled or solve frames manually before retrying."
+            )
+        else:
+            print(msg)
         return
     print(f"WCS pre-flight OK on {fits_files[0].name}.")
-    if any(c.catalog_band == "V" for c in comps):
+    if any(c.catalog_band == "V" for c in resolution.comps):
         print(
             "Note: V-band comps will be reported as TG band per AAVSO OSC convention "
             "(green channel ≈ V but counts as a separate band)."
         )
     print(f"Processing {len(fits_files)} FITS files...")
 
-    observations = []
-    failures = []
-    for fits_path in fits_files:
-        skipped_comps: list[str] = []
+    def _print_frame(frame: FrameRecord) -> None:
+        if frame.skipped_comps:
+            preview = "; ".join(frame.skipped_comps[:3])
+            print(f"  {frame.filename}: skipped {len(frame.skipped_comps)} comp(s) — {preview}")
+        if frame.flag in ("failed", "no-signal"):
+            return
+        print(
+            f"  {frame.filename}: mag {frame.magnitude:.3f} +/- "
+            f"{frame.magnitude_error:.3f} via comp {frame.comp_label}"
+        )
 
-        def _skip_log(comp, reason: str, _skipped=skipped_comps) -> None:
-            _skipped.append(f"{comp.label}: {reason}")
+    result = run_photometry_loop(
+        target_name=args.target,
+        target_ra_deg=vsx_target.ra_deg,
+        target_dec_deg=vsx_target.dec_deg,
+        fits_files=fits_files,
+        comps=resolution.comps,
+        chart_id=resolution.chart_id,
+        aperture_arcsec=args.aperture_arcsec,
+        on_frame=_print_frame,
+    )
 
-        try:
-            obs = process_capture(
-                fits_path,
-                args.target,
-                vsx_target.ra_deg,
-                vsx_target.dec_deg,
-                comps,
-                aperture_radius_arcsec=args.aperture_arcsec,
-                on_comp_skipped=_skip_log,
-            )
-            if skipped_comps:
-                print(f"  {fits_path.name}: skipped {len(skipped_comps)} comp(s) — {'; '.join(skipped_comps[:3])}")
-        except Exception as exc:
-            failures.append((fits_path.name, str(exc)))
-            continue
-        if obs is None:
-            failures.append((fits_path.name, "no usable signal"))
-            continue
-        obs.chart_id = chart_id
-        observations.append(obs)
-        print(f"  {fits_path.name}: mag {obs.magnitude:.3f} +/- {obs.magnitude_error:.3f} via comp {obs.comp_star_label}")
-
-    if failures:
-        print(f"\n{len(failures)} files failed:")
-        for name, reason in failures[:10]:
+    if result.failures:
+        print(f"\n{len(result.failures)} files failed:")
+        for name, reason in result.failures[:10]:
             print(f"  {name}: {reason}")
 
-    if not observations:
+    if not result.observations:
         print("\nNo successful observations. Verify FITS files have a celestial WCS (NINA must plate-solve).")
         return
 
     output_path = captures_dir / f"aavso_{args.target.replace(' ', '_').replace('/', '_')}.txt"
     write_aavso_extended_file(
-        observations,
+        result.observations,
         output_path,
         observer_code=args.observer_code,
-        chart_id=chart_id,
+        chart_id=resolution.chart_id,
     )
 
-    mags = [o.magnitude for o in observations]
-    median_mag = sorted(mags)[len(mags) // 2]
+    mags = [o.magnitude for o in result.observations]
     print(
-        f"\n{len(observations)} observations submitted, median magnitude "
-        f"{median_mag:.3f} (range {min(mags):.3f}–{max(mags):.3f})"
+        f"\n{len(result.observations)} observations submitted, median magnitude "
+        f"{result.median_mag:.3f} (range {min(mags):.3f}–{max(mags):.3f})"
     )
     print(f"Wrote {output_path}")
     print("Verify the file, then upload at: https://www.aavso.org/webobs/file")

@@ -9,15 +9,15 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from zoneinfo import ZoneInfo
 
-from anomaly_scout.config import load_config
-from anomaly_scout.models import AavsoStats, Candidate, Observability, VsxTarget
-from anomaly_scout.nightly_html import (
+from mira.config import load_config
+from mira.models import AavsoStats, Candidate, Observability, VsxTarget
+from mira.nightly_html import (
     _render_timeline_html,
     render_schedule_main_html,
     render_schedule_summary_html,
     write_session_schedule_html,
 )
-from anomaly_scout.scheduler import ScheduledTarget, ScheduleResult
+from mira.scheduler import ScheduledTarget, ScheduleResult
 
 CONFIG = load_config(Path(__file__).resolve().parent.parent / "config" / "s30_pro_jc.yaml")
 TZ = ZoneInfo("America/New_York")

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from anomaly_scout import vsx
+from mira import vsx
 
 
 def _ok_response(tsv_text: str) -> MagicMock:

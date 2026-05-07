@@ -1,0 +1,32 @@
+{
+  "run_id": "865520c36d26",
+  "kind": "tonight",
+  "label": "tonight: config/s30_pro_jc.yaml hours=4.0",
+  "status": "done",
+  "progress": 1.0,
+  "log_lines": [
+    "[21:44:59] Started: tonight: config/s30_pro_jc.yaml hours=4.0",
+    "[21:44:59] Loading config: config/s30_pro_jc.yaml",
+    "[21:44:59] Tonight = 2026-05-05; window = 17:44 -> 21:44 EDT",
+    "[21:44:59] Fetching up to 600 VSX rows...",
+    "[21:44:59] Fetched 600 catalog rows.",
+    "[21:44:59] 48 targets passed site filters.",
+    "[21:44:59] 20 observable in the next 4h.",
+    "[21:45:07] AAVSO enriched: 20",
+    "[21:45:12] SIMBAD enriched: 20",
+    "[21:45:12] Gaia enriched: 20",
+    "[21:45:12] Scheduled 4 targets, 16 overflow.",
+    "[21:45:12] Packets: 15",
+    "[21:45:12] Finished."
+  ],
+  "result": {
+    "scheduled": 4,
+    "overflow": 16,
+    "packet_count": 15,
+    "schedule_path": "C:\\aavso-anomaly-scout\\output\\s30_pro_jc\\tonight\\session_schedule.html"
+  },
+  "error": "",
+  "created_at": "2026-05-05T21:44:59.813257+00:00",
+  "started_at": "2026-05-05T21:44:59.813769+00:00",
+  "finished_at": "2026-05-05T21:45:12.434942+00:00"
+}

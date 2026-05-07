@@ -7,12 +7,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.horizon import (
+from mira.horizon import (
     HorizonPoint,
     HorizonProfile,
     load_horizon_profile,
 )
-from anomaly_scout.observability import azimuth_deg
+from mira.observability import azimuth_deg
 
 
 def _profile(*pairs: tuple[float, float]) -> HorizonProfile:
@@ -141,7 +141,7 @@ class AzimuthDegTests(TestCase):
         # so azimuth is undefined. Instead test: a target slightly south
         # of zenith on the meridian should be due south.
         utc = datetime(2026, 5, 6, 4, 0, tzinfo=timezone.utc)
-        from anomaly_scout.observability import local_sidereal_time_hours
+        from mira.observability import local_sidereal_time_hours
         lst = local_sidereal_time_hours(utc, -74.0)
         # Target at LST (so ha=0, on meridian) and dec = lat - 30
         ra = lst * 15.0
@@ -155,14 +155,14 @@ class HorizonAffectsObservabilityTests(TestCase):
     behind a profile bump should be marked unobservable from that site."""
 
     def test_target_blocked_by_horizon_loses_minutes(self) -> None:
-        from anomaly_scout.config import (
+        from mira.config import (
             FilterConfig,
             ObserverConfig,
             SiteConfig,
             WindowConfig,
         )
-        from anomaly_scout.models import VsxTarget
-        from anomaly_scout.observability import evaluate_observability
+        from mira.models import VsxTarget
+        from mira.observability import evaluate_observability
 
         # Build a profile where everything from azimuth 0–360 has a +60°
         # floor — i.e. nothing is observable from any direction. Even a

@@ -7,8 +7,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.photometry import CompStar, read_fits_with_wcs
-from anomaly_scout.rehearsal import synthesize_frames
+from mira.photometry import CompStar, read_fits_with_wcs
+from mira.rehearsal import synthesize_frames
 
 
 class SynthesizeFramesTests(TestCase):

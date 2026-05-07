@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Schedule archive - Mira{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Schedule archive</h2>
+  <p class="meta">Snapshots of past <code>tonight</code> runs. Each row was the schedule for that date.</p>
+  {% if sessions %}
+  <table class="data">
+    <thead>
+      <tr><th>Date</th><th>Targets</th><th>Schedule</th></tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+        <td>{{ s.date }}</td>
+        <td>{{ s.target_count }}</td>
+        <td>
+          {% if s.has_html %}
+          <a href="{{ url_for('archive_session', date=s.date) }}">view</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta">No archived sessions yet. Each <code>tonight</code> run will copy its outputs into <code>archive/&lt;DATE&gt;/</code> automatically.</p>
+  {% endif %}
+</section>
+{% endblock %}

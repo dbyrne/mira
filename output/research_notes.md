@@ -1,4 +1,4 @@
-# AAVSO Anomaly Scout Research Notes
+# Mira Research Notes
 
 These notes summarize the current ranked queue. They are triage notes for human review, not discovery claims.
 

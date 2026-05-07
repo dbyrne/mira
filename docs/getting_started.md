@@ -53,8 +53,8 @@ are unfamiliar, skim [Concepts](concepts.md) first.
 ## Install
 
 ```powershell
-git clone https://github.com/dbyrne/aavso-anomaly-scout.git
-cd aavso-anomaly-scout
+git clone https://github.com/dbyrne/mira.git
+cd mira
 python -m pip install -e .
 ```
 
@@ -113,7 +113,7 @@ Don't worry about the `vsx_query`, `scoring`, etc. sections at the
 bottom — copy those from one of the existing configs as-is. They're
 about *how* targets are picked, not *where* from.
 
-> 💡 **Sanity check**: After editing, try `anomaly-scout target "RR Lyr"
+> 💡 **Sanity check**: After editing, try `mira target "RR Lyr"
 > --config config/<yoursite>.yaml`. If it produces a candidate packet
 > with reasonable altitudes for your location, your config is right.
 
@@ -157,7 +157,7 @@ With your config saved, you're ready to ask the system "what should I
 observe tonight?":
 
 ```powershell
-anomaly-scout tonight --config config/<yoursite>.yaml --hours 4
+mira tonight --config config/<yoursite>.yaml --hours 4
 ```
 
 You should see output like:
@@ -190,7 +190,7 @@ You'll see:
 This is the primary phone-readable doc for the night.
 
 > 💡 **Tip**: If you have a Tailscale or local network, run
-> `anomaly-scout webapp` and view the same schedule on your phone at
+> `mira webapp` and view the same schedule on your phone at
 > `http://<your-host>:8000/schedule`. The webapp also drives photometry
 > and AAVSO submission in the same UI.
 
@@ -204,7 +204,7 @@ a corrupted FITS header parser, a misconfigured AAVSO writer — when
 they're easy to fix.
 
 ```powershell
-anomaly-scout rehearse --target "RR Lyr" --frames 10
+mira rehearse --target "RR Lyr" --frames 10
 ```
 
 The system will:
@@ -244,7 +244,7 @@ When the gear is ready and the sky is clear, the workflow is:
 
 ### Before dark
 
-1. **Open the webapp**: `anomaly-scout webapp`. Visit `/first-light` —
+1. **Open the webapp**: `mira webapp`. Visit `/first-light` —
    this page walks you through each step and turns green as you complete it.
 2. **Save your AAVSO observer code** at `/settings`. The system will
    remember it for every photometry run going forward.

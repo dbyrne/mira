@@ -1,4 +1,4 @@
-# AAVSO Anomaly Scout - Anomaly / Novelty Discovery Queue (preliminary)
+# Mira - Anomaly / Novelty Discovery Queue (preliminary)
 
 Novelty mode: survey-discovery bonus on, classical bonus off. These are triage candidates, not confirmed anomalies - period mismatches and color anomalies may have benign causes (blending, alias detections, bad matches). Verify before submitting anything to VSX/AAVSO.
 

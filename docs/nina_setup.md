@@ -1,8 +1,8 @@
-# NINA Setup for the AAVSO Anomaly Scout Workflow
+# NINA Setup for the Mira Workflow
 
 This walks through configuring NINA to drive a Seestar S30 Pro using the
 nightly target list this pipeline produces. The end state: you run
-`anomaly-scout tonight ...`, NINA imports the target list, and clicks
+`mira tonight ...`, NINA imports the target list, and clicks
 through slew → plate-solve → focus → capture → dither → next target without
 further human input. Then a separate post-processing step (described in
 `docs/photometry.md`) turns the captured FITS into AAVSO submissions.
@@ -66,8 +66,8 @@ Save the template as **`S30 Pro OSC 30s`** (or similar).
 
 Target Scheduler organises targets into Projects. Create one:
 
-- Name: **AAVSO Anomaly Scout**
-- Description: "Targets imported from `anomaly-scout tonight`"
+- Name: **Mira**
+- Description: "Targets imported from `mira tonight`"
 - State: Active
 - Mosaic: Off
 - Exposure Order: as the template defines
@@ -79,7 +79,7 @@ You'll re-import targets into this project each session.
 ### 1. Generate tonight's targets
 
 ```powershell
-anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+mira tonight --config config/s30_pro_jc.yaml --hours 4
 ```
 
 This writes `output/s30_pro_jc/tonight/nina_targets.csv` plus the
@@ -90,7 +90,7 @@ session plan markdown for your phone.
 In NINA: Target Scheduler → Targets → Import CSV.
 
 - File: `output/s30_pro_jc/tonight/nina_targets.csv`
-- Project: `AAVSO Anomaly Scout` (the one you created above)
+- Project: `Mira` (the one you created above)
 - Template: `S30 Pro OSC 30s` (so each target gets the same exposure plan)
 
 The plugin parses the documented six-column format
@@ -135,10 +135,10 @@ configuration is sound.
 
 - **Target Scheduler import errors** usually mean the CSV header isn't
   exact. The plugin is strict about column names: `Type, Name, Ra, Dec,
-  Rotation, ROI`. Anomaly Scout writes these exactly; if you've edited
+  Rotation, ROI`. Mira writes these exactly; if you've edited
   the CSV, verify column names case-sensitive.
 - **Ra/Dec format mismatch**: Target Scheduler accepts `HHh MMm SSs` and
-  `±DD° MM' SS"`. Anomaly Scout writes that format. If you've imported
+  `±DD° MM' SS"`. Mira writes that format. If you've imported
   Telescopius CSVs in the past and tweaked the parser, restore defaults.
 - **NINA can't see the S30 Pro**: check the Seestar is in station mode
   (not AP mode) and on the same WiFi as your NINA computer. Some

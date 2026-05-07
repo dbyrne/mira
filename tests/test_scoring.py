@@ -6,15 +6,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest import TestCase
 
-from anomaly_scout.config import FilterConfig, load_config
-from anomaly_scout.models import (
+from mira.config import FilterConfig, load_config
+from mira.models import (
     AavsoStats,
     Candidate,
     Observability,
     VsxTarget,
     ZtfStats,
 )
-from anomaly_scout.scoring import (
+from mira.scoring import (
     apply_target_bonus,
     apply_target_reason,
     apply_ztf_score,

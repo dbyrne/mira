@@ -4,8 +4,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.lightcurve import plot_history, plot_phase_folded, plot_session_light_curve
-from anomaly_scout.photometry import Observation
+from mira.lightcurve import plot_history, plot_phase_folded, plot_session_light_curve
+from mira.photometry import Observation
 
 
 def _obs(jd: float, mag: float, err: float = 0.05) -> Observation:

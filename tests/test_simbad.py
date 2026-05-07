@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.config import SimbadConfig
-from anomaly_scout.simbad import parse_simbad_rows
+from mira.config import SimbadConfig
+from mira.simbad import parse_simbad_rows
 
 
 class SimbadTests(TestCase):

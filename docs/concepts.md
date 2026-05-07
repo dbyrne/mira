@@ -227,7 +227,7 @@ between them and wraps cleanly through azimuth 0°/360°.
   This is the canonical source of truth for everything that happened.
 - **Sessions DB** (`data/webapp_runs/sessions.db`) is a SQLite index
   built from the run records. Lets `/data/sessions` and friends do
-  fast queries. Rebuildable any time via `anomaly-scout migrate-runs`.
+  fast queries. Rebuildable any time via `mira migrate-runs`.
 - **Capture artifacts** (FITS frames, AAVSO file, plot PNGs) live next
   to each other in `captures/<TARGET>/<DATE>/`.
 - **Schedule snapshots** are archived to

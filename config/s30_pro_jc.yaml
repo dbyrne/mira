@@ -13,8 +13,8 @@
 #    Gaia DR3 enrichment remain valuable.
 #
 # Use:
-#   anomaly-scout run --config config/s30_pro_jc.yaml
-#   anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+#   mira run --config config/s30_pro_jc.yaml
+#   mira tonight --config config/s30_pro_jc.yaml --hours 4
 sites:
   - name: Jersey City
     observer:

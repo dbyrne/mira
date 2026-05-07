@@ -17,7 +17,7 @@ import threading
 import time
 from unittest import TestCase
 
-from anomaly_scout.webapp.runs import RunRecord, _deep_snapshot
+from mira.webapp.runs import RunRecord, _deep_snapshot
 
 
 class DeepSnapshotTests(TestCase):

@@ -1,4 +1,4 @@
-# AAVSO Anomaly Scout — Handoff
+# Mira — Handoff
 
 Clean context for continuing the project on a new machine or in a fresh
 thread. README.md covers user-facing intent; this document covers
@@ -21,15 +21,15 @@ End-to-end variable-star observing pipeline:
 
 ## Repository
 
-- GitHub: `https://github.com/dbyrne/aavso-anomaly-scout` (private)
+- GitHub: `https://github.com/dbyrne/mira` (private)
 - Default branch: `master`
-- Python package entry point: `anomaly-scout`
+- Python package entry point: `mira`
 
 ## Setup on a new computer
 
 ```powershell
-git clone https://github.com/dbyrne/aavso-anomaly-scout.git
-cd aavso-anomaly-scout
+git clone https://github.com/dbyrne/mira.git
+cd mira
 python -m pip install -e .
 python -m unittest discover -s tests
 ```
@@ -41,7 +41,7 @@ Python 3.11+ is required.
 ### Webapp (recommended for live observing)
 
 ```powershell
-anomaly-scout webapp
+mira webapp
 ```
 
 Then open `http://localhost:8000` (or via Tailscale on phone). Five
@@ -64,10 +64,10 @@ tabs:
 ### CLI (scriptable)
 
 ```powershell
-anomaly-scout run --config config/multi_site.yaml
-anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
-anomaly-scout submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
-anomaly-scout target "RR Lyr" --config config/multi_site.yaml --start-date 2026-09-15 --ztf
+mira run --config config/multi_site.yaml
+mira tonight --config config/s30_pro_jc.yaml --hours 4
+mira submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
+mira target "RR Lyr" --config config/multi_site.yaml --start-date 2026-09-15 --ztf
 ```
 
 ## Outputs to read first
@@ -163,15 +163,15 @@ data/                                 # gitignored (regenerable)
 ```
 
 **Lifecycles:**
-- `output/<config>/tonight/` is overwritten every time `anomaly-scout tonight` runs.
+- `output/<config>/tonight/` is overwritten every time `mira tonight` runs.
 - `output/<config>/archive/<DATE>/` is written once per night and never edited.
 - `captures/<TARGET>/<DATE>/` is appended to during a NINA session; photometry
   re-writes the AAVSO file + plots in place when the user re-runs.
-- `data/cache/` is purged by `anomaly-scout cleanup --cache --older-than Nd`.
+- `data/cache/` is purged by `mira cleanup --cache --older-than Nd`.
 - `data/webapp_runs/<run_id>.json` is the canonical run record. Submitted
   sessions are protected from `cleanup --runs`; everything else ages out.
 - `data/webapp_runs/sessions.db` is a queryable index that can be rebuilt
-  any time from the JSON files via `anomaly-scout migrate-runs`.
+  any time from the JSON files via `mira migrate-runs`.
 
 **Gitignore:** `data/cache/` and `data/webapp_runs/` are gitignored.
 `output/` is *committed* as handoff artifacts so a fresh clone has

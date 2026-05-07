@@ -1,9 +1,9 @@
-# AAVSO Anomaly Scout
+# Mira
 
 > **A backyard observing assistant for amateur variable-star photometry.**
 > It picks targets worth a closer look, schedules the night around your
-> sky and your gear, runs photometry on the FITS frames your scope
-> captures, and tells you whether what you saw matches expectations.
+> sky and your gear, runs photometry on what your scope captures, and
+> tells you whether what you saw matches expectations.
 
 It's the difference between staring at a catalog of 10,000 variable stars
 wondering which one to point your scope at, and getting a phone-readable
@@ -71,13 +71,13 @@ Concretely, after a clear night with this tool you have:
 python -m pip install -e .
 
 # Generate a queue of candidates worth observing
-anomaly-scout run --config config/jersey_city.yaml
+mira run --config config/jersey_city.yaml
 
 # Plan a session for tonight
-anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+mira tonight --config config/s30_pro_jc.yaml --hours 4
 
 # Or open the webapp on your phone (Tailscale-friendly)
-anomaly-scout webapp
+mira webapp
 ```
 
 Outputs go to `output/<config>/`. Open `output/<config>/tonight/session_schedule.html`
@@ -107,7 +107,7 @@ For a full walkthrough of your first night, read
 
 ```mermaid
 flowchart TB
-    subgraph Pick["Pick (anomaly-scout run)"]
+    subgraph Pick["Pick (mira run)"]
         VSX[VSX catalog<br/>via VizieR] --> Candidates
         Filters[Site filters<br/>altitude, magnitude<br/>amplitude, |b|] --> Candidates
         Candidates[Scored<br/>candidates]
@@ -117,7 +117,7 @@ flowchart TB
         Candidates --> ZTF[ZTF light curves<br/>optional]
     end
 
-    subgraph Plan["Plan (anomaly-scout tonight)"]
+    subgraph Plan["Plan (mira tonight)"]
         Greedy[Greedy scheduler<br/>+ urgency bonus] --> Schedule
         Horizon[Horizon profile<br/>per azimuth] --> Greedy
         Window[Tonight's window<br/>now → +N hours] --> Greedy
@@ -128,7 +128,7 @@ flowchart TB
         NINA[NINA Target<br/>Scheduler] --> FITS[FITS frames<br/>plate-solved]
     end
 
-    subgraph Process["Process (anomaly-scout submit)"]
+    subgraph Process["Process (mira submit)"]
         FITS --> Photometry[Aperture<br/>photometry]
         VSP[AAVSO VSP<br/>comp stars] --> Photometry
         Photometry --> Aavso[AAVSO file]
@@ -150,4 +150,4 @@ work. ~330 tests, mypy- and ruff-clean. No commercial sponsorship — built
 for personal use first, generalized second. PRs and issues welcome at
 [the GitHub repo][repo].
 
-[repo]: https://github.com/dbyrne/aavso-anomaly-scout
+[repo]: https://github.com/dbyrne/mira

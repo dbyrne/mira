@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}First-light walkthrough - Mira{% endblock %}
+{% block content %}
+<section class="card primary">
+  <h2>First-light walkthrough</h2>
+  <p class="meta">A live status check for tonight's session. Each item turns green when it's done.</p>
+
+  <ol class="walkthrough">
+    <li class="walk-{% if observer_code_set %}done{% else %}todo{% endif %}">
+      <strong>Observer code saved</strong>
+      {% if observer_code_set %}
+      — <span class="status-done">configured</span>
+      {% else %}
+      — <a href="{{ url_for('settings_page') }}">set in Settings</a>
+      {% endif %}
+    </li>
+    <li class="walk-{% if nina_status and nina_status.reachable %}done{% else %}todo{% endif %}">
+      <strong>NINA Advanced API reachable</strong>
+      {% if nina_status and nina_status.reachable %}
+      — <span class="status-done">connected</span>
+      {% if nina_status.equipment %}
+      ({% for k, v in nina_status.equipment.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %})
+      {% endif %}
+      {% else %}
+      — <a href="{{ url_for('nina_dashboard') }}">check NINA page</a>
+      {% endif %}
+    </li>
+    <li class="walk-{% if schedule_exists %}done{% else %}todo{% endif %}">
+      <strong>Schedule generated for tonight</strong>
+      {% if schedule_exists %}
+      — <span class="status-done">{{ scheduled_total }} targets</span>
+      <a href="{{ url_for('schedule') }}" class="btn" style="margin-left: 0.5rem;">View schedule</a>
+      {% else %}
+      — <a href="{{ url_for('index') }}">generate from dashboard</a>
+      {% endif %}
+    </li>
+    <li class="walk-{% if nina_status and nina_status.sequence_running %}active{% elif scheduled_captured > 0 %}done{% else %}todo{% endif %}">
+      <strong>Captures coming in</strong>
+      {% if nina_status and nina_status.sequence_running %}
+      — <span class="status-running">NINA imaging {{ nina_status.current_target or '(target)' }}</span>
+      {% if nina_status.target_progress %}({{ nina_status.target_progress }}){% endif %}
+      {% elif scheduled_captured > 0 %}
+      — <span class="status-done">{{ scheduled_captured }} of {{ scheduled_total }} target dirs have FITS files</span>
+      {% else %}
+      — waiting for NINA to capture into <code>captures/&lt;TARGET&gt;/</code>
+      {% endif %}
+    </li>
+    <li class="walk-{% if scheduled_processed > 0 %}done{% else %}todo{% endif %}">
+      <strong>Photometry run</strong>
+      {% if scheduled_processed > 0 %}
+      — <span class="status-done">{{ scheduled_processed }} of {{ scheduled_total }} processed</span>
+      {% else %}
+      — <a href="{{ url_for('photometry_index') }}">go to Photometry</a> when captures land
+      {% endif %}
+    </li>
+    <li class="walk-{% if scheduled_submitted > 0 %}done{% else %}todo{% endif %}">
+      <strong>AAVSO submission</strong>
+      {% if scheduled_submitted > 0 %}
+      — <span class="status-done">{{ scheduled_submitted }} marked submitted</span>
+      {% else %}
+      — download AAVSO files and upload at
+      <a href="https://www.aavso.org/webobs/file" target="_blank" rel="noopener">aavso.org/webobs/file</a>,
+      then click "Mark as submitted" on each photometry result
+      {% endif %}
+    </li>
+  </ol>
+</section>
+
+{% if scheduled %}
+<section class="card">
+  <h2>Tonight at a glance</h2>
+  <table class="data">
+    <thead>
+      <tr><th>#</th><th>Time</th><th>Target</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for s in scheduled %}
+      <tr>
+        <td>{{ s.order }}</td>
+        <td>{{ s.start_local[11:16] }}–{{ s.end_local[11:16] }}</td>
+        <td>
+          {% if s.fits_count > 0 %}
+          <a href="{{ url_for('photometry_target', target_slug=s.slug) }}">{{ s.name }}</a>
+          {% else %}{{ s.name }}{% endif %}
+        </td>
+        <td>
+          {% if s.stage == 'awaiting' %}<span class="status-queued">awaiting</span>
+          {% elif s.stage == 'captured' %}<span class="status-running">ready</span>
+          {% elif s.stage == 'running' %}<span class="status-running">processing</span>
+          {% elif s.stage == 'failed' %}<span class="status-failed">failed</span>
+          {% elif s.stage == 'processed' %}<span class="status-done">processed</span>
+            {% if s.anomaly_level == 'anomaly' %}<span class="frame-flag flag-outlier">anomaly</span>
+            {% elif s.anomaly_level == 'watch' %}<span class="frame-flag flag-pending">watch</span>
+            {% endif %}
+          {% elif s.stage == 'submitted' %}<span class="status-done">submitted</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

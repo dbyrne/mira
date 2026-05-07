@@ -13,8 +13,8 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from anomaly_scout.photometry import CompStar
-from anomaly_scout.submit_pipeline import (
+from mira.photometry import CompStar
+from mira.submit_pipeline import (
     FrameRecord,
     PhotometryRunResult,
     flag_outliers,
@@ -65,8 +65,8 @@ class ResolveCompsTests(TestCase):
     def test_falls_back_to_vsp_when_no_path(self) -> None:
         # `fetch_vsp_chart` is imported lazily inside resolve_comps, so we
         # patch it at its source module rather than the import site.
-        from anomaly_scout import vsp
-        from anomaly_scout.vsp import VspChart
+        from mira import vsp
+        from mira.vsp import VspChart
 
         chart = VspChart(
             chart_id="X99",
@@ -93,8 +93,8 @@ class ResolveCompsTests(TestCase):
         self.assertEqual(res.chart_total, 3)
 
     def test_vsp_fallback_when_no_comps_in_range(self) -> None:
-        from anomaly_scout import vsp
-        from anomaly_scout.vsp import VspChart
+        from mira import vsp
+        from mira.vsp import VspChart
 
         chart = VspChart(
             chart_id="X1",
@@ -192,7 +192,7 @@ class RunPhotometryLoopTests(TestCase):
             target_dir = Path(tmp)
             _make_fits(target_dir / "a.fits")
             _make_fits(target_dir / "b.fits")
-            from anomaly_scout.photometry import read_fits_with_wcs
+            from mira.photometry import read_fits_with_wcs
 
             _, wcs, _ = read_fits_with_wcs(target_dir / "a.fits")
             target_sky = wcs.pixel_to_world(128, 128)

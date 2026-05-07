@@ -42,7 +42,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `0`
-- JD range: `2460436.19-2461166.19`
+- JD range: `2460436.41-2461166.41`
 - Most recent observation: `none in the configured window`
 
 ## SIMBAD Context

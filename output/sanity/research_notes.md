@@ -1,4 +1,4 @@
-# AAVSO Anomaly Scout - Practice / Collaboration Queue
+# Mira - Practice / Collaboration Queue
 
 Mixed mode: balanced classical/survey bonus. These are useful follow-up candidates - lapsed-coverage classical variables and lightly-characterized survey discoveries side by side. Treat as a practice/collaboration list, not a vetted anomaly queue.
 

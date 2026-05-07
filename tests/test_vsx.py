@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.scoring import is_classical_gcvs_name, is_survey_name, is_uncertain_type
-from anomaly_scout.vsx import tokenize_var_type, type_matches
+from mira.scoring import is_classical_gcvs_name, is_survey_name, is_uncertain_type
+from mira.vsx import tokenize_var_type, type_matches
 
 
 class TypeMatchingTests(TestCase):

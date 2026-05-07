@@ -20,7 +20,7 @@ python -m unittest discover -s tests
 python -m ruff check src/
 
 # Typecheck
-python -m mypy src/anomaly_scout/ --ignore-missing-imports
+python -m mypy src/mira/ --ignore-missing-imports
 
 # Coverage report
 python -m coverage run --source=src -m unittest discover -s tests
@@ -184,7 +184,7 @@ the `data/webapp_runs/<run_id>.json` for the failed run is the most
 useful single artifact you can attach. Redact your observer code if you
 don't want it associated with the bug report.
 
-[repo]: https://github.com/dbyrne/aavso-anomaly-scout/issues
+[repo]: https://github.com/dbyrne/mira/issues
 
 ---
 

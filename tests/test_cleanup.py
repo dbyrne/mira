@@ -9,7 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.cli import cleanup
+from mira.cli import cleanup
 
 
 def _set_old(path: Path, age_days: float) -> None:

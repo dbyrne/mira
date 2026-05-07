@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.webapp.db import SessionStore, from_run_record
+from mira.webapp.db import SessionStore, from_run_record
 
 
 class SessionStoreTests(TestCase):

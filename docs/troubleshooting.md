@@ -21,19 +21,19 @@ Likely causes:
 - **You're running from the wrong directory**. Tests must be discovered
   from the repo root (where `pyproject.toml` lives).
 
-### `anomaly-scout: command not found`
+### `mira: command not found`
 
 The `pip install -e .` step didn't add the entry point to your PATH.
 Try:
 
 ```powershell
-python -m anomaly_scout webapp     # equivalent to "anomaly-scout webapp"
+python -m mira webapp     # equivalent to "mira webapp"
 ```
 
-If that works but the bare `anomaly-scout` command doesn't, your
+If that works but the bare `mira` command doesn't, your
 Python `Scripts/` directory isn't on PATH. Either fix your PATH
 (typically `%APPDATA%\Python\Python311\Scripts`) or always invoke
-via `python -m anomaly_scout`.
+via `python -m mira`.
 
 ---
 
@@ -41,8 +41,8 @@ via `python -m anomaly_scout`.
 
 ### "Could not resolve 'XYZ' in VSX"
 
-Symptom: when you run `anomaly-scout target "XYZ"` or
-`anomaly-scout submit --target "XYZ"`, the system says the name
+Symptom: when you run `mira target "XYZ"` or
+`mira submit --target "XYZ"`, the system says the name
 doesn't match VSX or VizieR was unreachable.
 
 Causes & fixes:
@@ -60,7 +60,7 @@ Causes & fixes:
 
 ### Site config: "no targets passed site filters"
 
-Symptom: `anomaly-scout run` says you have hundreds of VSX targets but
+Symptom: `mira run` says you have hundreds of VSX targets but
 zero pass the site filters.
 
 Likely causes:
@@ -83,7 +83,7 @@ Likely causes:
 
 ### "Nothing observable in the next N hours"
 
-Symptom: `anomaly-scout tonight --hours 4` says nothing is observable.
+Symptom: `mira tonight --hours 4` says nothing is observable.
 
 Causes & fixes:
 
@@ -128,7 +128,7 @@ Causes & fixes:
 - **Plugin not enabled**. Settings → Advanced API → check the
   "Enabled" box. Default port 1888.
 - **Different port**. If you changed the port, pass
-  `--nina-url http://localhost:NNNN` to `anomaly-scout webapp`.
+  `--nina-url http://localhost:NNNN` to `mira webapp`.
 - **Firewall**. Windows Defender Firewall sometimes blocks localhost
   connections from Python. Allow Python through the firewall.
 - **NINA is running as Administrator and the webapp is not** (or vice
@@ -186,13 +186,13 @@ claims.
 
 ### Rehearsal residual too large
 
-Symptom: `anomaly-scout rehearse --target X` reports
+Symptom: `mira rehearse --target X` reports
 "recovered magnitude differs from planted by ±N mag" with N > 0.4.
 
 Causes & fixes:
 
 - **Comp star magnitudes drifted**. AAVSO occasionally re-publishes
-  charts. Clear the VSP cache (`anomaly-scout cleanup --cache --apply`)
+  charts. Clear the VSP cache (`mira cleanup --cache --apply`)
   and try again.
 - **Planted vs recovered direction inverted**. If the residual is
   consistently +1 to +2 mag, you may have hit a flux-scaling bug in
@@ -232,15 +232,15 @@ multiple targets suggests an aperture or chart issue.
 
 ### Webapp won't start, port already in use
 
-Symptom: `anomaly-scout webapp` errors with "Address already in use" on
+Symptom: `mira webapp` errors with "Address already in use" on
 port 8000.
 
 Fixes:
 
-- Another `anomaly-scout webapp` is already running. Stop it
+- Another `mira webapp` is already running. Stop it
   (`Ctrl-C` in its terminal, or kill the Python process).
 - Something else is using port 8000. Run on a different port:
-  `anomaly-scout webapp --port 8080`.
+  `mira webapp --port 8080`.
 
 ### Webapp loads but `/photometry` is empty
 
@@ -249,7 +249,7 @@ Symptom: page renders but says "No captures found."
 Causes:
 
 - **Captures root pointing wrong**. The default `captures/` is relative
-  to the directory you ran `anomaly-scout webapp` from. Confirm with
+  to the directory you ran `mira webapp` from. Confirm with
   `--captures-root /full/absolute/path/to/captures`.
 - **No FITS in captures yet**. The page only shows directories that
   contain `*.fits` or `*.fit` files. NINA's saving to a different
@@ -316,17 +316,17 @@ Fix: prune old non-submitted runs:
 
 ```powershell
 # Dry-run first to see what would be removed
-anomaly-scout cleanup --runs --older-than 90
+mira cleanup --runs --older-than 90
 
 # Apply it
-anomaly-scout cleanup --runs --older-than 90 --apply
+mira cleanup --runs --older-than 90 --apply
 ```
 
 Submitted runs are protected by default. Cache entries can be cleaned
 the same way:
 
 ```powershell
-anomaly-scout cleanup --cache --older-than 30 --apply
+mira cleanup --cache --older-than 30 --apply
 ```
 
 ### `data/webapp_runs/sessions.db` is out of sync
@@ -337,7 +337,7 @@ relative to the actual run records on disk.
 Fix: rebuild the SQLite index from the canonical JSON records:
 
 ```powershell
-anomaly-scout migrate-runs
+mira migrate-runs
 ```
 
 This is idempotent — safe to re-run any time.
@@ -354,4 +354,4 @@ Open an issue on the [GitHub repo][repo] with:
 - Your OS (`uname -a` on Linux/Mac, `winver` on Windows)
 - The relevant config file (with sensitive paths redacted)
 
-[repo]: https://github.com/dbyrne/aavso-anomaly-scout/issues
+[repo]: https://github.com/dbyrne/mira/issues

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Photometry: {{ target_name }} - Mira{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Photometry: {{ target_name }}{% if session_date %} <small class="meta">({{ session_date }})</small>{% endif %}</h2>
+  <p class="meta"><code>{{ target_dir }}</code></p>
+
+  {% if sessions and sessions|length > 1 %}
+  <p class="meta">
+    Sessions:
+    {% for s in sessions|reverse %}
+      {% if s.date == session_date %}
+        <strong>{{ s.date or 'flat' }}</strong>
+      {% else %}
+        <a href="{{ url_for('photometry_target', target_slug=target_slug, date=s.date) }}">{{ s.date or 'flat' }}</a>
+      {% endif %}
+      {% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+
+  {% if error %}
+  <p class="error"><strong>Error:</strong> {{ error }}</p>
+  {% endif %}
+
+  <form action="{{ url_for('trigger_photometry', target_slug=target_slug) }}" method="post" class="kickoff-form">
+    {% if session_date %}<input type="hidden" name="date" value="{{ session_date }}">{% endif %}
+    <label class="full-width">
+      Target name (used for VSX lookup)
+      <input type="text" name="target_name" value="{{ target_name }}">
+    </label>
+    <label>
+      Observer code (your AAVSO code)
+      <input type="text" name="observer_code" value="{{ saved_observer_code }}" required>
+    </label>
+    <label>
+      Chart ID override (optional)
+      <input type="text" name="chart_id" placeholder="auto from VSP">
+    </label>
+    <details class="full-width">
+      <summary>Comp stars: auto-fetched from AAVSO VSP (override)</summary>
+      <p class="meta">
+        By default we pull the comp-star sequence from AAVSO VSP at run time
+        and pick comps within ±2 mag of the target. To use a hand-curated
+        sequence instead, paste the JSON file path here.
+      </p>
+      <label>
+        Comp-stars JSON path (override)
+        <input type="text" name="comp_stars" placeholder="(blank = auto-fetch from VSP)">
+      </label>
+    </details>
+    <button type="submit" class="btn-primary">Run photometry</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Status</h2>
+  <p class="meta">
+    <span class="htmx-indicator" id="phot-poll-indicator">polling…</span>
+  </p>
+  <div id="phot-status"
+       hx-get="{{ url_for('photometry_target_partial', target_slug=target_slug, date=session_date) }}"
+       hx-trigger="load, every 2s"
+       hx-swap="innerHTML"
+       hx-indicator="#phot-poll-indicator">
+    {% include "photometry_partial.html" %}
+  </div>
+  <script>
+  (function() {
+    var div = document.getElementById('phot-status');
+    if (!div) return;
+    div.addEventListener('htmx:afterSwap', function () {
+      if (div.querySelector('.status-done, .status-failed')) {
+        div.removeAttribute('hx-trigger');
+      }
+    });
+  })();
+  </script>
+
+  <p style="margin-top: 1rem;">
+    {% if run and run.status == 'done' %}
+      {% if run.result and run.result.submitted_at %}
+      <span class="status-done">Submitted to AAVSO ({{ run.result.submitted_at[:10] }})</span>
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug, date=session_date) }}" class="btn">Re-download file</a>
+      {% else %}
+      <a href="{{ url_for('photometry_upload', target_slug=target_slug, date=session_date) }}" class="btn-primary">Download AAVSO file</a>
+      <form action="{{ url_for('photometry_mark_submitted', target_slug=target_slug) }}" method="post" style="display: inline;">
+        {% if session_date %}<input type="hidden" name="date" value="{{ session_date }}">{% endif %}
+        <button type="submit" class="btn">Mark as submitted</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    <a href="{{ url_for('photometry_index') }}" class="btn">← All targets</a>
+  </p>
+</section>
+{% endblock %}

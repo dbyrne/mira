@@ -15,10 +15,10 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from zoneinfo import ZoneInfo
 
-from anomaly_scout.config import load_config
-from anomaly_scout.models import Candidate, Observability, VsxTarget
-from anomaly_scout.scheduler import ScheduledTarget, ScheduleResult
-from anomaly_scout.session_schedule import (
+from mira.config import load_config
+from mira.models import Candidate, Observability, VsxTarget
+from mira.scheduler import ScheduledTarget, ScheduleResult
+from mira.session_schedule import (
     write_nina_targets_scheduled_csv,
     write_session_overflow_csv,
     write_session_schedule_csv,

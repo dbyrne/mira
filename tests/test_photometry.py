@@ -10,7 +10,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from anomaly_scout.photometry import (
+from mira.photometry import (
     CompStar,
     Observation,
     _datetime_to_jd,
@@ -159,13 +159,13 @@ class EnsembleMagnitudeTests(TestCase):
 
 class AavsoFilenameTests(TestCase):
     def test_strips_spaces_and_slashes(self) -> None:
-        from anomaly_scout.photometry import aavso_filename
+        from mira.photometry import aavso_filename
         self.assertEqual(aavso_filename("RR Lyr"), "aavso_RR_Lyr.txt")
         self.assertEqual(aavso_filename("AB AUR"), "aavso_AB_AUR.txt")
         self.assertEqual(aavso_filename("V/W Cyg"), "aavso_V_W_Cyg.txt")
 
     def test_strips_windows_forbidden_characters(self) -> None:
-        from anomaly_scout.photometry import aavso_filename
+        from mira.photometry import aavso_filename
         # Windows forbids \ : * ? " < > |
         self.assertEqual(
             aavso_filename('weird:name*test?<>"|\\path'),
@@ -174,7 +174,7 @@ class AavsoFilenameTests(TestCase):
 
     def test_preserves_safe_punctuation(self) -> None:
         # Hyphens, underscores, and dots are safe and should pass through
-        from anomaly_scout.photometry import aavso_filename
+        from mira.photometry import aavso_filename
         self.assertEqual(aavso_filename("ASASSN-V_J160002"), "aavso_ASASSN-V_J160002.txt")
 
 
@@ -206,7 +206,7 @@ class AavsoFileRoundTripTests(TestCase):
         return headers, rows
 
     def test_roundtrip_preserves_observation_fields(self) -> None:
-        from anomaly_scout.photometry import Observation, write_aavso_extended_file
+        from mira.photometry import Observation, write_aavso_extended_file
 
         observations = [
             Observation(
@@ -248,7 +248,7 @@ class CompSkipCallbackTests(TestCase):
     batch Y this was silently swallowed."""
 
     def test_callback_fires_for_out_of_bounds_comp(self) -> None:
-        from anomaly_scout.photometry import CompStar, process_capture
+        from mira.photometry import CompStar, process_capture
 
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "t.fits"
@@ -260,7 +260,7 @@ class CompSkipCallbackTests(TestCase):
                 comp_amplitudes=[2512.0],
                 seed=2,
             )
-            from anomaly_scout.photometry import read_fits_with_wcs
+            from mira.photometry import read_fits_with_wcs
             _, wcs, _ = read_fits_with_wcs(path)
             target_sky = wcs.pixel_to_world(128, 128)
             comp_sky = wcs.pixel_to_world(158, 128)
@@ -302,7 +302,7 @@ class ProcessCaptureTests(TestCase):
         - Magnitude is within 0.4 mag of the planted value
         - Combined error is smaller than the single-comp case (statistical
           benefit of ensembling)."""
-        from anomaly_scout.photometry import CompStar, process_capture, read_fits_with_wcs
+        from mira.photometry import CompStar, process_capture, read_fits_with_wcs
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "ensemble.fits"
             # Target at center, 3 comps each ~1 mag brighter at different positions
@@ -348,7 +348,7 @@ class ProcessCaptureTests(TestCase):
         says target is ~9, the outlier should be dropped (>2σ from the
         median) and the resulting magnitude should agree with the 3 good
         comps. This is the load-bearing claim of the multi-comp ensemble."""
-        from anomaly_scout.photometry import (
+        from mira.photometry import (
             CompStar,
             ensemble_magnitude,
         )
@@ -429,7 +429,7 @@ class AavsoFileTests(TestCase):
             content = path.read_text()
             self.assertIn("#TYPE=Extended", content)
             self.assertIn("#OBSCODE=ABC", content)
-            self.assertIn("#SOFTWARE=anomaly-scout", content)
+            self.assertIn("#SOFTWARE=mira", content)
             self.assertIn("RR LYR,2461165.50000,8.234,0.012,TG", content)
             self.assertIn("095,9.512", content)
             self.assertIn("X12345AAB", content)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-AAVSO Anomaly Scout produces a short observing queue of known VSX variable stars worth amateur follow-up. Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog. See `HANDOFF.md` for the original project state.
+Mira produces a short observing queue of known VSX variable stars worth amateur follow-up. Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog. See `HANDOFF.md` for the original project state.
 
 ## Commands
 
@@ -17,21 +17,21 @@ python -m pip install -e .
 Run the full pipeline (multi-site is the typical run):
 
 ```powershell
-anomaly-scout run --config config/multi_site.yaml
-anomaly-scout run --config config/jersey_city.yaml
-anomaly-scout run --config config/fairbanks.yaml
+mira run --config config/multi_site.yaml
+mira run --config config/jersey_city.yaml
+mira run --config config/fairbanks.yaml
 ```
 
 Generate a packet for a single named target without running the queue:
 
 ```powershell
-anomaly-scout target "RR Lyr" --config config/multi_site.yaml --start-date 2026-09-15 --ztf
+mira target "RR Lyr" --config config/multi_site.yaml --start-date 2026-09-15 --ztf
 ```
 
 Plan a single observing session for tonight (uses today's date, restricts to next N hours, tuned-for-S30-Pro config):
 
 ```powershell
-anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
+mira tonight --config config/s30_pro_jc.yaml --hours 4
 ```
 
 That writes `output/s30_pro_jc/tonight/`:
@@ -44,7 +44,7 @@ That writes `output/s30_pro_jc/tonight/`:
 After NINA captures FITS files, run photometry and produce an AAVSO upload:
 
 ```powershell
-anomaly-scout submit `
+mira submit `
   --captures "C:/NINA/captures/RR_LYR/" `
   --target "RR LYR" `
   --comp-stars docs/comp_stars/rr_lyr.json `
@@ -60,7 +60,7 @@ https://www.aavso.org/webobs/file.
 Fast smoke test:
 
 ```powershell
-anomaly-scout run --config config/multi_site.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0
+mira run --config config/multi_site.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0
 ```
 
 Run all tests:
@@ -81,8 +81,8 @@ CLI flags `--limit`, `--top`, `--aavso-top`, `--simbad-top`, `--gaia-top`, `--zt
 The intended workflow is two passes per session:
 
 ```powershell
-anomaly-scout run --config config/multi_site.yaml --start-date 2026-09-15 --output-dir output/practice
-anomaly-scout run --config config/multi_site.yaml --start-date 2026-09-15 --mode novelty --ztf-top 20 --output-dir output/novelty
+mira run --config config/multi_site.yaml --start-date 2026-09-15 --output-dir output/practice
+mira run --config config/multi_site.yaml --start-date 2026-09-15 --mode novelty --ztf-top 20 --output-dir output/novelty
 ```
 
 ## Architecture
@@ -120,7 +120,7 @@ Cross-cutting modules:
 - `photometry.py` performs circular-aperture differential photometry on NINA-captured FITS. Requires NINA to have plate-solved (a celestial WCS in headers). Picks the brightest viable comp star per frame, propagates flux errors, writes the AAVSO Extended File Format. Uses `astropy.io.fits` + `astropy.wcs` + `photutils.aperture`. Tested with synthetic FITS that pin the magnitude recovery to within 0.4 mag of planted values.
 - `docs/nina_setup.md` and `docs/photometry.md` walk through the per-night workflow end-to-end (NINA configuration, Target Scheduler plugin, comp-star JSON, submit command). Keep these docs aligned with code changes that affect the workflow.
 - `webapp/` is a Flask app that wraps the CLI commands as a web UI. Three layers: (1) kick off `tonight` and view the schedule, (2) run photometry on capture directories with live results, (3) live NINA monitoring via the Advanced API plugin. Single user, single machine, no auth. Background tasks via `ThreadPoolExecutor`; in-memory state. HTMX for partial updates so there's no JS framework to maintain. Templates use the same red-light dark-mode CSS as the static `nightly_html.py`.
-- Start it with `anomaly-scout webapp --output-dir ... --captures-root ... --nina-url http://localhost:1888`. The `serve` subcommand is now a deprecated alias that forwards to `webapp` with default settings.
+- Start it with `mira webapp --output-dir ... --captures-root ... --nina-url http://localhost:1888`. The `serve` subcommand is now a deprecated alias that forwards to `webapp` with default settings.
 - `scheduler.py` builds the prescriptive session schedule via greedy selection: at each step pick the candidate with the highest `score + setting-soon urgency bonus` whose recommended integration fits before its observable window closes. Setting-soon urgency = `max(0, URGENCY_HORIZON_MINUTES - time_until_set)`, which biases toward grabbing targets before they drop. Observable window per candidate is approximated as `best_local_time ± minutes_above_minimum/2`; if a tighter approximation matters later, walk the per-sample altitude data in `observability.py` and store start/end on `Observability`.
 - The scheduler does NOT optimize slew time between targets (constant `SLEW_BUFFER_MINUTES_DEFAULT = 3.0`). For a small home setup this is fine; if you ever want TSP-style routing it'd go here.
 - Solar position is computed by `sun_position` in `observability.py` (low-precision, ~1° accuracy — fine for "is it dark"). To disable the darkness filter for a site, set `max_sun_altitude_deg: 0` (sun-on-horizon).

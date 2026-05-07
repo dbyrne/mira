@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.session_plan import (
+from mira.session_plan import (
     dec_to_dms,
     dec_to_target_scheduler_dms,
     ra_to_hms,

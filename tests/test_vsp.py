@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.vsp import (
+from mira.vsp import (
     _dms_to_deg,
     _hms_to_deg,
     filter_comps_for_target,
@@ -203,7 +203,7 @@ class VspMalformedResponseTests(TestCase):
     def test_filter_unknown_target_mag_returns_brightest(self) -> None:
         # When VSX has no bright_mag (rare but happens for some types),
         # filter_comps_for_target should still return a usable list.
-        from anomaly_scout.photometry import CompStar
+        from mira.photometry import CompStar
         comps = [
             CompStar(label=f"c{i}", ra_deg=0, dec_deg=0,
                      catalog_mag=8.0 + i * 0.5, catalog_band="V")

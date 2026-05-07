@@ -2,7 +2,7 @@
 
 After NINA finishes a session, captured FITS files need to be turned
 into AAVSO observation rows. The webapp's `/photometry` view (or the
-`anomaly-scout submit` CLI) does this end-to-end: it pulls a comparison-
+`mira submit` CLI) does this end-to-end: it pulls a comparison-
 star sequence from AAVSO VSP, runs aperture photometry on each frame,
 flags outliers, generates a light curve plus phase-folded plot, runs an
 anomaly assessment, and writes an AAVSO Extended File Format file ready
@@ -29,7 +29,7 @@ for upload.
 
 ### Webapp (recommended)
 
-1. `anomaly-scout webapp` and open the dashboard on phone or laptop.
+1. `mira webapp` and open the dashboard on phone or laptop.
 2. Navigate to `/photometry`. If a schedule is loaded, the page shows
    each scheduled target's status (awaiting capture / captured /
    processing / processed / submitted).
@@ -47,13 +47,13 @@ for upload.
 ### CLI
 
 ```powershell
-anomaly-scout submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
+mira submit --captures captures/RR_LYR/ --target "RR LYR" --observer-code ABC
 ```
 
 Auto-fetches comps from VSP. Override with:
 
 ```powershell
-anomaly-scout submit `
+mira submit `
   --captures captures/RR_LYR/ `
   --target "RR LYR" `
   --observer-code ABC `
@@ -123,7 +123,7 @@ Before you observe, walk through this once:
    loading `/nina` in the webapp.
 2. ☐ Polar alignment routine done (Seestar app handles this on the EQ
    wedge).
-3. ☐ Test schedule generated: `anomaly-scout tonight --hours 4`.
+3. ☐ Test schedule generated: `mira tonight --hours 4`.
    Confirm `output/.../session_schedule.html` shows scheduled targets.
 4. ☐ NINA Target Scheduler imports `nina_targets.csv` cleanly.
 5. ☐ AAVSO observer code memorized or saved somewhere quick to copy.

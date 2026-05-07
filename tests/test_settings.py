@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from anomaly_scout.webapp.settings import (
+from mira.webapp.settings import (
     load_settings,
     save_settings,
     update_setting,

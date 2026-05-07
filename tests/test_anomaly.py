@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.anomaly import (
+from mira.anomaly import (
     ANOMALY_SIGMA,
     BASELINE_MIN_SAMPLES,
     CATALOG_TOLERANCE_MAG,
     WATCH_SIGMA,
     assess_session_anomaly,
 )
-from anomaly_scout.models import VsxTarget
-from anomaly_scout.photometry import Observation
+from mira.models import VsxTarget
+from mira.photometry import Observation
 
 
 def _target(max_mag: float | None, min_mag: float | None, faint_is_amplitude: bool = False) -> VsxTarget:
@@ -152,7 +152,7 @@ class AnomalyAssessmentTests(TestCase):
         """Regression: _baseline_median_and_sigma used to IndexError on
         empty input. Now returns (None, None) so the caller can branch
         without try/except."""
-        from anomaly_scout.anomaly import _baseline_median_and_sigma
+        from mira.anomaly import _baseline_median_and_sigma
         median, sigma = _baseline_median_and_sigma([])
         self.assertIsNone(median)
         self.assertIsNone(sigma)
@@ -160,7 +160,7 @@ class AnomalyAssessmentTests(TestCase):
     def test_baseline_helper_returns_sigma_none_when_mad_zero(self) -> None:
         """If all values are identical, MAD is 0 and sigma should be None
         (caller treats that as 'can't trust the spread')."""
-        from anomaly_scout.anomaly import _baseline_median_and_sigma
+        from mira.anomaly import _baseline_median_and_sigma
         samples = [(2461000.0 + i, 7.5, "V") for i in range(10)]
         median, sigma = _baseline_median_and_sigma(samples)
         self.assertEqual(median, 7.5)

@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from unittest import TestCase
 
-from anomaly_scout.aavso import _sample_observations, _summarize_mags
-from anomaly_scout.models import Candidate, Observability, VsxTarget
-from anomaly_scout.scheduler import (
+from mira.aavso import _sample_observations, _summarize_mags
+from mira.models import Candidate, Observability, VsxTarget
+from mira.scheduler import (
     URGENCY_HORIZON_MINUTES,
     build_session_schedule,
 )

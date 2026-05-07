@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.aavso import count_cdata_csv_rows, parse_cdata_observations
+from mira.aavso import count_cdata_csv_rows, parse_cdata_observations
 
 
 class AavsoTests(TestCase):

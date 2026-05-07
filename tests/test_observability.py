@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from unittest import TestCase
 
-from anomaly_scout.config import WindowConfig
-from anomaly_scout.observability import (
+from mira.config import WindowConfig
+from mira.observability import (
     _local_window_samples_for_night,
     altitude_deg,
     angular_separation_deg,

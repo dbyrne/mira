@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Purpose
 
-AAVSO Anomaly Scout produces a short observing queue of known VSX variable stars worth amateur follow-up from Jersey City, NJ. The intentional output is a candidate packet for human triage, not a discovery catalog. Scope is deliberately narrow: known VSX objects, public archive metadata, practical urban-photometry triage. See `HANDOFF.md` for project state and recommended next work.
+Mira produces a short observing queue of known VSX variable stars worth amateur follow-up from Jersey City, NJ. The intentional output is a candidate packet for human triage, not a discovery catalog. Scope is deliberately narrow: known VSX objects, public archive metadata, practical urban-photometry triage. See `HANDOFF.md` for project state and recommended next work.
 
 ## Commands
 
@@ -17,13 +17,13 @@ python -m pip install -e .
 Run the full pipeline:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml
+mira run --config config/jersey_city.yaml
 ```
 
 Fast smoke test:
 
 ```powershell
-anomaly-scout run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0
+mira run --config config/jersey_city.yaml --limit 50 --top 10 --aavso-top 5 --simbad-top 5 --ztf-top 0
 ```
 
 Run all tests:

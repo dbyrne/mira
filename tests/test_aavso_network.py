@@ -15,8 +15,8 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from anomaly_scout import aavso
-from anomaly_scout.config import AavsoConfig
+from mira import aavso
+from mira.config import AavsoConfig
 
 
 def _config(recent_days: int = 90) -> AavsoConfig:

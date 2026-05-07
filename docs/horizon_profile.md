@@ -200,7 +200,7 @@ sites:
       ...
 ```
 
-Re-run `anomaly-scout tonight --config config/<yoursite>.yaml --hours 4`.
+Re-run `mira tonight --config config/<yoursite>.yaml --hours 4`.
 The schedule will silently drop targets that were behind your
 obstructions. New southern or low-altitude targets may appear that
 were previously rejected by the flat altitude floor.
@@ -215,8 +215,8 @@ positions. From the project root:
 ```python
 from datetime import datetime, timezone
 from pathlib import Path
-from anomaly_scout.observability import altitude_deg, azimuth_deg
-from anomaly_scout.horizon import load_horizon_profile
+from mira.observability import altitude_deg, azimuth_deg
+from mira.horizon import load_horizon_profile
 
 now_utc = datetime.now(timezone.utc)
 my_lat, my_lon = 37.7749, -122.4194

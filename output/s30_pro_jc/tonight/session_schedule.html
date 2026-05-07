@@ -86,6 +86,71 @@ section.quick-glance h2 {
   margin: 0 0 0.5rem 0;
   color: var(--fg-dim);
 }
+section.timeline-section {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 1.5rem;
+}
+section.timeline-section h2 {
+  font-size: 1rem;
+  margin: 0 0 0.6rem 0;
+  color: var(--fg-dim);
+}
+.timeline { position: relative; width: 100%; }
+.timeline-track {
+  position: relative;
+  height: 38px;
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.timeline-block {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.timeline-block:hover { filter: brightness(1.18); text-decoration: none; }
+.timeline-block-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.timeline-ticks {
+  position: relative;
+  height: 1.1rem;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--fg-dim);
+}
+.timeline-ticks .tick {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-ticks .tick::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 4px;
+  background: var(--card-border);
+  margin: 0 auto 1px;
+}
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 0.4rem 0.5rem; text-align: left; }
 tr:nth-child(even) { background: var(--table-stripe); }
@@ -220,7 +285,7 @@ footer.workflow h2 { font-size: 1rem; margin: 0 0 0.5rem 0; color: var(--fg-dim)
 <header class="session-header">
 <div>
 <h1>Tue May 05, 2026 from Jersey City</h1>
-<div class="meta">12:29–06:29 EDT · 9 targets · 18.0h window · 240 min integration</div>
+<div class="meta">17:44–21:44 EDT · 4 targets · 4.0h window · 90 min integration</div>
 </div>
 <div style="display:flex;gap:0.5rem;align-items:center;">
 <a href="/" class="theme-toggle" title="Back to dashboard (when served via webapp)">← Dashboard</a>
@@ -228,75 +293,12 @@ footer.workflow h2 { font-size: 1rem; margin: 0 0 0.5rem 0; color: var(--fg-dim)
 </div>
 </header>
 <main>
-<section class="quick-glance"><h2>Schedule</h2><table><thead><tr><th>Time</th><th>Target</th><th>Mag</th><th>Type</th><th>Plan</th></tr></thead><tbody><tr><td>21:45–22:15</td><td><a href="#t1">Gaia DR3 1454878252642442624</a></td><td>12.00</td><td>SR|M</td><td>60×30s</td></tr><tr><td>22:18–22:48</td><td><a href="#t2">RU Leo</a></td><td>10.30</td><td>LB</td><td>60×30s</td></tr><tr><td>22:51–23:06</td><td><a href="#t3">CT Dra</a></td><td>9.80</td><td>LB</td><td>60×15s</td></tr><tr><td>23:09–23:39</td><td><a href="#t4">BV Boo</a></td><td>11.70</td><td>LB</td><td>60×30s</td></tr><tr><td>23:42–23:57</td><td><a href="#t5">UY CVn</a></td><td>9.26</td><td>LB</td><td>60×15s</td></tr><tr><td>00:00–00:30</td><td><a href="#t6">TW CVn</a></td><td>11.00</td><td>LB</td><td>60×30s</td></tr><tr><td>00:33–01:03</td><td><a href="#t7">VX CVn</a></td><td>10.20</td><td>SRA</td><td>60×30s</td></tr><tr><td>01:06–01:36</td><td><a href="#t8">ZZ CVn</a></td><td>10.90</td><td>LB</td><td>60×30s</td></tr><tr><td>01:39–02:09</td><td><a href="#t9">Gaia DR3 1477446592088319872</a></td><td>11.60</td><td>L</td><td>60×30s</td></tr></tbody></table></section>
+<section class="timeline-section"><h2>Tonight at a glance</h2><div class="timeline"><div class="timeline-track"><a class="timeline-block" href="#t1" style="left:56.25%;width:12.50%;" title="1. RU Leo (20:00–20:30)"><span class="timeline-block-label">1. RU Leo</span></a><a class="timeline-block" href="#t2" style="left:70.00%;width:12.50%;" title="2. Gaia DR3 834495451075774976 (20:33–21:03)"><span class="timeline-block-label">2. Gaia DR3 834495451075774976</span></a><a class="timeline-block" href="#t3" style="left:83.75%;width:6.25%;" title="3. CT Dra (21:06–21:21)"><span class="timeline-block-label">3. CT Dra</span></a><a class="timeline-block" href="#t4" style="left:91.25%;width:6.25%;" title="4. XX Cnc (21:24–21:39)"><span class="timeline-block-label">4. XX Cnc</span></a></div><div class="timeline-ticks"><span class="tick" style="left:6.25%;">18:00</span><span class="tick" style="left:31.25%;">19:00</span><span class="tick" style="left:56.25%;">20:00</span><span class="tick" style="left:81.25%;">21:00</span></div></div></section>
+<section class="quick-glance"><h2>Schedule</h2><table><thead><tr><th>Time</th><th>Target</th><th>Mag</th><th>Type</th><th>Plan</th></tr></thead><tbody><tr><td>20:00–20:30</td><td><a href="#t1">RU Leo</a></td><td>10.30</td><td>LB</td><td>60×30s</td></tr><tr><td>20:33–21:03</td><td><a href="#t2">Gaia DR3 834495451075774976</a></td><td>11.95</td><td>L</td><td>60×30s</td></tr><tr><td>21:06–21:21</td><td><a href="#t3">CT Dra</a></td><td>9.80</td><td>LB</td><td>60×15s</td></tr><tr><td>21:24–21:39</td><td><a href="#t4">XX Cnc</a></td><td>8.30</td><td>LB</td><td>60×15s</td></tr></tbody></table></section>
 <article class="target-card" id="t1">
 <header>
-<span class="time">21:45–22:15</span>
-<h2>1. Gaia DR3 1454878252642442624</h2>
-<span class="quick-stats">
-Score 112.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~12.13 <span style='color:var(--fg-dim)'>(12.00–12.26)</span></div>
-<div><strong>Type:</strong> SR|M</div>
-<div><strong>Period:</strong> 307.000 d</div>
-<div><strong>Max alt tonight:</strong> 77.4°</div>
-<div><strong>Best moment:</strong> 23:30</div>
-<div><strong>RA / Dec:</strong> <code>13:42:15.09</code> / <code>+28:23:25.7</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 12 and mag 13.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+1454878252642442624&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=10614126" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=205.562870+28.390470&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>SR|M</code></li>
-<li>Catalog photometry range: <code>12.000</code> to <code>12.260</code> mag</li>
-<li>Catalog amplitude: <code>0.260</code> mag</li>
-<li>Spectral type: <code>K</code></li>
-<li>Galactic latitude: <code>78.7°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 77.4 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>uncertain or broad VSX type (SR|M)</li>
-<li>survey-designated object, good data-mining follow-up candidate</li>
-<li>modest catalog amplitude about 0.26 mag</li>
-<li>bright enough for Jersey City (12.00)</li>
-<li>long-period cadence friendly (307.00 d)</li>
-<li>well away from Galactic plane (b=78.7 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>2MASS J13421508+2823256</code></li>
-<li>Object type: <code>LP*</code></li>
-<li>Match separation: <code>0.030</code> arcsec</li>
-<li>Other IDs: <code>Gaia DR3 1454878252642442624</code>, <code>Cl* NGC 5272   KUST     669</code>, <code>NGC  5272  1053</code>, <code>2MASS J13421508+2823256</code>, <code>TIC 416607151</code>, <code>Gaia DR2 1454878252642442624</code>, <code>NGC  5272  1045</code>, <code>[WOR95] M3 51</code></li>
-</ul></div></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1454878252642442624</code></li>
-<li>G mag: <code>12.078</code> · BP-RP: <code>1.727</code></li>
-<li>Parallax: <code>0.091</code> mas · RUWE: <code>1.297</code></li>
-<li>IPD multi-peak: <code>0.000</code></li>
-</ul></div></details>
-</article>
-<article class="target-card" id="t2">
-<header>
-<span class="time">22:18–22:48</span>
-<h2>2. RU Leo</h2>
+<span class="time">20:00–20:30</span>
+<h2>1. RU Leo</h2>
 <span class="quick-stats">
 Score 92.0
  · 
@@ -357,9 +359,72 @@ Score 92.0
 <li>IPD multi-peak: <code>2.000</code> <span class="flag-anomaly">PSF blended</span></li>
 </ul></div></details>
 </article>
+<article class="target-card" id="t2">
+<header>
+<span class="time">20:33–21:03</span>
+<h2>2. Gaia DR3 834495451075774976</h2>
+<span class="quick-stats">
+Score 88.0
+ · 
+60×30s
+ = 30 min
+</span>
+</header>
+<div class="headline-grid">
+<div><strong>Expected mag:</strong> ~12.32 <span style='color:var(--fg-dim)'>(11.95–12.69)</span></div>
+<div><strong>Type:</strong> L</div>
+<div><strong>Max alt tonight:</strong> 76.8°</div>
+<div><strong>Best moment:</strong> 21:30</div>
+<div><strong>RA / Dec:</strong> <code>10:28:28.87</code> / <code>+48:14:17.8</code></div>
+</div>
+<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
+<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 12 and mag 13.</div>
+<div class="action-row">
+<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+834495451075774976&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
+<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=8414088" target="_blank" rel="noopener">VSX details</a>
+<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=157.120300+48.238280&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
+</div>
+<details><summary>Catalog</summary><div>
+<ul>
+<li>VSX type: <code>L</code></li>
+<li>Catalog photometry range: <code>11.950</code> to <code>12.690</code> mag</li>
+<li>Catalog amplitude: <code>0.740</code> mag</li>
+<li>Spectral type: <code>M</code></li>
+<li>Galactic latitude: <code>55.2°</code></li>
+</ul>
+</div></details>
+<details><summary>Why on the queue</summary>
+<ul class="reasons">
+<li>max altitude 76.8 deg from Jersey City</li>
+<li>long nightly window from Jersey City</li>
+<li>survey-designated object, good data-mining follow-up candidate</li>
+<li>catalog amplitude about 0.74 mag</li>
+<li>bright enough for Jersey City (11.95)</li>
+<li>no catalog period listed</li>
+<li>well away from Galactic plane (b=55.2 deg)</li>
+<li>sparse AAVSO coverage (0 recent observations)</li>
+<li>Gaia ipd_frac_multi_peak=78.00 suggests blended/contaminated PSF</li>
+</ul></details>
+<details open><summary>AAVSO recent coverage</summary><div>
+<p>Recent observations: <strong>0</strong>
+</p>
+</div></details>
+<details><summary>SIMBAD context</summary><div><ul>
+<li>Main ID: <code>G 146-35B</code></li>
+<li>Object type: <code>PM*</code></li>
+<li>Match separation: <code>0.010</code> arcsec</li>
+<li>Other IDs: <code>G 146-35B</code>, <code>Gaia DR3 834495451075774976</code>, <code>G 146-35A</code>, <code>Gaia DR3 834495451075108864</code></li>
+</ul></div></details>
+<details><summary>Gaia DR3 context</summary><div><ul>
+<li>Source ID: <code>834495451075774976</code></li>
+<li>G mag: <code>12.633</code> · BP-RP: <code>2.796</code></li>
+<li>Parallax: <code>n/a</code> mas · RUWE: <code>n/a</code></li>
+<li>IPD multi-peak: <code>78.000</code> <span class="flag-anomaly">PSF blended</span></li>
+</ul></div></details>
+</article>
 <article class="target-card" id="t3">
 <header>
-<span class="time">22:51–23:06</span>
+<span class="time">21:06–21:21</span>
 <h2>3. CT Dra</h2>
 <span class="quick-stats">
 Score 79.2
@@ -421,384 +486,78 @@ Score 79.2
 </article>
 <article class="target-card" id="t4">
 <header>
-<span class="time">23:09–23:39</span>
-<h2>4. BV Boo</h2>
+<span class="time">21:24–21:39</span>
+<h2>4. XX Cnc</h2>
 <span class="quick-stats">
-Score 98.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~11.90 <span style='color:var(--fg-dim)'>(11.70–12.10)</span></div>
-<div><strong>Type:</strong> LB</div>
-<div><strong>Period:</strong> 37.620 d</div>
-<div><strong>Max alt tonight:</strong> 72.0°</div>
-<div><strong>Best moment:</strong> 23:30</div>
-<div><strong>RA / Dec:</strong> <code>13:42:03.87</code> / <code>+22:54:49.6</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 11 and mag 12.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=BV+Boo&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=4402" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=205.516110+22.913780&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>LB</code></li>
-<li>Catalog photometry range: <code>11.700</code> to <code>12.100</code> mag</li>
-<li>Catalog amplitude: <code>0.400</code> mag</li>
-<li>Spectral type: <code>blank</code></li>
-<li>Galactic latitude: <code>77.8°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 72.0 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>classical GCVS variable, suitable for practice and follow-up</li>
-<li>catalog amplitude about 0.40 mag</li>
-<li>bright enough for Jersey City (11.70)</li>
-<li>long-period cadence friendly (37.62 d)</li>
-<li>well away from Galactic plane (b=77.8 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>V* BV Boo</code></li>
-<li>Object type: <code>LP*</code></li>
-<li>Match separation: <code>0.260</code> arcsec</li>
-<li>Other IDs: <code>Gaia DR3 1443518893070179712</code>, <code>GSC 01998-01020</code>, <code>SV* SON  8501</code>, <code>V* BV Boo</code>, <code>2MASS J13420387+2254497</code>, <code>TYC 1998-1020-1</code>, <code>TIC 417137018</code>, <code>Gaia DR1 1443518888775544064</code></li>
-</ul></div></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1443518893070179712</code></li>
-<li>G mag: <code>11.329</code> · BP-RP: <code>1.682</code></li>
-<li>Parallax: <code>0.093</code> mas · RUWE: <code>1.344</code></li>
-<li>IPD multi-peak: <code>0.000</code></li>
-</ul></div></details>
-</article>
-<article class="target-card" id="t5">
-<header>
-<span class="time">23:42–23:57</span>
-<h2>5. UY CVn</h2>
-<span class="quick-stats">
-Score 94.0
+Score 59.5
  · 
 60×15s
  = 15 min
 </span>
 </header>
 <div class="headline-grid">
-<div><strong>Expected mag:</strong> ~9.50 <span style='color:var(--fg-dim)'>(9.26–9.74)</span></div>
+<div><strong>Expected mag:</strong> ~8.39 <span style='color:var(--fg-dim)'>(8.37–8.74)</span></div>
 <div><strong>Type:</strong> LB</div>
-<div><strong>Max alt tonight:</strong> 85.1°</div>
-<div><strong>Best moment:</strong> 22:30</div>
-<div><strong>RA / Dec:</strong> <code>12:24:53.83</code> / <code>+45:35:04.7</code></div>
+<div><strong>Period:</strong> 48.820 d</div>
+<div><strong>Max alt tonight:</strong> 49.5°</div>
+<div><strong>Best moment:</strong> 21:30</div>
+<div><strong>RA / Dec:</strong> <code>08:43:17.19</code> / <code>+20:36:01.4</code></div>
 </div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 9 and mag 10.</div>
+<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [●··········] <span style="color:var(--fg-dim)">fainter</span></div>
+<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 8 and mag 9.</div>
 <div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=UY+CVn&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=5055" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=186.224290+45.584640&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
+<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=XX+Cnc&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
+<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=4853" target="_blank" rel="noopener">VSX details</a>
+<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=130.821620+20.600390&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
 </div>
 <details><summary>Catalog</summary><div>
 <ul>
 <li>VSX type: <code>LB</code></li>
-<li>Catalog photometry range: <code>9.260</code> to <code>9.740</code> mag</li>
-<li>Catalog amplitude: <code>0.480</code> mag</li>
-<li>Spectral type: <code>M5III</code></li>
-<li>Galactic latitude: <code>70.8°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 85.1 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>classical GCVS variable, suitable for practice and follow-up</li>
-<li>catalog amplitude about 0.48 mag</li>
-<li>bright enough for Jersey City (9.26)</li>
-<li>no catalog period listed</li>
-<li>well away from Galactic plane (b=70.8 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>V* UY CVn</code></li>
-<li>Object type: <code>LP*</code></li>
-<li>Match separation: <code>0.071</code> arcsec</li>
-<li>Other IDs: <code>HIP 60564</code>, <code>Gaia DR3 1541775547096686592</code>, <code>AG+45  996</code>, <code>BD+46  1784</code>, <code>GEN# +0.04601784</code>, <code>GSC 03456-01992</code>, <code>HIC  60564</code>, <code>NGP 46  76</code></li>
-</ul></div></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1541775547096686592</code></li>
-<li>G mag: <code>8.128</code> · BP-RP: <code>3.003</code></li>
-<li>Parallax: <code>0.985</code> mas · RUWE: <code>1.147</code></li>
-<li>IPD multi-peak: <code>0.000</code></li>
-</ul></div></details>
-</article>
-<article class="target-card" id="t6">
-<header>
-<span class="time">00:00–00:30</span>
-<h2>6. TW CVn</h2>
-<span class="quick-stats">
-Score 88.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~11.80 <span style='color:var(--fg-dim)'>(11.00–12.60)</span></div>
-<div><strong>Type:</strong> LB</div>
-<div><strong>Max alt tonight:</strong> 86.8°</div>
-<div><strong>Best moment:</strong> 23:00</div>
-<div><strong>RA / Dec:</strong> <code>12:59:21.18</code> / <code>+43:53:15.6</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 11 and mag 12.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=TW+CVn&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=5047" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=194.838260+43.887670&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>LB</code></li>
-<li>Catalog photometry range: <code>11.000</code> to <code>12.600</code> mag</li>
-<li>Catalog amplitude: <code>1.600</code> mag</li>
-<li>Spectral type: <code>M5III</code></li>
-<li>Galactic latitude: <code>73.2°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 86.8 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>classical GCVS variable, suitable for practice and follow-up</li>
-<li>catalog amplitude about 1.60 mag</li>
-<li>bright enough for Jersey City (11.00)</li>
-<li>no catalog period listed</li>
-<li>well away from Galactic plane (b=73.2 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-<li>Gaia ipd_frac_multi_peak=3.00 suggests blended/contaminated PSF</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>V* TW CVn</code></li>
-<li>Object type: <code>LP*</code></li>
-<li>Match separation: <code>0.048</code> arcsec</li>
-<li>Other IDs: <code>Gaia DR3 1529383982333679360</code>, <code>BSD  32-385</code>, <code>BD+44  2243</code>, <code>CSV   1967</code>, <code>GSC 03023-01946</code>, <code>IRAS 12570+4409</code>, <code>NGP 44 164</code>, <code>SV* SON  4764</code></li>
-</ul></div></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1529383982333679360</code></li>
-<li>G mag: <code>8.790</code> · BP-RP: <code>2.961</code></li>
-<li>Parallax: <code>0.552</code> mas · RUWE: <code>1.214</code></li>
-<li>IPD multi-peak: <code>3.000</code> <span class="flag-anomaly">PSF blended</span></li>
-</ul></div></details>
-</article>
-<article class="target-card" id="t7">
-<header>
-<span class="time">00:33–01:03</span>
-<h2>7. VX CVn</h2>
-<span class="quick-stats">
-Score 98.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~10.10 <span style='color:var(--fg-dim)'>(10.00–10.10)</span></div>
-<div><strong>Type:</strong> SRA</div>
-<div><strong>Period:</strong> 360.000 d</div>
-<div><strong>Max alt tonight:</strong> 89.6°</div>
-<div><strong>Best moment:</strong> 23:30</div>
-<div><strong>RA / Dec:</strong> <code>13:29:40.41</code> / <code>+41:05:28.2</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [··········●] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 10 and mag 11.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=VX+CVn&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=5059" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=202.418380+41.091170&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>SRA</code></li>
-<li>Catalog photometry range: <code>10.200</code> to <code>11.500</code> mag</li>
-<li>Catalog amplitude: <code>1.300</code> mag</li>
+<li>Catalog photometry range: <code>8.300</code> to <code>8.800</code> mag</li>
+<li>Catalog amplitude: <code>0.500</code> mag</li>
 <li>Spectral type: <code>M4</code></li>
-<li>Galactic latitude: <code>74.0°</code></li>
+<li>Galactic latitude: <code>33.4°</code></li>
 </ul>
 </div></details>
 <details><summary>Why on the queue</summary>
 <ul class="reasons">
-<li>max altitude 89.6 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
+<li>max altitude 49.5 deg from Jersey City</li>
 <li>classical GCVS variable, suitable for practice and follow-up</li>
-<li>catalog amplitude about 1.30 mag</li>
-<li>bright enough for Jersey City (10.20)</li>
-<li>long-period cadence friendly (360.00 d)</li>
-<li>well away from Galactic plane (b=74.0 deg)</li>
-<li>sparse AAVSO coverage (2 recent observations)</li>
+<li>catalog amplitude about 0.50 mag</li>
+<li>bright enough for Jersey City (8.30)</li>
+<li>long-period cadence friendly (48.82 d)</li>
+<li>well away from Galactic plane (b=33.4 deg)</li>
+<li>sparse AAVSO coverage (3 recent observations)</li>
+<li>Gaia ipd_frac_multi_peak=2.00 suggests blended/contaminated PSF</li>
 </ul></details>
 <details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>2</strong>
- · median <strong>10.10</strong> (range 10.00–10.10)
+<p>Recent observations: <strong>3</strong>
+ · median <strong>8.39</strong> (range 8.37–8.74)
 </p>
-<p>Last observed: <code>2025-08-30</code></p>
+<p>Last observed: <code>2026-04-17</code></p>
 <table class="history-table">
 <thead><tr><th>Date</th><th>JD</th><th>Mag</th><th>Band</th></tr></thead>
 <tbody>
-<tr><td>2025-08-30</td><td>2460917.6382</td><td>10.00</td><td>Vis.</td></tr>
-<tr><td>2025-08-26</td><td>2460913.6368</td><td>10.10</td><td>Vis.</td></tr>
+<tr><td>2026-04-17</td><td>2461148.3495</td><td>8.74</td><td>TG</td></tr>
+<tr><td>2026-04-11</td><td>2461142.3829</td><td>8.37</td><td>TG</td></tr>
+<tr><td>2025-03-29</td><td>2460764.3529</td><td>8.39</td><td>TG</td></tr>
 </tbody></table>
 </div></details>
 <details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>V* VX CVn</code></li>
-<li>Object type: <code>Mi*</code></li>
-<li>Match separation: <code>0.060</code> arcsec</li>
-<li>Other IDs: <code>Gaia DR3 1477123404390244224</code>, <code>TIC 22742587</code>, <code>TYC 3028-892-1</code>, <code>IRAS 13274+4120</code>, <code>V* VX CVn</code>, <code>2MASS J13294042+4105281</code>, <code>Gaia DR1 1477123400093666944</code>, <code>Gaia DR2 1477123404390244224</code></li>
-</ul></div></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1477123404390244224</code></li>
-<li>G mag: <code>7.957</code> · BP-RP: <code>2.914</code></li>
-<li>Parallax: <code>0.898</code> mas · RUWE: <code>1.482</code></li>
-<li>IPD multi-peak: <code>0.000</code></li>
-</ul></div></details>
-</article>
-<article class="target-card" id="t8">
-<header>
-<span class="time">01:06–01:36</span>
-<h2>8. ZZ CVn</h2>
-<span class="quick-stats">
-Score 94.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~11.35 <span style='color:var(--fg-dim)'>(10.90–11.80)</span></div>
-<div><strong>Type:</strong> LB</div>
-<div><strong>Max alt tonight:</strong> 85.2°</div>
-<div><strong>Best moment:</strong> 00:00</div>
-<div><strong>RA / Dec:</strong> <code>13:59:11.10</code> / <code>+45:28:16.4</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 11 and mag 12.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=ZZ+CVn&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=5071" target="_blank" rel="noopener">VSX details</a>
-<a class="btn" href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=209.796250+45.471220&amp;Radius=5.0&amp;Radius.unit=arcsec" target="_blank" rel="noopener">SIMBAD</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>LB</code></li>
-<li>Catalog photometry range: <code>10.900</code> to <code>11.800</code> mag</li>
-<li>Catalog amplitude: <code>0.900</code> mag</li>
-<li>Spectral type: <code>M7</code></li>
-<li>Galactic latitude: <code>67.2°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 85.2 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>classical GCVS variable, suitable for practice and follow-up</li>
-<li>catalog amplitude about 0.90 mag</li>
-<li>bright enough for Jersey City (10.90)</li>
-<li>no catalog period listed</li>
-<li>well away from Galactic plane (b=67.2 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><div><ul>
-<li>Main ID: <code>V* ZZ CVn</code></li>
+<li>Main ID: <code>V* XX Cnc</code></li>
 <li>Object type: <code>LP*</code></li>
-<li>Match separation: <code>0.032</code> arcsec</li>
-<li>Other IDs: <code>Gaia DR3 1508733470335664896</code>, <code>BSD  33-398</code>, <code>IRAS 13571+4542</code>, <code>IRC +50236</code>, <code>V* ZZ CVn</code>, <code>2MASS J13591111+4528164</code>, <code>TYC 3464-684-1</code>, <code>TIC 198111321</code></li>
+<li>Match separation: <code>0.026</code> arcsec</li>
+<li>Other IDs: <code>TIC 184893364</code>, <code>Gaia DR3 661461183044988928</code>, <code>Cl* NGC 2632    ANM    1249</code>, <code>AAVSO 0837+20</code>, <code>AG+20 1026</code>, <code>AN  339.1934</code>, <code>BD+21  1896</code>, <code>CSV   1348</code></li>
 </ul></div></details>
 <details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1508733470335664896</code></li>
-<li>G mag: <code>7.747</code> · BP-RP: <code>3.892</code></li>
-<li>Parallax: <code>1.439</code> mas · RUWE: <code>1.105</code></li>
-<li>IPD multi-peak: <code>0.000</code></li>
+<li>Source ID: <code>661461183044988928</code></li>
+<li>G mag: <code>6.922</code> · BP-RP: <code>3.218</code></li>
+<li>Parallax: <code>1.533</code> mas · RUWE: <code>0.874</code></li>
+<li>IPD multi-peak: <code>2.000</code> <span class="flag-anomaly">PSF blended</span></li>
 </ul></div></details>
 </article>
-<article class="target-card" id="t9">
-<header>
-<span class="time">01:39–02:09</span>
-<h2>9. Gaia DR3 1477446592088319872</h2>
-<span class="quick-stats">
-Score 88.0
- · 
-60×30s
- = 30 min
-</span>
-</header>
-<div class="headline-grid">
-<div><strong>Expected mag:</strong> ~11.98 <span style='color:var(--fg-dim)'>(11.60–12.36)</span></div>
-<div><strong>Type:</strong> L</div>
-<div><strong>Max alt tonight:</strong> 80.6°</div>
-<div><strong>Best moment:</strong> 00:30</div>
-<div><strong>RA / Dec:</strong> <code>14:17:02.14</code> / <code>+31:42:44.7</code></div>
-</div>
-<div class="sparkline-line"><span style="color:var(--fg-dim)">brighter</span> [·····●·····] <span style="color:var(--fg-dim)">fainter</span></div>
-<div class="comp-bracket">At the chart, bracket your estimate against comps near mag 11 and mag 12.</div>
-<div class="action-row">
-<a class="btn" href="https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+1477446592088319872&amp;type=chart&amp;fov=120&amp;maglimit=14.5&amp;resolution=150&amp;north=up&amp;east=left" target="_blank" rel="noopener">📊 AAVSO chart</a>
-<a class="btn" href="https://www.aavso.org/vsx/index.php?view=detail.top&amp;oid=8481260" target="_blank" rel="noopener">VSX details</a>
-</div>
-<details><summary>Catalog</summary><div>
-<ul>
-<li>VSX type: <code>L</code></li>
-<li>Catalog photometry range: <code>11.600</code> to <code>12.360</code> mag</li>
-<li>Catalog amplitude: <code>0.760</code> mag</li>
-<li>Spectral type: <code>M</code></li>
-<li>Galactic latitude: <code>70.8°</code></li>
-</ul>
-</div></details>
-<details><summary>Why on the queue</summary>
-<ul class="reasons">
-<li>max altitude 80.6 deg from Jersey City</li>
-<li>long nightly window from Jersey City</li>
-<li>survey-designated object, good data-mining follow-up candidate</li>
-<li>catalog amplitude about 0.76 mag</li>
-<li>bright enough for Jersey City (11.60)</li>
-<li>no catalog period listed</li>
-<li>well away from Galactic plane (b=70.8 deg)</li>
-<li>sparse AAVSO coverage (0 recent observations)</li>
-<li>Gaia ipd_frac_multi_peak=55.00 suggests blended/contaminated PSF</li>
-</ul></details>
-<details open><summary>AAVSO recent coverage</summary><div>
-<p>Recent observations: <strong>0</strong>
-</p>
-</div></details>
-<details><summary>SIMBAD context</summary><p>Status: <code>no-match</code></p></details>
-<details><summary>Gaia DR3 context</summary><div><ul>
-<li>Source ID: <code>1477446592088319872</code></li>
-<li>G mag: <code>11.990</code> · BP-RP: <code>3.048</code></li>
-<li>Parallax: <code>n/a</code> mas · RUWE: <code>n/a</code></li>
-<li>IPD multi-peak: <code>55.000</code> <span class="flag-anomaly">PSF blended</span></li>
-</ul></div></details>
-</article>
-<section class="overflow"><h2>Overflow (39 candidates not in tonight's plan)</h2><ul><li><strong>RW CVn</strong> (score 92.0, type SRB, mag 8.27, peaks 00:00)</li><li><strong>Gaia DR3 1558280625379648640</strong> (score 88.0, type L, mag 11.83, peaks 23:30)</li><li><strong>Gaia DR3 1390617364274391936</strong> (score 88.0, type L, mag 10.90, peaks 00:30)</li><li><strong>Gaia DR3 1559243419606846976</strong> (score 88.0, type L, mag 11.58, peaks 23:30)</li><li><strong>Gaia DR3 834495451075774976</strong> (score 88.0, type L, mag 11.95, peaks 21:30)</li><li><strong>SX Boo</strong> (score 85.4, type M, mag 10.46, peaks 00:00)</li><li><strong>AD CrB</strong> (score 79.9, type SRB:, mag 8.73, peaks 00:30)</li><li><strong>YY Leo</strong> (score 79.0, type SRB, mag 9.47, peaks 21:30)</li><li><strong>AI Leo</strong> (score 73.4, type SR, mag 8.44, peaks 21:30)</li><li><strong>FF Dra</strong> (score 73.3, type LB, mag 8.67, peaks 21:30)</li><li><strong>VV Leo</strong> (score 72.7, type SR, mag 9.30, peaks 21:30)</li><li><strong>FG Dra</strong> (score 68.2, type LB, mag 7.41, peaks 21:30)</li><li><strong>RY CrB</strong> (score 66.2, type SRB, mag 8.80, peaks 00:30)</li><li><strong>FR Cam</strong> (score 65.9, type LB, mag 6.21, peaks 22:00)</li><li><strong>TZ Cnc</strong> (score 63.4, type SRA, mag 10.70, peaks 21:30)</li><li><strong>HM Aur</strong> (score 61.4, type SRB, mag 11.30, peaks 21:30)</li><li><strong>XX Cnc</strong> (score 59.5, type LB, mag 8.30, peaks 21:30)</li><li><strong>U CVn</strong> (score 59.0, type M, mag 9.00, peaks 23:00)</li><li><strong>RR Boo</strong> (score 59.0, type M, mag 8.20, peaks 00:30)</li><li><strong>T CVn</strong> (score 59.0, type SRA, mag 8.90, peaks 22:30)</li><li><strong>RV Boo</strong> (score 59.0, type SRB, mag 7.50, peaks 00:30)</li><li><strong>RW Boo</strong> (score 59.0, type SRB, mag 7.50, peaks 00:30)</li><li><strong>RX Boo</strong> (score 59.0, type SRB, mag 7.00, peaks 00:30)</li><li><strong>V CVn</strong> (score 59.0, type SRA, mag 6.52, peaks 23:30)</li><li><strong>GP Dra</strong> (score 58.3, type LB, mag 6.83, peaks 00:30)</li><li><strong>RR Cnc</strong> (score 58.1, type M, mag 8.50, peaks 21:30)</li><li><strong>Gaia DR3 3665076433275739648</strong> (score 58.0, type L, mag 10.79, peaks 00:00)</li><li><strong>SY Leo</strong> (score 57.3, type SRB, mag 10.67, peaks 21:30)</li><li><strong>Gaia DR3 3814988693329859456</strong> (score 54.5, type L, mag 12.16, peaks 21:30)</li><li><strong>Gaia DR3 4423865487962417152</strong> (score 54.3, type L, mag 10.86, peaks 00:30)</li><li><strong>V Dra</strong> (score 48.3, type M, mag 9.50, peaks 00:30)</li><li><strong>WZ Dra</strong> (score 45.1, type M, mag 8.50, peaks 00:30)</li><li><strong>W Leo</strong> (score 44.9, type M, mag 8.90, peaks 21:30)</li><li><strong>RS Cnc</strong> (score 43.4, type SRB, mag 5.33, peaks 21:30)</li><li><strong>U Cnc</strong> (score 42.0, type M, mag 9.00, peaks 21:30)</li><li><strong>VX Aur</strong> (score 40.4, type M, mag 8.00, peaks 21:30)</li><li><strong>S Leo</strong> (score 37.5, type M, mag 9.50, peaks 21:30)</li><li><strong>T Dra</strong> (score 36.4, type M, mag 7.20, peaks 00:30)</li><li><strong>RT Cnc</strong> (score 22.3, type SRB, mag 7.05, peaks 21:30)</li></ul></section>
-<footer class="workflow"><h2>Workflow reminder</h2><ol><li>Polar-align the wedge using the Seestar app's PA routine.</li><li>Import <code>nina_targets.csv</code> into NINA Target Scheduler (rows already in execution order).</li><li>Run the sequence; per-target slew → plate-solve → exposure plan.</li><li>Morning: <code>anomaly-scout submit</code> per target with comp-star JSON to produce AAVSO upload file.</li><li>Inspect, then upload at <a href="https://www.aavso.org/webobs/file" target="_blank" rel="noopener">aavso.org/webobs/file</a>.</li></ol></footer>
+<section class="overflow"><h2>Overflow (16 candidates not in tonight's plan)</h2><ul><li><strong>YY Leo</strong> (score 79.0, type SRB, mag 9.47, peaks 21:30)</li><li><strong>AI Leo</strong> (score 73.4, type SR, mag 8.44, peaks 21:30)</li><li><strong>FF Dra</strong> (score 73.3, type LB, mag 8.67, peaks 21:30)</li><li><strong>VV Leo</strong> (score 72.7, type SR, mag 9.30, peaks 21:30)</li><li><strong>FG Dra</strong> (score 68.2, type LB, mag 7.41, peaks 21:30)</li><li><strong>TZ Cnc</strong> (score 63.4, type SRA, mag 10.70, peaks 21:30)</li><li><strong>HM Aur</strong> (score 61.4, type SRB, mag 11.30, peaks 21:30)</li><li><strong>RR Cnc</strong> (score 58.1, type M, mag 8.50, peaks 21:30)</li><li><strong>SY Leo</strong> (score 57.3, type SRB, mag 10.67, peaks 21:30)</li><li><strong>Gaia DR3 3814988693329859456</strong> (score 54.5, type L, mag 12.16, peaks 21:30)</li><li><strong>W Leo</strong> (score 44.9, type M, mag 8.90, peaks 21:30)</li><li><strong>RS Cnc</strong> (score 43.4, type SRB, mag 5.33, peaks 21:30)</li><li><strong>U Cnc</strong> (score 42.0, type M, mag 9.00, peaks 21:30)</li><li><strong>VX Aur</strong> (score 40.4, type M, mag 8.00, peaks 21:30)</li><li><strong>S Leo</strong> (score 37.5, type M, mag 9.50, peaks 21:30)</li><li><strong>RT Cnc</strong> (score 22.3, type SRB, mag 7.05, peaks 21:30)</li></ul></section>
+<footer class="workflow"><h2>Workflow reminder</h2><ol><li>Polar-align the wedge using the Seestar app's PA routine.</li><li>Import <code>nina_targets.csv</code> into NINA Target Scheduler (rows already in execution order).</li><li>Run the sequence; per-target slew → plate-solve → exposure plan.</li><li>Morning: <code>mira submit</code> per target with comp-star JSON to produce AAVSO upload file.</li><li>Inspect, then upload at <a href="https://www.aavso.org/webobs/file" target="_blank" rel="noopener">aavso.org/webobs/file</a>.</li></ol></footer>
 </main>
 <script>
 (function(){

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from anomaly_scout.gaia import (
+from mira.gaia import (
     color_type_disagreement,
     extract_gaia_dr3_source_id,
     parse_gaia_csv,

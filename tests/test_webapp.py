@@ -5,8 +5,8 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from anomaly_scout.webapp import create_app
-from anomaly_scout.webapp.nina_client import NinaStatus
+from mira.webapp import create_app
+from mira.webapp.nina_client import NinaStatus
 
 
 class WebappRoutesTests(TestCase):
@@ -89,7 +89,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b"NINA not reachable", response.data)
 
     def test_run_record_persists_and_reloads_after_restart(self) -> None:
-        from anomaly_scout.webapp.runs import RunRegistry
+        from mira.webapp.runs import RunRegistry
 
         state_dir = Path(self.tmp.name) / "persist-test"
         registry = RunRegistry(state_dir=state_dir)
@@ -117,7 +117,7 @@ class WebappRoutesTests(TestCase):
         self.assertEqual(loaded.result, {"answer": 42})
 
     def test_in_flight_run_marked_failed_on_restart(self) -> None:
-        from anomaly_scout.webapp.runs import RunRecord, RunRegistry
+        from mira.webapp.runs import RunRecord, RunRegistry
 
         state_dir = Path(self.tmp.name) / "inflight-test"
         state_dir.mkdir()
@@ -170,7 +170,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn("awaiting capture", body)
 
     def test_mark_submitted_persists_timestamp(self) -> None:
-        from anomaly_scout.webapp.runs import RunRegistry
+        from mira.webapp.runs import RunRegistry
 
         # Set up a target with captures and a "done" run record
         rr_lyr = self.captures_root / "RR_LYR"
@@ -214,7 +214,7 @@ class WebappRoutesTests(TestCase):
         self.assertNotIn(b'value="MYABC"', response.data)
 
         # Drop a settings.json directly to simulate prior submit
-        from anomaly_scout.webapp.settings import save_settings
+        from mira.webapp.settings import save_settings
         save_settings(self.state_dir, {"observer_code": "MYABC"})
 
         # Subsequent visit: the form should be pre-populated
@@ -222,7 +222,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b'value="MYABC"', response.data)
 
     def test_download_with_selection_filters_frames(self) -> None:
-        from anomaly_scout.webapp.runs import RunRegistry
+        from mira.webapp.runs import RunRegistry
 
         target_dir = self.captures_root / "RR_LYR"
         target_dir.mkdir()
@@ -277,7 +277,7 @@ class WebappRoutesTests(TestCase):
         self.assertNotIn("2461165.70000", body)
 
     def test_download_with_selection_rejects_empty(self) -> None:
-        from anomaly_scout.webapp.runs import RunRegistry
+        from mira.webapp.runs import RunRegistry
 
         target_dir = self.captures_root / "RR_LYR"
         target_dir.mkdir()
@@ -324,7 +324,7 @@ class WebappRoutesTests(TestCase):
         })
         self.assertEqual(response.status_code, 200)
 
-        from anomaly_scout.webapp.settings import load_settings
+        from mira.webapp.settings import load_settings
         settings = load_settings(self.state_dir)
         self.assertEqual(settings.get("observer_code"), "ABC123")
         self.assertEqual(settings.get("default_config"), "config/multi_site.yaml")
@@ -337,7 +337,7 @@ class WebappRoutesTests(TestCase):
             "default_config": "config/x.yaml",
             "default_hours": "0.1",
         })
-        from anomaly_scout.webapp.settings import load_settings
+        from mira.webapp.settings import load_settings
         self.assertAlmostEqual(load_settings(self.state_dir).get("default_hours"), 0.5)
 
         self.client.post("/settings", data={
@@ -348,7 +348,7 @@ class WebappRoutesTests(TestCase):
         self.assertAlmostEqual(load_settings(self.state_dir).get("default_hours"), 14.0)
 
     def test_dashboard_uses_saved_defaults(self) -> None:
-        from anomaly_scout.webapp.settings import save_settings
+        from mira.webapp.settings import save_settings
         save_settings(self.state_dir, {
             "default_config": "config/zerg.yaml",
             "default_hours": 7.5,
@@ -372,7 +372,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b"VV Leo", response.data)
 
     def test_nina_push_returns_failed_when_unreachable(self) -> None:
-        from anomaly_scout.webapp.nina_client import NinaClient
+        from mira.webapp.nina_client import NinaClient
         from unittest.mock import patch
 
         # No schedule yet → no-schedule outcome
@@ -389,7 +389,7 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b"NINA rejected the push", response.data)
 
     def test_aavso_preview_helper_truncates_data_rows(self) -> None:
-        from anomaly_scout.webapp._runner import read_aavso_preview as _read_aavso_preview
+        from mira.webapp._runner import read_aavso_preview as _read_aavso_preview
         path = self.output_dir / "preview.txt"
         rows = ["#TYPE=Extended", "#OBSCODE=ABC", "#NAME,DATE,MAG,MERR,FILT"]
         for i in range(10):
@@ -626,7 +626,7 @@ class WebappRoutesTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_mark_submitted_404s_when_run_not_done(self) -> None:
-        from anomaly_scout.webapp.runs import RunRecord
+        from mira.webapp.runs import RunRecord
         target_dir = self.captures_root / "RR_LYR"
         target_dir.mkdir()
         (target_dir / "frame001.fits").write_bytes(b"\x00" * 100)
@@ -680,7 +680,7 @@ class WebappRoutesTests(TestCase):
 
     def test_first_light_renders_with_no_state(self) -> None:
         # Empty state: no schedule, no settings, NINA unreachable
-        from anomaly_scout.webapp.nina_client import NinaStatus
+        from mira.webapp.nina_client import NinaStatus
         from unittest.mock import patch
 
         nina = self.app.config["NINA"]
@@ -692,8 +692,8 @@ class WebappRoutesTests(TestCase):
         self.assertIn(b"walk-todo", response.data)
 
     def test_first_light_marks_steps_done(self) -> None:
-        from anomaly_scout.webapp.nina_client import NinaStatus
-        from anomaly_scout.webapp.settings import save_settings
+        from mira.webapp.nina_client import NinaStatus
+        from mira.webapp.settings import save_settings
         from unittest.mock import patch
 
         save_settings(self.state_dir, {"observer_code": "ABC"})
@@ -714,7 +714,7 @@ class WebappRoutesTests(TestCase):
         self.assertGreaterEqual(body.count("walk-done"), 3)
 
     def test_dashboard_lifetime_stats(self) -> None:
-        from anomaly_scout.webapp.runs import RunRegistry
+        from mira.webapp.runs import RunRegistry
 
         runs: RunRegistry = self.app.config["RUNS"]
 

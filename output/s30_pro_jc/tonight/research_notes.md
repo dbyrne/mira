@@ -1,109 +1,24 @@
-# AAVSO Anomaly Scout - Practice / Collaboration Queue
+# Mira - Practice / Collaboration Queue
 
 Mixed mode: balanced classical/survey bonus. These are useful follow-up candidates - lapsed-coverage classical variables and lightly-characterized survey discoveries side by side. Treat as a practice/collaboration list, not a vetted anomaly queue.
 
 ## Run Metadata
 
-- Run started (UTC): `2026-05-05T16:29:18Z`
 - Config: `config/s30_pro_jc.yaml`
-- Output directory: `output\s30_pro_jc\tonight`
+- Output directory: `C:\mira\output\s30_pro_jc\tonight`
 - Start date: `2026-05-05`
 - Mode: `(yaml defaults)`
 - VSX row limit: `600`
-- Candidates after filters: `48`
-- AAVSO enriched: `48`
-- SIMBAD enriched: `30`
-- Gaia DR3 enriched: `48`
+- Candidates after filters: `20`
+- AAVSO enriched: `20`
+- SIMBAD enriched: `20`
+- Gaia DR3 enriched: `20`
 - ZTF enriched: `0`
 - Top N per view: `15`
 
 ## Best Targets Across All Sites
 
-### 1. Gaia DR3 1454878252642442624
-
-- Score: `112.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `SR|M` / `LP*`
-- SIMBAD main ID: `2MASS J13421508+2823256`
-- Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; VSX classification is uncertain or broad (SR|M); amplitude is large enough to measure from an urban site (0.26 mag)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=10614126
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+1454878252642442624&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=205.562870+28.390470&Radius=5.0&Radius.unit=arcsec
-
-### 2. BV Boo
-
-- Score: `98.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `LB` / `LP*`
-- SIMBAD main ID: `V* BV Boo`
-- Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.40 mag)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=4402
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=BV+Boo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=205.516110+22.913780&Radius=5.0&Radius.unit=arcsec
-
-### 3. VX CVn
-
-- Score: `98.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `SRA` / `Mi*`
-- SIMBAD main ID: `V* VX CVn`
-- Recent AAVSO observations: `2`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (1.30 mag); Gaia color is very red (BP-RP=2.91); Gaia RUWE is elevated (1.48)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5059
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=VX+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=202.418380+41.091170&Radius=5.0&Radius.unit=arcsec
-
-### 4. ZZ CVn
-
-- Score: `94.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `LB` / `LP*`
-- SIMBAD main ID: `V* ZZ CVn`
-- Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.90 mag); Gaia color is very red (BP-RP=3.89)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5071
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=ZZ+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=209.796250+45.471220&Radius=5.0&Radius.unit=arcsec
-
-### 5. UY CVn
-
-- Score: `94.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `LB` / `LP*`
-- SIMBAD main ID: `V* UY CVn`
-- Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.48 mag); Gaia color is very red (BP-RP=3.00)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5055
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=UY+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=186.224290+45.584640&Radius=5.0&Radius.unit=arcsec
-
-### 6. RW CVn
-
-- Score: `92.0`
-- Observable from: `Jersey City`
-- VSX/SIMBAD type: `SRB` / `AB*`
-- SIMBAD main ID: `V* RW CVn`
-- Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
-- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.52 mag); Gaia color is very red (BP-RP=3.85)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5032
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=RW+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=209.889470+37.197310&Radius=5.0&Radius.unit=arcsec
-
-### 7. RU Leo
+### 1. RU Leo
 
 - Score: `92.0`
 - Observable from: `Jersey City`
@@ -117,47 +32,131 @@ Mixed mode: balanced classical/survey bonus. These are useful follow-up candidat
 - AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=RU+Leo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
 - SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=163.289220+24.358640&Radius=5.0&Radius.unit=arcsec
 
-### 8. TW CVn
+### 2. Gaia DR3 834495451075774976
 
 - Score: `88.0`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `L` / `PM*`
+- SIMBAD main ID: `G 146-35B`
+- Recent AAVSO observations: `0`
+- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.74 mag); Gaia color is very red (BP-RP=2.80)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=8414088
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+834495451075774976&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=157.120300+48.238280&Radius=5.0&Radius.unit=arcsec
+
+### 3. CT Dra
+
+- Score: `79.2`
 - Observable from: `Jersey City`
 - VSX/SIMBAD type: `LB` / `LP*`
-- SIMBAD main ID: `V* TW CVn`
+- SIMBAD main ID: `V* CT Dra`
 - Recent AAVSO observations: `0`
 - Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (1.60 mag); Gaia color is very red (BP-RP=2.96)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=5047
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=TW+CVn&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=194.838260+43.887670&Radius=5.0&Radius.unit=arcsec
+- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.60 mag); Gaia color is very red (BP-RP=3.67)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=13792
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=CT+Dra&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=175.288710+75.472640&Radius=5.0&Radius.unit=arcsec
 
-### 9. Gaia DR3 1558280625379648640
+### 4. YY Leo
 
-- Score: `88.0`
+- Score: `79.0`
 - Observable from: `Jersey City`
-- VSX/SIMBAD type: `L` / `**`
-- SIMBAD main ID: `StM 186`
+- VSX/SIMBAD type: `SRB` / `LP*`
+- SIMBAD main ID: `V* YY Leo`
 - Recent AAVSO observations: `0`
-- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
+- Best window (Jersey City): `2026-05-05`, `120 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.81 mag); Gaia color is very red (BP-RP=2.64)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=8472335
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+1558280625379648640&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=205.365980+48.912060&Radius=5.0&Radius.unit=arcsec
+- Why it matters: sparse recent AAVSO coverage; Gaia color is very red (BP-RP=2.20)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=17083
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=YY+Leo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=152.083210+20.003720&Radius=5.0&Radius.unit=arcsec
 
-### 10. Gaia DR3 1477446592088319872
+### 5. AI Leo
 
-- Score: `88.0`
+- Score: `73.4`
 - Observable from: `Jersey City`
-- VSX/SIMBAD type: `L` / ``
-- SIMBAD main ID: ``
+- VSX/SIMBAD type: `SR` / `LP*`
+- SIMBAD main ID: `V* AI Leo`
+- Recent AAVSO observations: `13`
+- Best window (Jersey City): `2026-05-05`, `180 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: amplitude is large enough to measure from an urban site (2.06 mag); Gaia color is very red (BP-RP=3.04)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=17094
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=AI+Leo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=175.119170+11.195170&Radius=5.0&Radius.unit=arcsec
+
+### 6. FF Dra
+
+- Score: `73.3`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `LB` / `LP*`
+- SIMBAD main ID: `V* FF Dra`
 - Recent AAVSO observations: `0`
 - Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
 - Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
-- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.76 mag); Gaia color is very red (BP-RP=3.05)
-- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=8481260
-- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=Gaia+DR3+1477446592088319872&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
-- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=214.258930+31.712410&Radius=5.0&Radius.unit=arcsec
+- Why it matters: sparse recent AAVSO coverage; no VSX period listed; Gaia color is very red (BP-RP=2.85)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=13842
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=FF+Dra&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=162.889010+75.191080&Radius=5.0&Radius.unit=arcsec
+
+### 7. VV Leo
+
+- Score: `72.7`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `SR` / `LP*`
+- SIMBAD main ID: `V* VV Leo`
+- Recent AAVSO observations: `0`
+- Best window (Jersey City): `2026-05-05`, `120 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (0.91 mag); Gaia color is very red (BP-RP=4.49)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=17071
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=VV+Leo&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=162.194240+8.666110&Radius=5.0&Radius.unit=arcsec
+
+### 8. FG Dra
+
+- Score: `68.2`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `LB` / `LP*`
+- SIMBAD main ID: `V* FG Dra`
+- Recent AAVSO observations: `0`
+- Best window (Jersey City): `2026-05-05`, `210 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: sparse recent AAVSO coverage; no VSX period listed; amplitude is large enough to measure from an urban site (0.27 mag); Gaia color is very red (BP-RP=3.81)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=13843
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=FG+Dra&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=164.364910+74.336330&Radius=5.0&Radius.unit=arcsec
+
+### 9. TZ Cnc
+
+- Score: `63.4`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `SRA` / `Mi*`
+- SIMBAD main ID: `V* TZ Cnc`
+- Recent AAVSO observations: `0`
+- Best window (Jersey City): `2026-05-05`, `60 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (1.40 mag); Gaia color is very red (BP-RP=3.02)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=4837
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=TZ+Cnc&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=136.004210+20.948640&Radius=5.0&Radius.unit=arcsec
+
+### 10. HM Aur
+
+- Score: `61.4`
+- Observable from: `Jersey City`
+- VSX/SIMBAD type: `SRB` / `AB*`
+- SIMBAD main ID: `V* HM Aur`
+- Recent AAVSO observations: `0`
+- Best window (Jersey City): `2026-05-05`, `30 min` above altitude floor
+- Observing plan: Long-cadence follow-up: one calibrated point every clear night or two is useful; weekly cadence is still worthwhile for slow red variables.
+- Why it matters: sparse recent AAVSO coverage; amplitude is large enough to measure from an urban site (1.10 mag); Gaia color is very red (BP-RP=4.34)
+- VSX: https://www.aavso.org/vsx/index.php?view=detail.top&oid=3975
+- AAVSO finder chart: https://apps.aavso.org/vsp/photometry/?star=HM+Aur&type=chart&fov=900&maglimit=15&resolution=150&north=up&east=left
+- SIMBAD: https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=112.278290+40.682670&Radius=5.0&Radius.unit=arcsec
 
 ## Triage Rules
 

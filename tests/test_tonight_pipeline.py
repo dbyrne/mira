@@ -10,8 +10,8 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from zoneinfo import ZoneInfo
 
-from anomaly_scout.models import Candidate, Observability, VsxTarget
-from anomaly_scout.tonight_pipeline import (
+from mira.models import Candidate, Observability, VsxTarget
+from mira.tonight_pipeline import (
     PrintReporter,
     _archive_outputs,
     filter_to_window,

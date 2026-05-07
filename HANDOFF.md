@@ -183,7 +183,7 @@ example outputs to inspect.
 - Polar-aligned via Seestar app
 - NINA controlling capture via ASCOM Alpaca, Advanced API on :1888
 - Tailscale magic DNS for phone access:
-  `gaming-rig-windows.tail4ab263.ts.net:8000`
+  `<your-host>.<your-tailnet>.ts.net:8000`
 
 ## Important implementation notes
 

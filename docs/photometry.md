@@ -127,8 +127,8 @@ Before you observe, walk through this once:
    Confirm `output/.../session_schedule.html` shows scheduled targets.
 4. ☐ NINA Target Scheduler imports `nina_targets.csv` cleanly.
 5. ☐ AAVSO observer code memorized or saved somewhere quick to copy.
-6. ☐ Webapp reachable from phone via Tailscale (test with
-   `gaming-rig-windows.tail4ab263.ts.net:8000` or your magic DNS name).
+6. ☐ Webapp reachable from phone via Tailscale (test with your magic
+   DNS name, e.g. `<your-host>.<your-tailnet>.ts.net:8000`).
 
 After capture:
 

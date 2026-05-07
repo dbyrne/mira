@@ -21,6 +21,10 @@ sites:
       latitude_deg: 40.7178
       longitude_deg: -74.0431
       timezone: America/New_York
+    # Local horizon mask (trees, house, balcony rail). Without this the
+    # scheduler treats the sky as a clean dome above min_altitude_deg.
+    # See horizon_balcony_jc.yaml for the silhouette captured 2026-05-06.
+    horizon_profile_path: config/horizon_balcony_jc.yaml
     observing_window:
       start_hour_local: 20
       end_hour_local: 1

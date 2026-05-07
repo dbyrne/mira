@@ -26,11 +26,16 @@ def evaluate_observability(
     best_local_time: datetime | None = None
     best_night_date: date | None = None
     best_night_minutes = 0
+    horizon = site.horizon_profile  # may be None
 
     for night_offset in range(window.nights):
         night_date = start_date + timedelta(days=night_offset)
         samples = _local_window_samples_for_night(night_date, observer.timezone, window)
-        dark_samples: list[tuple[datetime, float]] = []
+        # Each entry: (local_time, target_altitude_deg, effective_floor_deg).
+        # `effective_floor` is the per-azimuth horizon floor when a profile is
+        # set, else the global window.min_altitude_deg. Stored per sample so
+        # the night-minutes count uses the right floor for each direction.
+        dark_samples: list[tuple[datetime, float, float]] = []
         for sample in samples:
             utc_sample = sample.astimezone(timezone.utc)
             sun_alt = sun_altitude_deg(utc_sample, observer.latitude_deg, observer.longitude_deg)
@@ -47,14 +52,25 @@ def evaluate_observability(
                 observer.latitude_deg,
                 observer.longitude_deg,
             )
-            dark_samples.append((sample, target_alt))
+            if horizon is not None:
+                target_az = azimuth_deg(
+                    target.ra_deg,
+                    target.dec_deg,
+                    utc_sample,
+                    observer.latitude_deg,
+                    observer.longitude_deg,
+                )
+                effective_floor = horizon.floor_at(target_az, window.min_altitude_deg)
+            else:
+                effective_floor = window.min_altitude_deg
+            dark_samples.append((sample, target_alt, effective_floor))
         if not dark_samples:
             continue
 
         night_max_index = max(range(len(dark_samples)), key=lambda index: dark_samples[index][1])
         night_max_altitude = dark_samples[night_max_index][1]
         night_minutes = sum(
-            1 for _, alt in dark_samples if alt >= window.min_altitude_deg
+            1 for _, alt, floor in dark_samples if alt >= floor
         ) * window.sample_minutes
         if (night_minutes, night_max_altitude) > (best_night_minutes, best_max_altitude):
             best_night_minutes = night_minutes
@@ -87,6 +103,28 @@ def altitude_deg(
     ha = math.radians(hour_angle_deg)
     sin_alt = math.sin(dec) * math.sin(lat) + math.cos(dec) * math.cos(lat) * math.cos(ha)
     return math.degrees(math.asin(max(-1.0, min(1.0, sin_alt))))
+
+
+def azimuth_deg(
+    ra_deg: float,
+    dec_deg: float,
+    utc_dt: datetime,
+    latitude_deg: float,
+    longitude_deg: float,
+) -> float:
+    """Topocentric azimuth in degrees, measured from North (0°) increasing
+    clockwise (so East = 90°, South = 180°, West = 270°). Standard astronomy
+    convention; matches what Stellarium's az/alt grid shows."""
+    lst_hours = local_sidereal_time_hours(utc_dt, longitude_deg)
+    hour_angle_deg = ((lst_hours * 15.0 - ra_deg + 180.0) % 360.0) - 180.0
+
+    lat = math.radians(latitude_deg)
+    dec = math.radians(dec_deg)
+    ha = math.radians(hour_angle_deg)
+    sin_az = -math.cos(dec) * math.sin(ha)
+    cos_az = math.sin(dec) * math.cos(lat) - math.cos(dec) * math.sin(lat) * math.cos(ha)
+    az = math.degrees(math.atan2(sin_az, cos_az))
+    return az % 360.0
 
 
 def local_sidereal_time_hours(utc_dt: datetime, longitude_deg: float) -> float:

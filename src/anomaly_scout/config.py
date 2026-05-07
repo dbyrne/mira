@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from .horizon import HorizonProfile, load_horizon_profile
+
 
 @dataclass(frozen=True)
 class ObserverConfig:
@@ -52,6 +54,11 @@ class SiteConfig:
     observer: ObserverConfig
     observing_window: WindowConfig
     filters: FilterConfig
+    # Optional local horizon mask (trees, buildings, terrain). When set,
+    # evaluate_observability uses max(window.min_altitude_deg, profile_at_az)
+    # per sample instead of just the global floor. None = clear sky to the
+    # global floor everywhere (the original behavior).
+    horizon_profile: "HorizonProfile | None" = None
 
 
 @dataclass(frozen=True)
@@ -189,6 +196,10 @@ def _parse_site(raw: dict[str, Any]) -> SiteConfig:
     window_raw.setdefault("max_sun_altitude_deg", -12.0)
     window_raw.setdefault("max_moon_altitude_deg", 30.0)
     window_raw.setdefault("max_moon_illumination", 0.7)
+    horizon_path = raw.get("horizon_profile_path")
+    horizon_profile: HorizonProfile | None = None
+    if horizon_path:
+        horizon_profile = load_horizon_profile(Path(str(horizon_path)))
     return SiteConfig(
         name=str(raw["name"]),
         observer=ObserverConfig(
@@ -198,6 +209,7 @@ def _parse_site(raw: dict[str, Any]) -> SiteConfig:
         ),
         observing_window=WindowConfig(**window_raw),
         filters=FilterConfig(**_coerce_numbers(raw["filters"])),
+        horizon_profile=horizon_profile,
     )
 
 

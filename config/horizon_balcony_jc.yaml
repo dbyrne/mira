@@ -1,0 +1,103 @@
+# Local horizon profile for the Jersey City balcony imaging spot.
+#
+# Source: Stellarium AR screenshots, 2026-05-06 (house_photos/1000017156.png
+# through 1000017171.png). Read by visually projecting each tree/roof
+# silhouette onto the overlaid az/alt grid.
+#
+# Precision: roughly ±5° azimuth, ±3° altitude. Good enough for
+# "is this target behind an obstruction?" gating; not for pointing.
+#
+# Convention: azimuth in degrees, 0° = North, increasing clockwise
+# (so 90° = East, 180° = South, 270° = West). Altitude in degrees from
+# the horizon (0° = horizontal, 90° = zenith). The (az, alt) pairs
+# describe the silhouette: a target at this azimuth must be ABOVE the
+# given altitude to be observable. The scheduler interpolates linearly
+# between adjacent points.
+#
+# Notable observable directions:
+#   - East (90°-105°): clean to ~10°, good for rising targets
+#   - South (180°-200°): clean to ~5°, surprise good window
+#   - WSW gap (240°): cleanest non-east direction at +10°
+#
+# Notable blocked directions:
+#   - NE/E (30°-60°): house + chimney peak, +40° to +45° minimum
+#   - SW (210°-225°): tall tree, peak +40° around 220°
+
+site: "Jersey City balcony"
+captured_at: "2026-05-06"
+points:
+  # --- N quadrant: balcony rail + small obstruction ---
+  - {az:   0, alt:  8}
+  - {az:  15, alt:  8}
+  - {az:  25, alt: 10}
+
+  # --- NE: back of house, tall roof + chimney peak ---
+  - {az:  30, alt: 25}
+  - {az:  40, alt: 40}
+  - {az:  50, alt: 45}
+  - {az:  60, alt: 40}
+  - {az:  75, alt: 30}
+  - {az:  85, alt: 15}
+
+  # --- E: cleaner stretch (Arcturus visible to horizon) ---
+  - {az:  90, alt: 10}
+  - {az: 100, alt: 10}
+  - {az: 105, alt: 10}
+
+  # --- ESE: house body returns ---
+  - {az: 110, alt: 15}
+  - {az: 120, alt: 20}
+  - {az: 125, alt: 25}
+
+  # --- SE: tree mass ---
+  - {az: 130, alt: 30}
+  - {az: 140, alt: 30}
+  - {az: 145, alt: 25}
+
+  # --- S: mixed neighbor's roof + low trees ---
+  - {az: 150, alt: 30}
+  - {az: 160, alt: 25}
+  - {az: 170, alt: 15}
+  - {az: 180, alt: 10}
+
+  # --- SSW: clean window down to neighbors' rooftops (image 21 confirmed) ---
+  - {az: 185, alt:  5}
+  - {az: 190, alt:  5}
+  - {az: 195, alt:  5}
+  - {az: 200, alt: 15}
+
+  # --- SW: tall tree, peak around 220° (images 21 + 166) ---
+  - {az: 205, alt: 25}
+  - {az: 210, alt: 30}
+  - {az: 215, alt: 38}
+  - {az: 220, alt: 40}
+  - {az: 225, alt: 35}
+
+  # --- WSW: gap between trees, surprisingly clean (image 22 confirmed) ---
+  - {az: 230, alt: 18}
+  - {az: 235, alt: 12}
+  - {az: 240, alt: 10}
+  - {az: 245, alt: 12}
+  - {az: 250, alt: 18}
+
+  # --- W: large tree (image 156 + image 22 right edge) ---
+  - {az: 255, alt: 25}
+  - {az: 265, alt: 25}
+  - {az: 270, alt: 25}
+  - {az: 275, alt: 20}
+  - {az: 280, alt: 18}
+
+  # --- WNW: small gaps in tree, then house ---
+  - {az: 290, alt: 15}
+  - {az: 300, alt: 18}
+
+  # --- NW: house roof peak (Capella/Perseus above) ---
+  - {az: 310, alt: 15}
+  - {az: 320, alt: 28}
+  - {az: 325, alt: 25}
+  - {az: 330, alt: 18}
+
+  # --- N: house thinning, back to start ---
+  - {az: 345, alt: 15}
+  - {az: 355, alt: 10}
+  - {az: 360, alt:  8}  # closes the loop, matches az:0

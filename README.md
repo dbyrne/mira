@@ -1,190 +1,153 @@
 # AAVSO Anomaly Scout
 
-End-to-end variable-star observing tool: it picks targets worth a closer
-look, schedules a session, runs photometry on the captured frames, and
-flags whether the result deviates from expectations. Tuned for amateur
-gear from urban sites (Jersey City, NJ baseline) but multi-site with a
-dark-sky example (Fairbanks, AK) included.
+> **A backyard observing assistant for amateur variable-star photometry.**
+> It picks targets worth a closer look, schedules the night around your
+> sky and your gear, runs photometry on the FITS frames your scope
+> captures, and tells you whether what you saw matches expectations.
 
-For a clean continuation in a fresh thread or on another computer, start
-with [`HANDOFF.md`](HANDOFF.md). For Claude Code instances, see
-[`CLAUDE.md`](CLAUDE.md).
+It's the difference between staring at a catalog of 10,000 variable stars
+wondering which one to point your scope at, and getting a phone-readable
+schedule that says: *"22:00 — RR Lyrae, 60 frames at 15 seconds, comp
+stars 70 / 79 / 86, expected magnitude 7.2."*
 
-## What it does
+---
 
-1. **Pick** — Queries VSX through VizieR (`B/vsx/vsx`), enriches top
-   candidates with AAVSO recent coverage, SIMBAD context, Gaia DR3
-   crowding/color, and optionally ZTF light curves. Scores for amateur
-   follow-up value, with a Lomb-Scargle pass that flags catalog/observed
-   period disagreement.
-2. **Plan** — Greedy session scheduler picks the highest-value targets
-   that fit in tonight's window, biasing toward setting-soon urgency.
-   Output: a chronological schedule with per-target packets.
-3. **Capture** — NINA Target Scheduler ingests the exported CSV directly
-   in execution order. The webapp's NINA monitor shows live status.
-4. **Process** — Differential aperture photometry on each FITS frame,
-   comparison stars auto-fetched from AAVSO VSP. Outputs an AAVSO
-   Extended File Format submission file.
-5. **Assess** — Compares your session median to the VSX catalog range
-   and AAVSO recent baseline; surfaces a quantitative anomaly callout
-   (consistent / watch / anomaly) so unusual results don't get lost in
-   the data.
+## Who this is for
+
+You have:
+
+- A smart telescope (the project is tuned for the **ZWO Seestar S30 Pro**,
+  but works with any scope that produces plate-solved FITS files)
+- A passing interest in variable stars and a desire to contribute real
+  observations to the **[AAVSO][aavso]**
+- Comfort installing a Python program
+
+You don't need to:
+
+- Know what differential photometry is — the system handles it
+- Hand-pick comparison stars — they're auto-fetched from AAVSO VSP
+- Format AAVSO submission files — the system writes them
+- Already understand the [VSX catalog][vsx] — you'll learn as you go
+
+If you've never observed a variable star before, **you can still use
+this** — start with the [Getting Started guide](docs/getting_started.md).
+
+[aavso]: https://www.aavso.org/
+[vsx]: https://www.aavso.org/vsx/
+
+---
+
+## What you'll get
+
+```mermaid
+flowchart LR
+    A[VSX catalog<br/>10k+ targets] --> B[Pick<br/>candidates worth<br/>observing tonight]
+    B --> C[Plan<br/>schedule around<br/>your sky + gear]
+    C --> D[Capture<br/>NINA + scope<br/>plate-solved FITS]
+    D --> E[Process<br/>aperture photometry<br/>+ AAVSO file]
+    E --> F[Assess<br/>flag anomalies<br/>vs catalog + AAVSO]
+    F --> G[Submit<br/>upload to AAVSO<br/>WebObs]
+```
+
+Concretely, after a clear night with this tool you have:
+
+| Output | What it is |
+|---|---|
+| `session_schedule.html` | A phone-readable plan for the night, with a timeline and per-target cards (catalog info, AAVSO charts, your expected exposure plan) |
+| `nina_targets.csv` | Drop-in import for **NINA Target Scheduler** — your scope follows the schedule automatically |
+| `aavso_<TARGET>.txt` | An [AAVSO Extended File Format][aavso-ext] submission file you can upload at [webobs/file][webobs] |
+| Light-curve plots | Tonight's measurements overlaid on AAVSO recent observations and your own prior nights |
+| Anomaly callouts | A quantitative check: "your median is 0.4 mag fainter than expected — flag for follow-up" |
+
+[aavso-ext]: https://www.aavso.org/aavso-extended-file-format
+[webobs]: https://www.aavso.org/webobs/file
+
+---
 
 ## Quick start
 
 ```powershell
+# Install (Python 3.11+)
 python -m pip install -e .
-```
 
-### Generate a queue (research mode)
+# Generate a queue of candidates worth observing
+anomaly-scout run --config config/jersey_city.yaml
 
-```powershell
-anomaly-scout run --config config/multi_site.yaml
-```
-
-Outputs in `output/`: `candidate_queue.csv`, `best_<site>.csv`,
-`shared_targets.csv`, `research_notes.md`, and per-target packets.
-
-### Plan tonight's session
-
-```powershell
+# Plan a session for tonight
 anomaly-scout tonight --config config/s30_pro_jc.yaml --hours 4
-```
 
-Outputs in `output/s30_pro_jc/tonight/`:
-- `session_schedule.html` — the primary phone-readable doc, with a
-  horizontal timeline at the top, a quick-glance schedule table, and a
-  detailed card per target.
-- `nina_targets.csv` — NINA Target Scheduler import, in execution order.
-- The standard candidate-queue artifacts (CSVs, packets) restricted to
-  tonight's window.
-
-### Webapp (recommended for live use)
-
-```powershell
+# Or open the webapp on your phone (Tailscale-friendly)
 anomaly-scout webapp
 ```
 
-Eight tabs, no auth (single-user, single-machine assumption):
-- **Tonight** (`/first-light`) — first-light walkthrough that turns
-  green as each step completes (settings → NINA → schedule → captures
-  → photometry → AAVSO submission).
-- **Schedule** (`/schedule`) — phone-readable session plan with a
-  horizontal timeline, per-target cards, AAVSO chart links.
-- **Photometry** (`/photometry`) — tonight's plan with per-target
-  status, plus all dated capture sessions. Click a target to run
-  photometry. Result page shows light curves (with AAVSO baseline
-  + your prior nights overlaid), phase-folded plot, anomaly callout
-  with the numbers, AAVSO file preview, and a per-frame deselect form.
-- **NINA monitor** (`/nina`) — live status from NINA's Advanced API
-  plugin (sequence progress, equipment, current target). Polls every 5s.
-- **Data** (`/data/sessions`) — queryable history from the SQLite
-  session store. Per-target view at `/data/target/<slug>` includes
-  a multi-night light curve color-coded by session.
-- **Archive** (`/archive`) — snapshots of past `tonight` runs.
-- **History** (`/runs`) — every persisted run record.
-- **Settings** (`/settings`) — observer code, default config, default hours.
+Outputs go to `output/<config>/`. Open `output/<config>/tonight/session_schedule.html`
+in a browser — that's the primary phone-readable artifact.
 
-Bind on `0.0.0.0` (default) so Tailscale peers can reach the dashboard
-from your phone in the field.
+For a full walkthrough of your first night, read
+**[Getting Started](docs/getting_started.md)**.
 
-## Local horizon profile
+---
 
-Real observing locations have trees, houses, and balcony rails that
-block specific directions. The standard altitude floor (e.g. 45° from
-JC) treats the sky as a clean dome, but a target that peaks behind a
-tree at its best moment is wasted. To handle this, sites can carry an
-optional **horizon profile** — a per-azimuth silhouette of the local
-obstruction line.
+## Documentation
 
-`config/horizon_balcony_jc.yaml` is a real example captured from
-Stellarium AR screenshots (39 points, ±5° az / ±3° alt precision).
-Reference it from the site config:
+| Doc | What it covers |
+|---|---|
+| **[Getting Started](docs/getting_started.md)** | Install → configure your site → capture horizon → first observation → submit to AAVSO. Soup to nuts. |
+| **[Concepts](docs/concepts.md)** | Glossary and mental models: what's a comp star, how the scheduler thinks, what "anomaly" means here. Read this if any term in the quick start was unfamiliar. |
+| **[Horizon profile](docs/horizon_profile.md)** | How to map your local horizon (trees, your house, the railing) so the scheduler doesn't send you to targets behind a tree. |
+| **[Photometry pipeline](docs/photometry.md)** | What happens after you press "Run photometry" — aperture math, comp resolution, anomaly thresholds. |
+| **[NINA setup](docs/nina_setup.md)** | Configuring NINA + the Advanced API plugin so the webapp can monitor your sequence. |
+| **[Troubleshooting](docs/troubleshooting.md)** | What to do when VSX fails, comp stars vanish, plate-solving breaks, etc. |
+| **[Contributing](CONTRIBUTING.md)** | Tests, lint, typecheck, branch conventions. |
+| **[Handoff notes](HANDOFF.md)** | Project-internal continuity doc — read this if you're picking the project up cold. |
 
-```yaml
-sites:
-  - name: Jersey City
-    horizon_profile_path: config/horizon_balcony_jc.yaml
-    observer: { ... }
-    observing_window: { ... }
+---
+
+## How the system thinks
+
+```mermaid
+flowchart TB
+    subgraph Pick["Pick (anomaly-scout run)"]
+        VSX[VSX catalog<br/>via VizieR] --> Candidates
+        Filters[Site filters<br/>altitude, magnitude<br/>amplitude, |b|] --> Candidates
+        Candidates[Scored<br/>candidates]
+        Candidates --> AAVSO[AAVSO recent<br/>coverage]
+        Candidates --> SIMBAD[SIMBAD<br/>cross-IDs]
+        Candidates --> Gaia[Gaia DR3<br/>color, RUWE]
+        Candidates --> ZTF[ZTF light curves<br/>optional]
+    end
+
+    subgraph Plan["Plan (anomaly-scout tonight)"]
+        Greedy[Greedy scheduler<br/>+ urgency bonus] --> Schedule
+        Horizon[Horizon profile<br/>per azimuth] --> Greedy
+        Window[Tonight's window<br/>now → +N hours] --> Greedy
+        Schedule[Session schedule<br/>+ NINA CSV<br/>+ packets]
+    end
+
+    subgraph Capture["Capture (NINA)"]
+        NINA[NINA Target<br/>Scheduler] --> FITS[FITS frames<br/>plate-solved]
+    end
+
+    subgraph Process["Process (anomaly-scout submit)"]
+        FITS --> Photometry[Aperture<br/>photometry]
+        VSP[AAVSO VSP<br/>comp stars] --> Photometry
+        Photometry --> Aavso[AAVSO file]
+        Photometry --> Plots[Light curves<br/>+ phase fold]
+        Photometry --> Anomaly[Anomaly<br/>assessment]
+    end
+
+    Pick --> Plan
+    Plan --> Capture
+    Capture --> Process
 ```
 
-`evaluate_observability` then uses `max(global_floor, horizon_at_az)`
-per sample, dropping minutes where the target is technically high
-enough but actually behind a tree.
+---
 
-## Photometry workflow
+## Project status
 
-NINA captures FITS files into per-target subdirectories under
-`captures/`. The webapp's `/photometry/<target>/` page asks only for an
-observer code; comp stars and chart ID are pulled from AAVSO VSP at run
-time. Process detail is in [`docs/photometry.md`](docs/photometry.md).
+This is a single-developer project, refined over many sessions of iterative
+work. ~330 tests, mypy- and ruff-clean. No commercial sponsorship — built
+for personal use first, generalized second. PRs and issues welcome at
+[the GitHub repo][repo].
 
-CLI equivalent:
-
-```powershell
-anomaly-scout submit --captures captures/RR_LYR/2026-05-06/ --target "RR LYR" --observer-code ABC
-```
-
-Pass `--comp-stars path/to/file.json` to override the auto-fetched
-sequence with a hand-curated one. Captures should be organized as
-`captures/<TARGET>/<YYYY-MM-DD>/*.fits` so multi-night data stays
-separate; the legacy flat layout `captures/<TARGET>/*.fits` still works.
-
-## What lands where
-
-The system writes to seven storage roots (full diagram in HANDOFF.md):
-
-- `output/<config>/tonight/` — current schedule + packets + NINA CSV
-- `output/<config>/archive/<DATE>/` — snapshots of past nights
-- `captures/<TARGET>/<DATE>/` — NINA frames + per-session photometry outputs
-- `data/cache/` — HTTP response cache (30-day TTL, gitignored)
-- `data/webapp_runs/<run_id>.json` — canonical run records
-- `data/webapp_runs/sessions.db` — queryable session index (SQLite)
-- `data/webapp_runs/settings.json` — observer code, defaults
-
-`anomaly-scout cleanup --runs --cache --older-than 90d` prunes by age;
-submitted sessions are protected.
-
-## Modes
-
-`--mode novelty` biases toward survey-prefixed (Gaia DR3 NNN…)
-targets. `--mode practice` biases toward classical GCVS variables.
-`--mode mixed` is half-and-half. The intended workflow is two passes:
-
-```powershell
-anomaly-scout run --config config/multi_site.yaml --output-dir output/practice
-anomaly-scout run --config config/multi_site.yaml --mode novelty --ztf-top 20 --output-dir output/novelty
-```
-
-Generated packets are starting points for human review, not discovery
-claims. Always inspect VSX, SIMBAD, recent literature, field crowding,
-and your own calibrated photometry before submitting anything new.
-
-## Sites
-
-Defaults assume Jersey City, NJ (urban: 45° altitude floor, mag ≤ 14,
-|b| ≥ 12°) and Fairbanks, AK (dark: 25° floor, mag ≤ 16.5, |b| ≥ 5°).
-Note Fairbanks has no astronomical darkness from roughly early May
-through early August — pick a `--start-date` accordingly.
-
-## Data sources
-
-- VSX through VizieR: `B/vsx/vsx`
-- AAVSO recent coverage through the VSX object API
-- AAVSO comparison-star sequences through VSP:
-  `https://app.aavso.org/vsp/api/v2/chart/`
-- SIMBAD context through the CDS SIMBAD TAP service
-- Gaia DR3 context through VizieR `I/355/gaiadr3`
-- ZTF light curves through IRSA:
-  `https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves`
-- NINA Advanced API plugin (default `http://localhost:1888`)
-
-Successful network calls are cached under `data/cache/` (gitignored).
-Delete to force fresh archive queries.
-
-## Tests
-
-```powershell
-python -m unittest discover -s tests
-```
+[repo]: https://github.com/dbyrne/aavso-anomaly-scout

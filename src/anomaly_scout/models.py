@@ -6,14 +6,24 @@ from datetime import date, datetime
 
 @dataclass
 class VsxTarget:
+    """A VSX catalog row, with field names that say what they mean.
+
+    `bright_mag` is the *brighter* end of the photometric range — the
+    numerically smaller magnitude. (VSX stores it as 'max', but that's
+    confusing since brighter = smaller mag.)
+
+    `faint_mag` is the dimmer end OR the amplitude in mag, depending on
+    `faint_is_amplitude`. Both VSX conventions exist in the catalog;
+    the source's `min_band` tells us which.
+    """
     oid: int
     name: str
     var_type: str
-    max_mag: float | None
-    min_mag: float | None
-    max_band: str
-    min_band: str
-    min_is_amplitude: bool
+    bright_mag: float | None
+    faint_mag: float | None
+    bright_band: str
+    faint_band: str
+    faint_is_amplitude: bool
     period_days: float | None
     spectral_type: str
     ra_deg: float
@@ -21,17 +31,13 @@ class VsxTarget:
 
     @property
     def catalog_amplitude(self) -> float | None:
-        if self.min_mag is None or self.max_mag is None:
+        if self.faint_mag is None or self.bright_mag is None:
             return None
-        if self.min_is_amplitude:
-            return self.min_mag
-        if self.min_mag >= self.max_mag:
-            return self.min_mag - self.max_mag
+        if self.faint_is_amplitude:
+            return self.faint_mag
+        if self.faint_mag >= self.bright_mag:
+            return self.faint_mag - self.bright_mag
         return None
-
-    @property
-    def bright_mag(self) -> float | None:
-        return self.max_mag
 
     @property
     def vsx_url(self) -> str:

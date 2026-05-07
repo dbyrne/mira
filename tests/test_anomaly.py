@@ -13,16 +13,16 @@ from anomaly_scout.models import VsxTarget
 from anomaly_scout.photometry import Observation
 
 
-def _target(max_mag: float | None, min_mag: float | None, min_is_amplitude: bool = False) -> VsxTarget:
+def _target(max_mag: float | None, min_mag: float | None, faint_is_amplitude: bool = False) -> VsxTarget:
     return VsxTarget(
         oid=1,
         name="RR LYR",
         var_type="RRAB",
-        max_mag=max_mag,
-        min_mag=min_mag,
-        max_band="V",
-        min_band="V",
-        min_is_amplitude=min_is_amplitude,
+        bright_mag=max_mag,
+        faint_mag=min_mag,
+        bright_band="V",
+        faint_band="V",
+        faint_is_amplitude=faint_is_amplitude,
         period_days=0.5668,
         spectral_type="A",
         ra_deg=291.366,
@@ -83,9 +83,9 @@ class AnomalyAssessmentTests(TestCase):
         result = assess_session_anomaly(observations, target, aavso_recent=None)
         self.assertEqual(result.level, "info")
 
-    def test_min_is_amplitude_skips_faint_check(self) -> None:
-        # When min_is_amplitude is True, "min_mag" is the amplitude, not a faint floor.
-        target = _target(max_mag=7.06, min_mag=1.06, min_is_amplitude=True)
+    def test_faint_is_amplitude_skips_faint_check(self) -> None:
+        # When faint_is_amplitude is True, "faint_mag" is the amplitude, not a faint floor.
+        target = _target(max_mag=7.06, min_mag=1.06, faint_is_amplitude=True)
         # Observed at mag 9.0; way over "1.06" but that's amplitude, not a faint floor
         observations = [_obs(2460000.0 + i * 0.001, 9.0) for i in range(20)]
         result = assess_session_anomaly(observations, target, aavso_recent=None)

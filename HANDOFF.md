@@ -116,7 +116,7 @@ cache.py                File-based HTTP cache under data/cache/
 tonight_pipeline.py     Shared tonight orchestration (CLI + webapp)
 models.py               Shared dataclasses (VsxTarget, Observability,
                         AavsoStats, SimbadStats, GaiaStats, ZtfStats)
-tests/                  unittest suite (280+ tests)
+tests/                  unittest suite (322+ tests)
 ```
 
 ## Storage layout
@@ -206,6 +206,17 @@ example outputs to inspect.
 - Anomaly thresholds (`anomaly.py`): catalog-range tolerance ±0.3 mag;
   baseline σ-cutoffs 2σ (watch) / 3σ (anomaly); minimum 10 AAVSO
   samples to trust the baseline.
+- Local horizon profile (`horizon.py`): per-azimuth silhouette of
+  trees/buildings, captured from Stellarium AR screenshots. Sites
+  reference one via `horizon_profile_path` in the YAML, and
+  observability uses `max(global_floor, horizon_at_az)` per sample
+  instead of just the flat altitude floor.
+- Moon proximity (`observability.moon_separation_deg`): when the moon
+  is up, samples within `min_moon_separation_deg` of the moon are
+  rejected. Default 30°.
+- VsxTarget field naming: `bright_mag` is the brighter end of the
+  catalog range (numerically smaller). `faint_mag` is either the
+  dimmer end OR the amplitude in mag — `faint_is_amplitude` says which.
 - RunRegistry persists to `state_dir/<run_id>.json`; in-flight runs at
   startup are marked failed.
 - `_human_time` Jinja filter accepts both float (Unix epoch) and
@@ -231,7 +242,7 @@ example outputs to inspect.
 python -m unittest discover -s tests
 ```
 
-155+ tests as of this writing. Cover observability geometry, parsing
+322+ tests as of this writing. Cover observability geometry, parsing
 (VSX/AAVSO/SIMBAD/Gaia/ZTF/VSP), scheduler, scoring, photometry math,
 ensemble photometry, webapp routes, anomaly thresholds, settings
 persistence.

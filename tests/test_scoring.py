@@ -52,12 +52,12 @@ def _target(
     max_mag: float | None = 7.06,
     min_mag: float | None = 8.12,
     period: float | None = 0.5668,
-    min_is_amplitude: bool = False,
+    faint_is_amplitude: bool = False,
 ) -> VsxTarget:
     return VsxTarget(
         oid=1, name=name, var_type=var_type,
-        max_mag=max_mag, min_mag=min_mag,
-        max_band="V", min_band="V", min_is_amplitude=min_is_amplitude,
+        bright_mag=max_mag, faint_mag=min_mag,
+        bright_band="V", faint_band="V", faint_is_amplitude=faint_is_amplitude,
         period_days=period, spectral_type="A",
         ra_deg=291.366, dec_deg=42.785,
     )

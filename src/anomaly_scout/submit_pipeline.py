@@ -64,7 +64,7 @@ class PhotometryRunResult:
 
 def resolve_comps(
     target_name: str,
-    target_max_mag: float | None,
+    target_bright_mag: float | None,
     comp_path: Path | None,
     chart_id_override: str = "na",
 ) -> CompResolution:
@@ -96,7 +96,7 @@ def resolve_comps(
     from .vsp import fetch_vsp_chart, filter_comps_for_target
 
     chart = fetch_vsp_chart(target_name)
-    selected = filter_comps_for_target(chart.comps, target_max_mag)
+    selected = filter_comps_for_target(chart.comps, target_bright_mag)
     if selected:
         source = "vsp"
         comps = selected

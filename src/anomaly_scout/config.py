@@ -26,6 +26,10 @@ class WindowConfig:
     max_sun_altitude_deg: float
     max_moon_altitude_deg: float
     max_moon_illumination: float
+    # When the moon is up and bright, targets within this angular distance
+    # of it have ruined backgrounds — drop those samples even if everything
+    # else (altitude, sun, horizon) passes. Set to 0 to disable.
+    min_moon_separation_deg: float = 30.0
 
 
 @dataclass(frozen=True)
@@ -196,6 +200,7 @@ def _parse_site(raw: dict[str, Any]) -> SiteConfig:
     window_raw.setdefault("max_sun_altitude_deg", -12.0)
     window_raw.setdefault("max_moon_altitude_deg", 30.0)
     window_raw.setdefault("max_moon_illumination", 0.7)
+    window_raw.setdefault("min_moon_separation_deg", 30.0)
     horizon_path = raw.get("horizon_profile_path")
     horizon_profile: HorizonProfile | None = None
     if horizon_path:

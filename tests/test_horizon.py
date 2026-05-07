@@ -195,8 +195,8 @@ class HorizonAffectsObservabilityTests(TestCase):
         # A target in the late-spring sky that's well above 20° from JC
         target = VsxTarget(
             oid=1, name="Vega", var_type="DSCT",
-            max_mag=0.0, min_mag=0.1, max_band="V", min_band="V",
-            min_is_amplitude=False, period_days=0.2, spectral_type="A",
+            bright_mag=0.0, faint_mag=0.1, bright_band="V", faint_band="V",
+            faint_is_amplitude=False, period_days=0.2, spectral_type="A",
             ra_deg=279.234, dec_deg=38.78,
         )
         open_obs = evaluate_observability(target, site_open, start_date=date(2026, 5, 6))

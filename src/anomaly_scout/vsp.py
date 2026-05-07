@@ -17,7 +17,11 @@ from .cache import cached_get
 from .photometry import CompStar
 
 
-VSP_BASE_URL = "https://app.aavso.org/vsp/api/v2/chart/"
+# Note: AAVSO's `v2` JSON endpoint (app.aavso.org/vsp/api/v2/chart/)
+# returns HTTP 301 to apps.aavso.org which then 302s into a path that
+# 404s. The supported endpoint is the unversioned one at apps.aavso.org.
+# Surfaced by `anomaly-scout rehearse` 2026-05-06.
+VSP_BASE_URL = "https://apps.aavso.org/vsp/api/chart/"
 DEFAULT_FOV_ARCMIN = 60.0
 DEFAULT_MAGLIMIT = 14.5
 DEFAULT_BAND = "V"

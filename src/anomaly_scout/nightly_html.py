@@ -576,8 +576,8 @@ def _render_target_card(index: int, scheduled: ScheduledTarget) -> str:
     bits.append("<ul>")
     bits.append(f"<li>VSX type: <code>{html.escape(target.var_type or 'blank')}</code></li>")
     bits.append(
-        f"<li>Catalog photometry range: <code>{_fmt(target.max_mag)}</code> to "
-        f"<code>{_fmt(target.min_mag)}</code> mag</li>"
+        f"<li>Catalog photometry range: <code>{_fmt(target.bright_mag)}</code> to "
+        f"<code>{_fmt(target.faint_mag)}</code> mag</li>"
     )
     bits.append(f"<li>Catalog amplitude: <code>{_fmt(target.catalog_amplitude)}</code> mag</li>")
     bits.append(f"<li>Spectral type: <code>{html.escape(target.spectral_type or 'blank')}</code></li>")

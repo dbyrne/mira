@@ -26,8 +26,8 @@ TZ = ZoneInfo("America/New_York")
 def _target(name: str = "RR LYR", oid: int = 1, mag: float = 7.06) -> VsxTarget:
     return VsxTarget(
         oid=oid, name=name, var_type="RRAB",
-        max_mag=mag, min_mag=mag + 1.0,
-        max_band="V", min_band="V", min_is_amplitude=False,
+        bright_mag=mag, faint_mag=mag + 1.0,
+        bright_band="V", faint_band="V", faint_is_amplitude=False,
         period_days=0.5668, spectral_type="A",
         ra_deg=291.366, dec_deg=42.785,
     )

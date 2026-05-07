@@ -98,7 +98,7 @@ def execute_submit(
     try:
         resolution = resolve_comps(
             target_name=target_name,
-            target_max_mag=vsx_target.max_mag,
+            target_bright_mag=vsx_target.bright_mag,
             comp_path=comp_path,
             chart_id_override=chart_id,
         )

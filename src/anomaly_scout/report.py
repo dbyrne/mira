@@ -184,9 +184,9 @@ def write_queue_csv(
         "type",
         "ra_deg",
         "dec_deg",
-        "max_mag",
-        "min_mag_or_amplitude",
-        "min_is_amplitude",
+        "bright_mag",
+        "faint_mag_or_amplitude",
+        "faint_is_amplitude",
         "amplitude_mag",
         "period_days",
         "primary_site",
@@ -240,9 +240,9 @@ def write_queue_csv(
                     "type": target.var_type,
                     "ra_deg": f"{target.ra_deg:.5f}",
                     "dec_deg": f"{target.dec_deg:.5f}",
-                    "max_mag": _format_optional(target.max_mag),
-                    "min_mag_or_amplitude": _format_optional(target.min_mag),
-                    "min_is_amplitude": target.min_is_amplitude,
+                    "bright_mag": _format_optional(target.bright_mag),
+                    "faint_mag_or_amplitude": _format_optional(target.faint_mag),
+                    "faint_is_amplitude": target.faint_is_amplitude,
                     "amplitude_mag": _format_optional(target.catalog_amplitude),
                     "period_days": _format_optional(target.period_days, digits=8),
                     "primary_site": obs.site_name,
@@ -656,14 +656,14 @@ def _format_jd_as_iso(jd: float | None) -> str | None:
 
 
 def _catalog_photometry_text(target) -> str:
-    if target.min_is_amplitude:
+    if target.faint_is_amplitude:
         return (
-            f"bright `{_format_optional(target.max_mag)}` {target.max_band or ''}; "
-            f"amplitude `{_format_optional(target.min_mag)}` mag {target.min_band or ''}"
+            f"bright `{_format_optional(target.bright_mag)}` {target.bright_band or ''}; "
+            f"amplitude `{_format_optional(target.faint_mag)}` mag {target.faint_band or ''}"
         )
     return (
-        f"range `{_format_optional(target.max_mag)}-{_format_optional(target.min_mag)}` "
-        f"({target.max_band}/{target.min_band})"
+        f"range `{_format_optional(target.bright_mag)}-{_format_optional(target.faint_mag)}` "
+        f"({target.bright_band}/{target.faint_band})"
     )
 
 

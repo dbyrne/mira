@@ -45,6 +45,15 @@ def evaluate_observability(
             if moon_alt > window.max_moon_altitude_deg:
                 if moon_illumination(utc_sample) > window.max_moon_illumination:
                     continue
+                # Moon is up but dim enough overall — still reject samples
+                # where the target is too close to the moon (background
+                # scattering ruins photometry within ~30° of a bright moon).
+                if window.min_moon_separation_deg > 0:
+                    separation = moon_separation_deg(
+                        target.ra_deg, target.dec_deg, utc_sample
+                    )
+                    if separation < window.min_moon_separation_deg:
+                        continue
             target_alt = altitude_deg(
                 target.ra_deg,
                 target.dec_deg,
@@ -226,6 +235,34 @@ def moon_position(utc_dt: datetime) -> tuple[float, float, float]:
 def moon_altitude_deg(utc_dt: datetime, latitude_deg: float, longitude_deg: float) -> float:
     ra, dec, _ = moon_position(utc_dt)
     return altitude_deg(ra, dec, utc_dt, latitude_deg, longitude_deg)
+
+
+def angular_separation_deg(
+    ra1_deg: float, dec1_deg: float, ra2_deg: float, dec2_deg: float
+) -> float:
+    """Great-circle separation between two equatorial directions, in
+    degrees. Vincenty formula — numerically stable for both small and
+    large separations."""
+    ra1, dec1 = math.radians(ra1_deg), math.radians(dec1_deg)
+    ra2, dec2 = math.radians(ra2_deg), math.radians(dec2_deg)
+    dra = ra2 - ra1
+    num = math.sqrt(
+        (math.cos(dec2) * math.sin(dra)) ** 2
+        + (math.cos(dec1) * math.sin(dec2) - math.sin(dec1) * math.cos(dec2) * math.cos(dra)) ** 2
+    )
+    den = math.sin(dec1) * math.sin(dec2) + math.cos(dec1) * math.cos(dec2) * math.cos(dra)
+    return math.degrees(math.atan2(num, den))
+
+
+def moon_separation_deg(
+    target_ra_deg: float, target_dec_deg: float, utc_dt: datetime
+) -> float:
+    """Angular separation between a target and the Moon at a given UTC,
+    in degrees. Doesn't depend on the observer's location (the Moon's
+    apparent direction is essentially the same anywhere on Earth — the
+    parallax is at most ~1° and we don't care for photometric scattering)."""
+    moon_ra, moon_dec, _ = moon_position(utc_dt)
+    return angular_separation_deg(target_ra_deg, target_dec_deg, moon_ra, moon_dec)
 
 
 def moon_illumination(utc_dt: datetime) -> float:

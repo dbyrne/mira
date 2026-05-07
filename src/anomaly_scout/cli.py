@@ -137,6 +137,22 @@ def main() -> None:
         help="Override path to sessions.db (default <state-dir>/sessions.db).",
     )
 
+    rehearsal_parser = subparsers.add_parser(
+        "rehearse",
+        help="Generate synthetic FITS for a real target and run them through "
+        "the full submit pipeline. Smoke test before first light.",
+    )
+    rehearsal_parser.add_argument("--target", required=True, help="VSX target name (e.g. 'RR Lyr').")
+    rehearsal_parser.add_argument(
+        "--output-dir", default="captures/_rehearsal",
+        help="Where to write synthetic FITS + the AAVSO file (default captures/_rehearsal).",
+    )
+    rehearsal_parser.add_argument("--frames", type=int, default=20, help="Number of synthetic frames (default 20).")
+    rehearsal_parser.add_argument(
+        "--observer-code", default="TEST",
+        help="Observer code stamped into the synthetic AAVSO file. Default 'TEST' (do NOT submit).",
+    )
+
     cleanup_parser = subparsers.add_parser(
         "cleanup",
         help="Delete old run records and stale HTTP cache entries. Default is dry-run.",
@@ -195,6 +211,8 @@ def main() -> None:
         migrate_runs(args)
     elif args.command == "cleanup":
         cleanup(args)
+    elif args.command == "rehearse":
+        rehearse(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -205,6 +223,51 @@ def main() -> None:
         webapp(args)
     elif args.command in (None, "run"):
         run(args)
+
+
+def rehearse(args: argparse.Namespace) -> None:
+    """Smoke-test the full photometry pipeline against synthetic FITS for
+    a real target. Catches integration bugs before the gear arrives."""
+    from .rehearsal import run_rehearsal
+
+    output_dir = Path(args.output_dir)
+    try:
+        report = run_rehearsal(
+            target_name=args.target,
+            output_dir=output_dir,
+            n_frames=args.frames,
+            observer_code=args.observer_code,
+        )
+    except Exception as exc:
+        print(f"REHEARSAL FAILED: {exc}")
+        return
+
+    print()
+    print("=== Rehearsal report ===")
+    print(f"Target:           {report.target_name}")
+    print(f"  RA / Dec:       {report.target_ra_deg:.5f} / {report.target_dec_deg:+.5f}")
+    print(f"  Planted mag:    {report.planted_target_mag:.2f}")
+    print(f"  Chart:          {report.chart_id} ({report.n_comps_used} comps in {report.comp_band})")
+    print(f"Frames:           {report.n_frames}")
+    if report.recovered_median_mag is not None:
+        residual = report.magnitude_residual
+        sign = "+" if residual is not None and residual > 0 else ""
+        print(
+            f"Recovered mag:    median {report.recovered_median_mag:.2f} "
+            f"(range {report.recovered_min_mag:.2f}–{report.recovered_max_mag:.2f}, "
+            f"residual {sign}{residual:.2f} mag)"
+        )
+    else:
+        print("Recovered mag:    (no observations)")
+    if report.aavso_path:
+        print(f"AAVSO file:       {report.aavso_path}")
+    if report.issues:
+        print()
+        print("Issues:")
+        for issue in report.issues:
+            print(f"  - {issue}")
+    else:
+        print("No issues. Pipeline looks healthy.")
 
 
 def cleanup(args: argparse.Namespace) -> None:
@@ -521,7 +584,7 @@ def submit(args: argparse.Namespace) -> None:
     try:
         resolution = resolve_comps(
             target_name=args.target,
-            target_max_mag=vsx_target.max_mag,
+            target_bright_mag=vsx_target.bright_mag,
             comp_path=comp_path,
             chart_id_override=args.chart_id,
         )

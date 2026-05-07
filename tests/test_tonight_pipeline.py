@@ -31,8 +31,8 @@ def _candidate(best_local: datetime | None) -> Candidate:
     )
     target = VsxTarget(
         oid=1, name="X", var_type="RRAB",
-        max_mag=8.0, min_mag=9.0, max_band="V", min_band="V",
-        min_is_amplitude=False, period_days=0.5, spectral_type="A",
+        bright_mag=8.0, faint_mag=9.0, bright_band="V", faint_band="V",
+        faint_is_amplitude=False, period_days=0.5, spectral_type="A",
         ra_deg=0.0, dec_deg=0.0,
     )
     return Candidate(

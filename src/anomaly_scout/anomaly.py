@@ -77,14 +77,14 @@ def assess_session_anomaly(
     levels: list[str] = []
 
     if vsx_target is not None:
-        bright = vsx_target.max_mag  # smaller magnitude = brighter
-        faint = vsx_target.min_mag  # larger magnitude = fainter (or amplitude)
+        bright = vsx_target.bright_mag
+        faint = vsx_target.faint_mag  # may be amplitude when faint_is_amplitude is True
         if bright is not None:
             assessment.expected_min = bright
-        if faint is not None and not vsx_target.min_is_amplitude:
+        if faint is not None and not vsx_target.faint_is_amplitude:
             assessment.expected_max = faint
         cat_level, cat_flag = _check_catalog_range(
-            session_median, bright, faint, vsx_target.min_is_amplitude
+            session_median, bright, faint, vsx_target.faint_is_amplitude
         )
         if cat_flag:
             assessment.flags.append(cat_flag)
@@ -120,7 +120,7 @@ def _check_catalog_range(
     session_median: float,
     bright_mag: float | None,
     faint_mag: float | None,
-    min_is_amplitude: bool,
+    faint_is_amplitude: bool,
 ) -> tuple[str, str | None]:
     if bright_mag is not None and session_median < bright_mag - CATALOG_TOLERANCE_MAG:
         delta = bright_mag - session_median
@@ -131,7 +131,7 @@ def _check_catalog_range(
         )
     if (
         faint_mag is not None
-        and not min_is_amplitude
+        and not faint_is_amplitude
         and session_median > faint_mag + CATALOG_TOLERANCE_MAG
     ):
         delta = session_median - faint_mag

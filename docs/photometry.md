@@ -13,11 +13,17 @@ for upload.
 - **WCS in FITS headers.** NINA must plate-solve before saving (Center
   on Target / Solve & Sync, or per-frame Plate Solve). The pipeline
   pre-flights the first frame and bails fast if the WCS is missing.
-- **One target per directory.** NINA's "Target name" subfolder pattern
-  works as-is — the pipeline looks for `*.fits` and `*.fit` files in
-  the directory you point it at.
+- **Dated capture directories.** Organize as
+  `captures/<TARGET>/<YYYY-MM-DD>/*.fits` so each night is its own
+  session. The flat layout `captures/<TARGET>/*.fits` still works for
+  legacy data and is treated as a single undated session.
 - **AAVSO observer code** — free, register at
   https://www.aavso.org/. Required by AAVSO Extended File format.
+- **(Optional) local horizon profile** — see HANDOFF.md "Storage
+  layout"; YAML at `config/horizon_balcony_jc.yaml` is a real example.
+  When set on a site config, the scheduler drops directions where
+  trees/houses block the view, even when the target's altitude alone
+  would qualify.
 
 ## Running it
 

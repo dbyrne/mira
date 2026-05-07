@@ -55,7 +55,7 @@ class ResolveCompsTests(TestCase):
                  "catalog_mag": 10.5, "catalog_band": "V"},
             ]))
             res = resolve_comps(
-                target_name="X", target_max_mag=10.0,
+                target_name="X", target_bright_mag=10.0,
                 comp_path=path, chart_id_override="X12345",
             )
         self.assertEqual(res.source, "json")
@@ -84,7 +84,7 @@ class ResolveCompsTests(TestCase):
         )
         with patch.object(vsp, "fetch_vsp_chart", return_value=chart):
             res = resolve_comps(
-                target_name="RR LYR", target_max_mag=10.0,
+                target_name="RR LYR", target_bright_mag=10.0,
                 comp_path=None, chart_id_override="na",
             )
         self.assertEqual(res.source, "vsp")
@@ -109,7 +109,7 @@ class ResolveCompsTests(TestCase):
         )
         with patch.object(vsp, "fetch_vsp_chart", return_value=chart):
             res = resolve_comps(
-                target_name="X", target_max_mag=10.0,
+                target_name="X", target_bright_mag=10.0,
                 comp_path=None, chart_id_override="na",
             )
         self.assertEqual(res.source, "vsp-fallback")

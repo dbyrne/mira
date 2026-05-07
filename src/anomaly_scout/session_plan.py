@@ -33,10 +33,10 @@ def expected_magnitude_summary(target, aavso) -> MagnitudeSummary:
         range_min = aavso.recent_min_mag
         range_max = aavso.recent_max_mag
         source = "aavso"
-    elif target.max_mag is not None and target.min_mag is not None and not target.min_is_amplitude:
-        expected = (target.max_mag + target.min_mag) / 2.0
-        range_min = target.max_mag  # brightest catalog mag = lowest number
-        range_max = target.min_mag
+    elif target.bright_mag is not None and target.faint_mag is not None and not target.faint_is_amplitude:
+        expected = (target.bright_mag + target.faint_mag) / 2.0
+        range_min = target.bright_mag  # brightest catalog mag = lowest number
+        range_max = target.faint_mag
         source = "catalog"
     elif target.bright_mag is not None:
         expected = target.bright_mag
@@ -180,7 +180,7 @@ def write_session_plan_csv(candidates, path: Path) -> None:
         "dec_dms",
         "ra_deg",
         "dec_deg",
-        "max_mag",
+        "bright_mag",
         "var_type",
         "catalog_period_days",
         "catalog_amplitude_mag",
@@ -207,7 +207,7 @@ def write_session_plan_csv(candidates, path: Path) -> None:
                     "dec_dms": dec_to_dms(target.dec_deg),
                     "ra_deg": f"{target.ra_deg:.6f}",
                     "dec_deg": f"{target.dec_deg:.6f}",
-                    "max_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
+                    "bright_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
                     "var_type": target.var_type,
                     "catalog_period_days": (
                         f"{target.period_days:.6f}" if target.period_days is not None else ""

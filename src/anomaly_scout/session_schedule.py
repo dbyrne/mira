@@ -49,7 +49,7 @@ def write_session_overflow_csv(schedule: ScheduleResult, path: Path) -> None:
     """Viable candidates that didn't fit the schedule. The webapp reads this
     so the user can see deferred options (e.g. if conditions or timing
     change, they can still image one)."""
-    fields = ["name", "ra_deg", "dec_deg", "max_mag", "var_type", "score", "best_local_time"]
+    fields = ["name", "ra_deg", "dec_deg", "bright_mag", "var_type", "score", "best_local_time"]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -64,7 +64,7 @@ def write_session_overflow_csv(schedule: ScheduleResult, path: Path) -> None:
                     "name": target.name,
                     "ra_deg": f"{target.ra_deg:.6f}",
                     "dec_deg": f"{target.dec_deg:.6f}",
-                    "max_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
+                    "bright_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
                     "var_type": target.var_type or "",
                     "score": f"{candidate.score:.1f}",
                     "best_local_time": best_time,
@@ -197,8 +197,8 @@ def _target_section(index: int, scheduled: ScheduledTarget) -> list[str]:
             "",
             f"- VSX type: `{target.var_type or 'blank'}`",
             f"- Coordinates (J2000): RA `{ra_to_hms(target.ra_deg)}` / Dec `{dec_to_dms(target.dec_deg)}`",
-            f"- Catalog photometry range: `{_format_optional(target.max_mag)}` to "
-            f"`{_format_optional(target.min_mag)}` mag",
+            f"- Catalog photometry range: `{_format_optional(target.bright_mag)}` to "
+            f"`{_format_optional(target.faint_mag)}` mag",
             f"- Catalog amplitude: `{_format_optional(target.catalog_amplitude)}` mag",
             f"- Spectral type: `{target.spectral_type or 'blank'}`",
             f"- Galactic latitude: `{obs.galactic_latitude_deg:.1f}°`",
@@ -412,7 +412,7 @@ def write_session_schedule_csv(schedule: ScheduleResult, path: Path) -> None:
         "name",
         "ra_deg",
         "dec_deg",
-        "max_mag",
+        "bright_mag",
         "var_type",
         "exposure_seconds",
         "frame_count",
@@ -434,7 +434,7 @@ def write_session_schedule_csv(schedule: ScheduleResult, path: Path) -> None:
                     "name": target.name,
                     "ra_deg": f"{target.ra_deg:.6f}",
                     "dec_deg": f"{target.dec_deg:.6f}",
-                    "max_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
+                    "bright_mag": f"{target.bright_mag:.2f}" if target.bright_mag is not None else "",
                     "var_type": target.var_type,
                     "exposure_seconds": plan["exposure_s"],
                     "frame_count": plan["frames"],

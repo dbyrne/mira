@@ -7,10 +7,12 @@ from anomaly_scout.config import WindowConfig
 from anomaly_scout.observability import (
     _local_window_samples_for_night,
     altitude_deg,
+    angular_separation_deg,
     galactic_latitude_deg,
     moon_altitude_deg,
     moon_illumination,
     moon_position,
+    moon_separation_deg,
     sun_altitude_deg,
     sun_position,
 )
@@ -136,3 +138,35 @@ class MoonPositionTests(TestCase):
         )
         self.assertGreaterEqual(alt, -90.0)
         self.assertLessEqual(alt, 90.0)
+
+
+class AngularSeparationTests(TestCase):
+    def test_zero_separation_when_same_position(self) -> None:
+        self.assertAlmostEqual(angular_separation_deg(180.0, 0.0, 180.0, 0.0), 0.0, places=5)
+
+    def test_pole_to_equator_is_90(self) -> None:
+        self.assertAlmostEqual(angular_separation_deg(0.0, 90.0, 0.0, 0.0), 90.0, places=4)
+
+    def test_180_apart_along_equator(self) -> None:
+        self.assertAlmostEqual(angular_separation_deg(0.0, 0.0, 180.0, 0.0), 180.0, places=4)
+
+    def test_known_polaris_to_vega(self) -> None:
+        # Polaris at (37.95, 89.26), Vega at (279.23, 38.78)
+        # True separation is ~50.7° (90-39.3 ish; Vega is dec 38.78 so 51.22°)
+        sep = angular_separation_deg(37.95, 89.26, 279.23, 38.78)
+        self.assertAlmostEqual(sep, 51.22, delta=0.5)
+
+
+class MoonSeparationTests(TestCase):
+    def test_separation_returns_value_in_range(self) -> None:
+        sep = moon_separation_deg(279.23, 38.78,
+                                  datetime(2026, 5, 6, 0, 0, tzinfo=timezone.utc))
+        self.assertGreaterEqual(sep, 0.0)
+        self.assertLessEqual(sep, 180.0)
+
+    def test_target_at_moon_position_separation_near_zero(self) -> None:
+        # Use the moon's own position as the target → separation should be 0.
+        utc = datetime(2026, 5, 6, 0, 0, tzinfo=timezone.utc)
+        moon_ra, moon_dec, _ = moon_position(utc)
+        sep = moon_separation_deg(moon_ra, moon_dec, utc)
+        self.assertLess(sep, 0.001)

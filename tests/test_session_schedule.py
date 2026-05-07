@@ -33,8 +33,8 @@ TZ = ZoneInfo("America/New_York")
 def _target(name: str = "RR LYR", oid: int = 1, mag: float = 7.06, period: float | None = 0.5668) -> VsxTarget:
     return VsxTarget(
         oid=oid, name=name, var_type="RRAB",
-        max_mag=mag, min_mag=mag + 1.0,
-        max_band="V", min_band="V", min_is_amplitude=False,
+        bright_mag=mag, faint_mag=mag + 1.0,
+        bright_band="V", faint_band="V", faint_is_amplitude=False,
         period_days=period, spectral_type="A",
         ra_deg=291.366, dec_deg=42.785,
     )
@@ -103,7 +103,7 @@ class WriteSessionScheduleCsvTests(TestCase):
             rows = list(reader)
         self.assertEqual(len(rows), 1)
         expected_cols = {"order", "start_local", "end_local", "name", "ra_deg",
-                        "dec_deg", "max_mag", "var_type", "exposure_seconds",
+                        "dec_deg", "bright_mag", "var_type", "exposure_seconds",
                         "frame_count", "integration_minutes", "score", "effective_score"}
         self.assertTrue(expected_cols.issubset(reader.fieldnames or []))
 

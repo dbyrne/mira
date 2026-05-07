@@ -273,7 +273,7 @@ def read_overflow_targets(overflow_csv: Path) -> list[dict]:
                     {
                         "name": name,
                         "var_type": row.get("var_type", "") or "—",
-                        "max_mag": row.get("max_mag", "") or "—",
+                        "bright_mag": row.get("bright_mag", "") or "—",
                         "best_local_time": row.get("best_local_time", "") or "—",
                         "score": row.get("score", "") or "—",
                     }

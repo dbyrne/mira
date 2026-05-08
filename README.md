@@ -110,7 +110,7 @@ Full definitions and mental models — *how the scheduler thinks, what
 | **[NINA setup](docs/nina_setup.md)** | Configuring NINA + the Advanced API plugin so the webapp can monitor your sequence. |
 | **[Troubleshooting](docs/troubleshooting.md)** | What to do when VSX fails, comp stars vanish, plate-solving breaks, etc. |
 | **[Contributing](CONTRIBUTING.md)** | Tests, lint, typecheck, branch conventions. |
-| **[Handoff notes](HANDOFF.md)** | Project-internal continuity doc — read this if you're picking the project up cold. |
+| **[Architecture](docs/architecture.md)** | Module map, storage layout, and implementation invariants. Read this if you're modifying code, not just running it. |
 
 ---
 

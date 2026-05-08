@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Purpose
 
-Mira produces a short observing queue of known VSX variable stars worth amateur follow-up from Jersey City, NJ. The intentional output is a candidate packet for human triage, not a discovery catalog. Scope is deliberately narrow: known VSX objects, public archive metadata, practical urban-photometry triage. See `HANDOFF.md` for project state and recommended next work.
+Mira produces a short observing queue of known VSX variable stars worth amateur follow-up from Jersey City, NJ. The intentional output is a candidate packet for human triage, not a discovery catalog. Scope is deliberately narrow: known VSX objects, public archive metadata, practical urban-photometry triage. See `docs/architecture.md` for the module map, storage layout, and implementation invariants.
 
 ## Commands
 

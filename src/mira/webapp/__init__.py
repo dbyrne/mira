@@ -12,7 +12,7 @@ Single user, single machine, no auth. Background tasks run in a
 ThreadPoolExecutor; state is in-memory. Restarting the server cancels
 in-flight work, which is fine for a personal observing tool.
 
-Storage roots (see HANDOFF.md "Storage layout" for the full diagram):
+Storage roots (see docs/architecture.md "Storage layout" for the full diagram):
   output_dir     ─ generated session artifacts (tonight/ + archive/<DATE>/)
   captures_root  ─ NINA-captured FITS, organized as <TARGET>/<DATE>/
   state_dir      ─ webapp persistence: <run_id>.json, sessions.db,

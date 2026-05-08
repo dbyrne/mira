@@ -19,8 +19,8 @@ for upload.
   legacy data and is treated as a single undated session.
 - **AAVSO observer code** — free, register at
   https://www.aavso.org/. Required by AAVSO Extended File format.
-- **(Optional) local horizon profile** — see HANDOFF.md "Storage
-  layout"; YAML at `config/horizon_balcony_jc.yaml` is a real example.
+- **(Optional) local horizon profile** — see [horizon_profile.md](horizon_profile.md);
+  YAML at `config/horizon_balcony_jc.yaml` is a real example.
   When set on a site config, the scheduler drops directions where
   trees/houses block the view, even when the target's altitude alone
   would qualify.

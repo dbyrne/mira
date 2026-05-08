@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-Mira produces a short observing queue of known VSX variable stars worth amateur follow-up. Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog. See `HANDOFF.md` for the original project state.
+Mira produces a short observing queue of known VSX variable stars worth amateur follow-up. Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog. See `docs/architecture.md` for the module map, storage layout, and implementation invariants.
 
 ## Commands
 

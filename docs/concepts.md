@@ -236,8 +236,8 @@ between them and wraps cleanly through azimuth 0°/360°.
   `output/<config>/archive/<DATE>/` so re-running tonight's plan
   doesn't trample yesterday's.
 
-See [Storage layout in HANDOFF.md](../HANDOFF.md#storage-layout) for
-the full diagram.
+See [Storage layout in Architecture](architecture.md#storage-layout)
+for the full diagram.
 
 ---
 

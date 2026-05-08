@@ -56,6 +56,16 @@ After a clear night with Mira you have:
 
 ---
 
+## Setup at a glance
+
+![Six-step setup walkthrough — install, configure your site, map your horizon, dress rehearsal, first observation, submit to AAVSO](docs/img/getting_started.png)
+
+The full walkthrough — including the Stellarium AR procedure for
+mapping your horizon and the dress-rehearsal command — lives in
+**[Getting Started](docs/getting_started.md)**.
+
+---
+
 ## Quick start
 
 ```powershell
@@ -77,6 +87,15 @@ in a browser — that's the primary phone-readable artifact.
 
 For a full walkthrough of your first night, read
 **[Getting Started](docs/getting_started.md)**.
+
+---
+
+## The vocabulary, at a glance
+
+![Key terms grid — variable star, VSX, comp star, differential photometry, ensemble, plate-solving, FITS, AAVSO, anomaly](docs/img/key_terms.png)
+
+Full definitions and mental models — *how the scheduler thinks, what
+"anomaly" actually means here* — live in **[Concepts](docs/concepts.md)**.
 
 ---
 

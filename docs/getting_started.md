@@ -7,6 +7,8 @@ telescope but has never done variable-star photometry before.
 If terms like **VSX**, **comp star**, **photometry**, or **AAVSO**
 are unfamiliar, skim [Concepts](concepts.md) first.
 
+![Six-step setup: install, configure your site, map your horizon, dress rehearsal, first observation, submit to AAVSO](img/getting_started.png)
+
 ---
 
 ## Table of contents

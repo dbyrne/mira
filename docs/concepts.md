@@ -4,6 +4,8 @@ A glossary and a few mental models. Read this if any term in
 [Getting Started](getting_started.md) felt unfamiliar, or if you want
 to know *why* the system does what it does, not just *how*.
 
+![Key terms: variable star, VSX, comp star, differential photometry, ensemble, plate-solving, FITS, AAVSO, anomaly](img/key_terms.png)
+
 ---
 
 ## The big picture

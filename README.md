@@ -5,6 +5,8 @@
 > sky and your gear, runs photometry on what your scope captures, and
 > tells you whether what you saw matches expectations.
 
+![Mira workflow: Pick → Plan → Capture → Process → Submit](docs/img/overview.png)
+
 It's the difference between staring at a catalog of 10,000 variable stars
 wondering which one to point your scope at, and getting a phone-readable
 schedule that says: *"22:00 — RR Lyrae, 60 frames at 15 seconds, comp
@@ -39,17 +41,7 @@ this** — start with the [Getting Started guide](docs/getting_started.md).
 
 ## What you'll get
 
-```mermaid
-flowchart LR
-    A[VSX catalog<br/>10k+ targets] --> B[Pick<br/>candidates worth<br/>observing tonight]
-    B --> C[Plan<br/>schedule around<br/>your sky + gear]
-    C --> D[Capture<br/>NINA + scope<br/>plate-solved FITS]
-    D --> E[Process<br/>aperture photometry<br/>+ AAVSO file]
-    E --> F[Assess<br/>flag anomalies<br/>vs catalog + AAVSO]
-    F --> G[Submit<br/>upload to AAVSO<br/>WebObs]
-```
-
-Concretely, after a clear night with this tool you have:
+After a clear night with Mira you have:
 
 | Output | What it is |
 |---|---|

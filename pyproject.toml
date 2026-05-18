@@ -18,6 +18,12 @@ dependencies = [
   "tzdata>=2025.2",
 ]
 
+[project.optional-dependencies]
+# `mira finish` AI steps. NOT a core dependency on purpose: graxpert pins
+# numpy<2.3 and pulls heavy ML deps. Install with: pip install 'mira[finishing]'
+# (or skip the AI steps via `mira finish --no-bg --no-denoise --no-deconv`).
+finishing = ["graxpert"]
+
 [project.scripts]
 mira = "mira.cli:main"
 

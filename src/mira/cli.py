@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -22,6 +23,17 @@ _run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main() -> None:
+    # The CLI prints non-ASCII (em-dashes, ≈, ±) in human-readable output.
+    # A Windows console defaults to cp1252 and raises UnicodeEncodeError mid-
+    # command (it killed `submit` right before the photometry loop). Upgrade
+    # the real console to UTF-8, replacing anything truly unencodable rather
+    # than crashing. No-op for StringIO in tests (no reconfigure attr).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     parser = argparse.ArgumentParser(description="Mira — backyard variable-star observing assistant.")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -121,6 +133,67 @@ def main() -> None:
         default=6.0,
         help="Photometric aperture radius in arcsec (default 6).",
     )
+    submit_parser.add_argument(
+        "--siril-calibrate",
+        action="store_true",
+        help="Calibrate frames with Siril (no register/stack) before photometry. "
+        "Off by default. A WCS safety gate aborts if Siril flips the image; "
+        "verify recovered magnitudes before submitting to AAVSO.",
+    )
+    submit_parser.add_argument("--siril-darks", default=None, help="Dir of dark frames for --siril-calibrate.")
+    submit_parser.add_argument("--siril-flats", default=None, help="Dir of flat frames for --siril-calibrate.")
+    submit_parser.add_argument("--siril-biases", default=None, help="Dir of bias frames for --siril-calibrate.")
+
+    stack_parser = subparsers.add_parser(
+        "stack",
+        help="Pretty-picture branch: Siril convert/register/stack a lights dir "
+        "into a stacked image. Separate from photometry — stacking destroys "
+        "the per-frame time series.",
+    )
+    stack_parser.add_argument("--lights", required=True, help="Directory of light frames (FITS/raw/JPG/TIFF).")
+    stack_parser.add_argument("--out", required=True, help="Output image path (a linear .tif is written here).")
+    stack_parser.add_argument("--darks", default=None, help="Optional dir of dark frames.")
+    stack_parser.add_argument("--flats", default=None, help="Optional dir of flat frames.")
+    stack_parser.add_argument("--biases", default=None, help="Optional dir of bias frames.")
+    stack_parser.add_argument(
+        "--debayer",
+        dest="debayer",
+        action="store_true",
+        default=None,
+        help="Force debayering (OSC CFA). Default: auto-detect from file type.",
+    )
+    stack_parser.add_argument(
+        "--mono", dest="debayer", action="store_false",
+        help="Force no debayering (already-color or true mono data).",
+    )
+    stack_parser.add_argument(
+        "--no-stretch", dest="stretch", action="store_false",
+        help="Skip the stretched PNG preview; write only the linear TIFF.",
+    )
+
+    finish_parser = subparsers.add_parser(
+        "finish",
+        help="Finishing stage: turn a linear stacked master into a presentable "
+        "image — GraXpert background/denoise/deconv (optional) → Siril "
+        "autostretch+saturation → edge crop. Reproducible; idempotent on the input.",
+    )
+    finish_parser.add_argument("--input", required=True, help="Linear stacked master (TIFF/FITS), e.g. a `mira stack` output.")
+    finish_parser.add_argument("--out", required=True, help="Output image path (.png or .tif); the other format is written alongside.")
+    finish_parser.add_argument("--no-bg", dest="do_bg", action="store_false", help="Skip GraXpert background extraction.")
+    finish_parser.add_argument("--no-denoise", dest="do_denoise", action="store_false", help="Skip GraXpert AI denoise.")
+    finish_parser.add_argument("--no-deconv", dest="do_deconv", action="store_false", help="Skip GraXpert object deconvolution.")
+    finish_parser.add_argument("--saturation", type=float, default=0.20, help="Siril saturation boost after stretch (0 disables). Default 0.20.")
+    finish_parser.add_argument(
+        "--crop", default="auto",
+        help="'auto' (trim under-sampled stack borders), 'none', or a per-side "
+        "fraction like 0.06 for a fixed symmetric crop. Default auto.",
+    )
+    finish_parser.add_argument("--gpu", action="store_true", help="Let GraXpert use the GPU (default CPU).")
+    finish_parser.add_argument(
+        "--graxpert-path", default=None,
+        help="Override GraXpert location (executable path or 'python -m graxpert.main'). "
+        "Else $MIRA_GRAXPERT, then PATH, then the installed graxpert module.",
+    )
 
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
@@ -207,6 +280,10 @@ def main() -> None:
         tonight(args)
     elif args.command == "submit":
         submit(args)
+    elif args.command == "stack":
+        stack(args)
+    elif args.command == "finish":
+        finish(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -563,6 +640,31 @@ def submit(args: argparse.Namespace) -> None:
         print(f"Captures directory '{captures_dir}' does not exist.")
         return
 
+    if getattr(args, "siril_calibrate", False):
+        from .siril import SirilError, SirilNotFound
+        from .siril_pipeline import run_siril_calibrate_for_photometry
+
+        print("Siril calibrate pre-step (no register/stack)...")
+        try:
+            captures_dir = run_siril_calibrate_for_photometry(
+                lights_dir=captures_dir,
+                darks_dir=Path(args.siril_darks) if args.siril_darks else None,
+                flats_dir=Path(args.siril_flats) if args.siril_flats else None,
+                biases_dir=Path(args.siril_biases) if args.siril_biases else None,
+            )
+        except SirilNotFound as exc:
+            print(f"Siril not available: {exc}")
+            return
+        except SirilError as exc:
+            print(f"Siril calibrate aborted: {exc}")
+            return
+        print(f"WCS safety gate passed. Photometry will run on: {captures_dir}")
+        print(
+            "WARNING: Siril calibration is opt-in and only spot-checked on one "
+            "frame. Eyeball the recovered magnitudes against the raw-frame run "
+            "before submitting anything to AAVSO."
+        )
+
     print(f"Looking up '{args.target}' in VSX...")
     vsx_target = fetch_vsx_target_by_name(args.target)
     if vsx_target is None:
@@ -675,6 +777,85 @@ def submit(args: argparse.Namespace) -> None:
     )
     print(f"Wrote {output_path}")
     print("Verify the file, then upload at: https://www.aavso.org/webobs/file")
+
+
+def stack(args: argparse.Namespace) -> None:
+    """Pretty-picture branch. Siril-driven, fully decoupled from the
+    photometry/queue path — stacking collapses the time series, so this
+    never feeds back into `submit`."""
+    from .siril import SirilError, SirilNotFound
+    from .siril_pipeline import run_siril_stack
+
+    lights_dir = Path(args.lights)
+    if not lights_dir.is_dir():
+        print(f"Lights directory '{lights_dir}' does not exist.")
+        return
+
+    print(f"Stacking '{lights_dir}' with Siril...")
+    try:
+        result = run_siril_stack(
+            lights_dir=lights_dir,
+            out_path=Path(args.out),
+            darks_dir=Path(args.darks) if args.darks else None,
+            flats_dir=Path(args.flats) if args.flats else None,
+            biases_dir=Path(args.biases) if args.biases else None,
+            debayer=args.debayer,
+            stretch=args.stretch,
+        )
+    except SirilNotFound as exc:
+        print(f"Siril not available: {exc}")
+        return
+    except SirilError as exc:
+        print(f"Stacking failed: {exc}")
+        return
+
+    print(f"\nStacked {result.n_input_frames} frames.")
+    print(f"Wrote {result.output_path} (linear)")
+    if result.preview_path is not None:
+        print(f"Wrote {result.preview_path} (stretched preview)")
+
+
+def finish(args: argparse.Namespace) -> None:
+    """Finishing stage. Decoupled from `stack` on purpose: re-run it with
+    different params against the same linear master without re-stacking
+    (the iterative workflow). GraXpert is optional — the Siril-only path
+    (--no-bg --no-denoise --no-deconv) needs no extra install."""
+    from .finishing import GraXpertError, GraXpertNotFound, run_finish
+    from .siril import SirilError, SirilNotFound
+
+    input_path = Path(args.input)
+    if not input_path.is_file():
+        print(f"Input '{input_path}' does not exist.")
+        return
+
+    print(f"Finishing '{input_path}'...")
+    try:
+        result = run_finish(
+            input_path=input_path,
+            out_path=Path(args.out),
+            do_bg=args.do_bg,
+            do_denoise=args.do_denoise,
+            do_deconv=args.do_deconv,
+            saturation=args.saturation,
+            crop=args.crop,
+            gpu=args.gpu,
+            graxpert_path=args.graxpert_path,
+            on_step=lambda m: print(f"  {m}"),
+        )
+    except GraXpertNotFound as exc:
+        print(f"GraXpert not available: {exc}")
+        return
+    except (GraXpertError, SirilError, SirilNotFound) as exc:
+        print(f"Finishing failed: {exc}")
+        return
+    except FileNotFoundError as exc:
+        print(str(exc))
+        return
+
+    print(f"\nSteps: {' -> '.join(result.steps)}")
+    print(f"Wrote {result.output_path}")
+    if result.preview_path and result.preview_path != result.output_path:
+        print(f"Wrote {result.preview_path}")
 
 
 def tonight(args: argparse.Namespace) -> None:

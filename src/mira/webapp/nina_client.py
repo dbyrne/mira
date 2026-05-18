@@ -1,22 +1,36 @@
-"""Thin client for NINA's Advanced API plugin.
+"""Thin client for NINA's Advanced API plugin (ninaAPI).
 
-The Advanced API plugin exposes REST endpoints under a configurable base
-URL (default http://localhost:1888). This module wraps a few endpoints
-we care about for live monitoring. Failures are returned as structured
-status dicts so the UI can render "NINA not connected" gracefully.
+Route prefix is ``/v2/api`` (NOT ``/api/v2`` — an earlier version of this
+file had it backwards, so every call 404'd against a live plugin). Verified
+against ninaAPI v2.2.15.x on port 1888.
 
-Plugin docs: https://github.com/christian-photo/ninaAPI
+Mount-control endpoints and their UNITS were taken from the plugin source
+(christian-photo/ninaAPI ``Mount.cs`` / ``api_spec.yaml``), not guessed —
+moving a physical telescope on a wrong unit assumption is unacceptable:
 
-The exact JSON schema can change between plugin versions. Treat the
-parsed shapes as best-effort; surface raw values and failure modes
-instead of asserting strict contracts.
+- ``GET /equipment/mount/slew?ra=&dec=&center=&waitForResult=`` — ra/dec are
+  **degrees, J2000** (note: ``mount/info`` *reports* RA in *hours* — the
+  asymmetry is real and is exactly why this is centralized here).
+- ``GET /equipment/mount/tracking?mode=`` — 0 Sidereal, 1 Lunar, 2 Solar,
+  3 King, 4 Stopped.
+- ``GET /equipment/mount/unpark`` / ``/equipment/mount/slew/stop``
+- ``GET /equipment/mount/info`` — read-back; RA in hours, Dec in degrees.
+
+The exact JSON schema can change between plugin versions. Surface raw
+values and failure modes; never assert strict contracts.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
 import requests
+
+DEFAULT_API_PREFIX = "/v2/api"
+# NINA TrackingMode enum (from api_spec.yaml).
+TRACKING_SIDEREAL = 0
+TRACKING_STOPPED = 4
 
 
 @dataclass
@@ -25,78 +39,134 @@ class NinaStatus:
     error: str = ""
     sequence_running: bool = False
     current_target: str = ""
-    target_progress: str = ""  # e.g. "23/60 frames"
+    target_progress: str = ""
     last_image_hfr: float | None = None
-    equipment: dict[str, str] = field(default_factory=dict)  # camera/mount/focuser → "connected"/"not connected"
-    raw_payloads: dict[str, Any] = field(default_factory=dict)  # for debugging
+    equipment: dict[str, str] = field(default_factory=dict)
+    raw_payloads: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SlewResult:
+    """Outcome of a slew / pre-position. `ok` means the mount reported a
+    position within `tolerance_deg` of the request — never inferred from
+    the slew call's own 'started' reply, always confirmed by read-back."""
+    ok: bool
+    message: str
+    requested_ra_deg: float
+    requested_dec_deg: float
+    actual_ra_deg: float | None = None
+    actual_dec_deg: float | None = None
+    separation_deg: float | None = None
+    steps: list[str] = field(default_factory=list)
+
+
+def angular_separation_deg(
+    ra1_deg: float, dec1_deg: float, ra2_deg: float, dec2_deg: float
+) -> float:
+    """Great-circle separation (haversine). Correct across the RA wrap and
+    at high declination, where a naive sqrt(dRA^2+dDec^2) would lie."""
+    ra1, dec1, ra2, dec2 = map(math.radians, (ra1_deg, dec1_deg, ra2_deg, dec2_deg))
+    d_ra = ra2 - ra1
+    d_dec = dec2 - dec1
+    a = (
+        math.sin(d_dec / 2) ** 2
+        + math.cos(dec1) * math.cos(dec2) * math.sin(d_ra / 2) ** 2
+    )
+    return math.degrees(2 * math.asin(min(1.0, math.sqrt(a))))
 
 
 class NinaClient:
-    def __init__(self, base_url: str = "http://localhost:1888", timeout: float = 3.0) -> None:
+    def __init__(
+        self,
+        base_url: str = "http://localhost:1888",
+        timeout: float = 3.0,
+        api_prefix: str = DEFAULT_API_PREFIX,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.api_prefix = "/" + api_prefix.strip("/")
+
+    # -- low-level ---------------------------------------------------------
+
+    def _get(
+        self, path: str, params: dict[str, Any] | None = None, timeout: float | None = None
+    ) -> dict[str, Any]:
+        response = requests.get(
+            f"{self.base_url}{self.api_prefix}{path}",
+            params=params,
+            timeout=timeout or self.timeout,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # -- monitoring (consumed by the webapp) ------------------------------
 
     def status(self) -> NinaStatus:
+        """Best-effort health/monitoring snapshot. Reachability is decided
+        by /version (always present on a live plugin); everything else is
+        opportunistic and degrades to blanks rather than raising."""
         result = NinaStatus(reachable=False)
         try:
-            sequence = self._get("/api/v2/sequence")
-            result.raw_payloads["sequence"] = sequence
-            running = bool(sequence.get("Response", {}).get("IsRunning", False))
-            result.sequence_running = running
-            current_target = sequence.get("Response", {}).get("CurrentTarget") or {}
-            result.current_target = str(current_target.get("Name", "") or "")
-            done = current_target.get("ExposuresDone")
-            total = current_target.get("ExposuresTotal")
-            if done is not None and total is not None:
-                result.target_progress = f"{done}/{total} frames"
+            version = self._get("/version")
+            result.raw_payloads["version"] = version
             result.reachable = True
         except requests.RequestException as exc:
-            result.error = f"Sequence endpoint unreachable: {exc}"
+            result.error = f"NINA API unreachable: {exc}"
             return result
-        except (ValueError, KeyError) as exc:
-            result.error = f"Sequence endpoint parse error: {exc}"
+        except ValueError as exc:
+            result.error = f"NINA API parse error: {exc}"
+            return result
 
         try:
-            equipment = self._get("/api/v2/equipment")
-            result.raw_payloads["equipment"] = equipment
-            response = equipment.get("Response", {}) if isinstance(equipment, dict) else {}
-            for kind in ("Camera", "Telescope", "Focuser", "FilterWheel", "Rotator", "Guider", "Dome"):
-                info = response.get(kind) or {}
-                connected = info.get("Connected")
-                if connected is None:
-                    continue
-                result.equipment[kind] = "connected" if connected else "disconnected"
-        except (requests.RequestException, ValueError, KeyError):
-            pass  # equipment is best-effort
+            seq = self._get("/sequence/state")
+            result.raw_payloads["sequence"] = seq
+            resp = seq.get("Response")
+            running = False
+            if isinstance(resp, list):
+                running = any(
+                    isinstance(c, dict) and str(c.get("Status", "")).upper() == "RUNNING"
+                    for c in resp
+                )
+            result.sequence_running = running
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            pass
+
+        for kind, path in (
+            ("Camera", "/equipment/camera/info"),
+            ("Telescope", "/equipment/mount/info"),
+            ("Focuser", "/equipment/focuser/info"),
+            ("FilterWheel", "/equipment/filterwheel/info"),
+        ):
+            try:
+                info = self._get(path)
+                response = info.get("Response", {}) if isinstance(info, dict) else {}
+                connected = response.get("Connected")
+                if connected is not None:
+                    result.equipment[kind] = "connected" if connected else "disconnected"
+            except (requests.RequestException, ValueError, KeyError, TypeError):
+                continue
 
         try:
-            image_stats = self._get("/api/v2/image/last")
-            result.raw_payloads["image_last"] = image_stats
-            stats = image_stats.get("Response", {}).get("ImageStatistics") or {}
-            hfr = stats.get("HFR")
+            image_stats = self._get("/image/history", params={"count": 1})
+            result.raw_payloads["image_history"] = image_stats
+            resp = image_stats.get("Response")
+            entry = resp[-1] if isinstance(resp, list) and resp else {}
+            hfr = entry.get("HFR") if isinstance(entry, dict) else None
             if hfr is not None:
                 result.last_image_hfr = float(hfr)
-        except (requests.RequestException, ValueError, KeyError, TypeError):
-            pass  # last-image is best-effort
+        except (requests.RequestException, ValueError, KeyError, TypeError, IndexError):
+            pass
 
         return result
 
     def push_schedule(self, csv_path: str) -> dict[str, Any]:
-        """Best-effort push of a Target Scheduler CSV to NINA.
-
-        The Advanced API plugin exposes /api/v2/sequence/load in newer
-        versions; older versions and the Target Scheduler plugin itself
-        require manual CSV import. We try the POST and report whatever
-        comes back so the UI can render a useful message either way.
-
-        Returns a dict with keys: ok (bool), status_code (int|None),
-        message (str), endpoint_tried (str).
-        """
-        endpoint = "/api/v2/sequence/load"
+        """Best-effort push of a Target Scheduler CSV. Endpoint availability
+        varies by plugin version; we report whatever comes back."""
+        endpoint = "/sequence/load"
         try:
-            response = requests.post(
-                f"{self.base_url}{endpoint}",
-                json={"path": csv_path},
+            response = requests.get(
+                f"{self.base_url}{self.api_prefix}{endpoint}",
+                params={"path": csv_path},
                 timeout=self.timeout,
             )
             try:
@@ -107,17 +177,157 @@ class NinaClient:
                 "ok": response.status_code < 400,
                 "status_code": response.status_code,
                 "message": str(body),
-                "endpoint_tried": endpoint,
+                "endpoint_tried": f"{self.api_prefix}{endpoint}",
             }
         except requests.RequestException as exc:
             return {
                 "ok": False,
                 "status_code": None,
                 "message": f"NINA unreachable: {exc}",
-                "endpoint_tried": endpoint,
+                "endpoint_tried": f"{self.api_prefix}{endpoint}",
             }
 
-    def _get(self, path: str) -> dict[str, Any]:
-        response = requests.get(f"{self.base_url}{path}", timeout=self.timeout)
-        response.raise_for_status()
-        return response.json()
+    # -- mount control -----------------------------------------------------
+
+    def mount_info(self) -> dict[str, Any]:
+        """Raw /equipment/mount/info Response dict. RA is in HOURS here."""
+        return self._get("/equipment/mount/info").get("Response", {}) or {}
+
+    def _mount_radec_deg(self) -> tuple[float | None, float | None, bool, bool]:
+        info = self.mount_info()
+        # A versioned plugin can return "N/A"/null for RA/Dec — never let a
+        # non-numeric value raise; that would break preposition()'s
+        # abort-safely-no-slew guarantee. (`mount_info` may still raise
+        # requests.RequestException / ValueError on transport / non-JSON;
+        # preposition handles those.)
+        def _f(v: Any) -> float | None:
+            try:
+                return float(v) if v is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        ra_h = _f(info.get("RightAscension"))
+        dec_deg = _f(info.get("Declination"))
+        ra_deg = ra_h * 15.0 if ra_h is not None else None
+        return ra_deg, dec_deg, bool(info.get("Connected")), bool(info.get("AtPark"))
+
+    def unpark(self, timeout: float = 30.0) -> dict[str, Any]:
+        return self._get("/equipment/mount/unpark", timeout=timeout)
+
+    def set_tracking(self, mode: int = TRACKING_SIDEREAL) -> dict[str, Any]:
+        return self._get("/equipment/mount/tracking", params={"mode": mode})
+
+    def stop_slew(self) -> dict[str, Any]:
+        return self._get("/equipment/mount/slew/stop")
+
+    def slew(
+        self,
+        ra_deg: float,
+        dec_deg: float,
+        *,
+        center: bool = True,
+        wait: bool = True,
+        timeout: float = 180.0,
+    ) -> dict[str, Any]:
+        """Issue the slew. `ra_deg`/`dec_deg` are J2000 DEGREES (the plugin
+        converts via Angle.ByDegree). `center=True` uses NINA's plate-solve
+        Center for accuracy; `wait=True` blocks server-side until done, so
+        the HTTP timeout must be generous."""
+        return self._get(
+            "/equipment/mount/slew",
+            params={
+                "ra": ra_deg,
+                "dec": dec_deg,
+                "center": str(bool(center)).lower(),
+                "waitForResult": str(bool(wait)).lower(),
+            },
+            timeout=timeout,
+        )
+
+    def preposition(
+        self,
+        ra_deg: float,
+        dec_deg: float,
+        *,
+        center: bool = True,
+        set_sidereal: bool = True,
+        tolerance_deg: float = 1.0,
+        slew_timeout: float = 180.0,
+    ) -> SlewResult:
+        """Safely pre-position the mount: unpark → slew (plate-solve center)
+        → sidereal tracking → **confirm by read-back**. Aborts on the first
+        failed step and NEVER retries a slew (a wild mount should stop, not
+        be re-flung). `ok` is true only if the mount's reported position is
+        within `tolerance_deg` of the request.
+
+        This is not invoked automatically anywhere — moving hardware is an
+        explicit, supervised action by the caller.
+        """
+        out = SlewResult(
+            ok=False, message="", requested_ra_deg=ra_deg, requested_dec_deg=dec_deg
+        )
+
+        # ValueError covers a non-JSON body from _get(); TypeError guards
+        # any remaining bad-shape access. Either way: abort, no slew.
+        try:
+            ra_now, dec_now, connected, at_park = self._mount_radec_deg()
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            out.message = f"Mount not reachable / bad reply: {exc}"
+            return out
+        if not connected:
+            out.message = "Mount reports not connected; aborting (no slew issued)."
+            return out
+        out.steps.append(
+            f"pre: connected, at_park={at_park}, "
+            f"pos=({ra_now:.3f},{dec_now:.3f})deg" if ra_now is not None else "pre: connected"
+        )
+
+        if at_park:
+            try:
+                self.unpark()
+                out.steps.append("unpark: requested")
+            except (requests.RequestException, ValueError, TypeError) as exc:
+                out.message = f"Unpark failed: {exc}; aborting."
+                return out
+
+        try:
+            reply = self.slew(
+                ra_deg, dec_deg, center=center, wait=True, timeout=slew_timeout
+            )
+            resp = reply.get("Response", reply) if isinstance(reply, dict) else reply
+            out.steps.append(f"slew: {resp}")
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            out.message = f"Slew request failed: {exc}. Mount state unknown — check NINA."
+            return out
+
+        if set_sidereal:
+            try:
+                self.set_tracking(TRACKING_SIDEREAL)
+                out.steps.append("tracking: sidereal requested")
+            except (requests.RequestException, ValueError, TypeError) as exc:
+                out.steps.append(f"tracking: FAILED ({exc})")
+
+        # The decisive check: where did it actually end up?
+        try:
+            ra_act, dec_act, _, _ = self._mount_radec_deg()
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            out.message = f"Slew issued but read-back failed: {exc}. Verify in NINA."
+            return out
+        out.actual_ra_deg, out.actual_dec_deg = ra_act, dec_act
+        if ra_act is None or dec_act is None:
+            out.message = "Slew issued but mount did not report a position. Verify in NINA."
+            return out
+
+        sep = angular_separation_deg(ra_deg, dec_deg, ra_act, dec_act)
+        out.separation_deg = sep
+        out.steps.append(f"readback: pos=({ra_act:.3f},{dec_act:.3f})deg sep={sep:.3f}deg")
+        if sep <= tolerance_deg:
+            out.ok = True
+            out.message = f"On target: {sep:.3f}deg from request (<= {tolerance_deg}deg)."
+        else:
+            out.message = (
+                f"Slew reported done but mount is {sep:.3f}deg off "
+                f"(> {tolerance_deg}deg). NOT retrying. Check alignment/park "
+                "state and inspect the mount before re-issuing."
+            )
+        return out

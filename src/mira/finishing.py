@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -60,14 +61,20 @@ def find_graxpert(override: str | None = None) -> list[str]:
     """
     cand = override or os.environ.get(_ENV_OVERRIDE)
     if cand:
-        parts = cand.split() if " " in cand else [cand]
-        if len(parts) == 1:
-            if Path(parts[0]).is_file() or shutil.which(parts[0]):
-                return parts
-            raise GraXpertNotFound(
-                f"{_ENV_OVERRIDE}={cand!r} is not an executable on disk or PATH."
-            )
-        return parts  # multi-token form, trust the user (e.g. python -m graxpert.main)
+        # A real executable path wins even if it contains spaces
+        # (e.g. C:\Program Files\GraXpert\graxpert.exe) — check that
+        # BEFORE splitting, or a normal Windows install path gets
+        # shredded into bogus tokens. Only fall back to shlex.split for
+        # the genuine multi-token form ('python -m graxpert.main').
+        if Path(cand).is_file() or shutil.which(cand):
+            return [cand]
+        parts = shlex.split(cand)
+        if len(parts) > 1:
+            return parts  # trust the user's command form
+        raise GraXpertNotFound(
+            f"{_ENV_OVERRIDE}={cand!r} is not an executable on disk or PATH "
+            "and is not a multi-token command."
+        )
     exe = shutil.which("graxpert") or shutil.which("graxpert.exe")
     if exe:
         return [exe]
@@ -304,9 +311,7 @@ def run_finish(
         png.crop(box).save(png_out)
         if stretched_tif.exists():
             Image.open(stretched_tif).crop(box).save(tif_out)
-            preview = png_out
-        else:
-            preview = png_out
+        preview = png_out
 
         return FinishResult(
             output_path=tif_out if tif_out.exists() else png_out,

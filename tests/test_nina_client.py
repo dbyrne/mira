@@ -118,6 +118,40 @@ class TestPreposition(TestCase):
         self.assertEqual(g.call_count, 1)  # only the pre-check; no slew issued
 
 
+class TestPrepositionMalformedReply(TestCase):
+    """Regression: a non-JSON / non-numeric mount reply must NOT raise out
+    of preposition() — that would break the abort-safely-no-slew guarantee
+    for hardware control."""
+
+    def test_non_json_body_aborts_no_slew(self) -> None:
+        bad = MagicMock()
+        bad.status_code = 200
+        bad.raise_for_status.side_effect = None
+        bad.json.side_effect = ValueError("Expecting value: line 1")
+        c = NinaClient(base_url="http://x:1888")
+        with patch("mira.webapp.nina_client.requests.get", return_value=bad) as g:
+            r = c.preposition(199.86571, 45.52714)  # must not raise
+        self.assertFalse(r.ok)
+        self.assertIn("bad reply", r.message)
+        self.assertEqual(g.call_count, 1)  # pre-check only; no slew issued
+
+    def test_non_numeric_radec_does_not_crash(self) -> None:
+        c = NinaClient(base_url="http://x:1888")
+        # connected, not parked, but RA/Dec are "N/A"/null
+        seq = [
+            _resp({"Response": {"Connected": True, "AtPark": False,
+                                 "RightAscension": "N/A", "Declination": None}}),
+            _resp({"Response": "Slew started"}),
+            _resp({"Response": "ok"}),
+            _resp({"Response": {"Connected": True, "AtPark": False,
+                                 "RightAscension": "N/A", "Declination": None}}),
+        ]
+        with patch("mira.webapp.nina_client.requests.get", side_effect=seq):
+            r = c.preposition(199.86571, 45.52714)  # must not raise
+        self.assertFalse(r.ok)
+        self.assertIn("did not report a position", r.message)
+
+
 class TestStatus(TestCase):
     def test_reachable_via_version(self) -> None:
         c = NinaClient()

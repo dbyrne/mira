@@ -97,15 +97,26 @@ def discover_frames(directory: Path) -> list[Path]:
 def _q(path: Path) -> str:
     """Quote a path for a Siril *positional* path arg (cd, load, save*).
     Siril strips the quotes for these; forward slashes so Windows
-    backslashes aren't read as escapes."""
-    return '"' + str(path).replace("\\", "/") + '"'
+    backslashes aren't read as escapes.
+
+    A `"` or newline in the path would break the generated script or inject
+    extra Siril commands. Inputs are local CLI args from a trusting single
+    user, but reject these explicitly rather than emit a corrupt script."""
+    s = str(path).replace("\\", "/")
+    if '"' in s or "\n" in s or "\r" in s:
+        raise SirilError(
+            f"Path contains a quote or newline, unsafe for a Siril script: {path!r}"
+        )
+    return '"' + s + '"'
 
 
 def _outarg(path: Path) -> str:
     """Path for a Siril `-out=` option. Unlike positional args, Siril does
     NOT strip quotes here — a quoted value becomes a literal directory name
-    with quotes in it. So this is bare + forward-slashed. Siril -out= paths
-    must not contain spaces; our work dir is a tempfile path, which doesn't."""
+    with quotes in it. So this is bare + forward-slashed. Siril `-out=`
+    paths must not contain spaces; the work dir is a tempfile path (normally
+    space-free), and run_siril fails early with an actionable message if the
+    chosen temp location does contain a space."""
     return str(path).replace("\\", "/")
 
 
@@ -283,6 +294,15 @@ def run_siril(
     still exits non-zero, so the exit code is the source of truth.
     """
     cli = cli_path or find_siril_cli()
+    # Siril `-out=` can't carry a space (see _outarg). The work dir comes
+    # from tempfile, which honors $TMP/$TEMP — fail early and actionably if
+    # that resolves somewhere with a space, instead of a cryptic mid-script
+    # SirilError.
+    if " " in str(work_dir):
+        raise SirilError(
+            f"Work directory contains a space ({work_dir}); Siril `-out=` "
+            "cannot handle it. Set TMP/TEMP to a space-free path and retry."
+        )
     work_dir.mkdir(parents=True, exist_ok=True)
     fd, script_path = tempfile.mkstemp(suffix=".ssf", dir=str(work_dir))
     try:

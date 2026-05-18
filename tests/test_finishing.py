@@ -39,6 +39,17 @@ class TestFindGraxpert(TestCase):
         with patch.dict(os.environ, {"MIRA_GRAXPERT": "python -m graxpert.main"}):
             self.assertEqual(find_graxpert(), ["python", "-m", "graxpert.main"])
 
+    def test_env_exe_path_with_spaces_not_split(self) -> None:
+        # Regression: 'C:\\Program Files\\GraXpert\\graxpert.exe' must NOT be
+        # shredded into bogus tokens by a naive split — it's a real file.
+        with TemporaryDirectory() as d:
+            spaced = Path(d) / "Program Files" / "GraXpert"
+            spaced.mkdir(parents=True)
+            exe = spaced / "graxpert.exe"
+            exe.write_text("")
+            with patch.dict(os.environ, {"MIRA_GRAXPERT": str(exe)}):
+                self.assertEqual(find_graxpert(), [str(exe)])
+
     def test_missing_raises_actionable(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             with patch("mira.finishing.shutil.which", return_value=None):

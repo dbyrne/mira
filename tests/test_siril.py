@@ -19,6 +19,7 @@ from astropy.wcs import WCS
 from mira.siril import (
     SirilError,
     SirilNotFound,
+    _q,
     _should_debayer,
     build_calibrate_script,
     build_stack_script,
@@ -145,6 +146,21 @@ class TestScriptGeneration(TestCase):
         self.assertNotIn("stack r_", s)
         self.assertNotIn("debayer", s)  # photometry must keep CFA geometry
         self.assertNotIn("-fitseq", s)  # same NINA-FITS corruption applies here
+
+
+class TestPathSafety(TestCase):
+    def test_q_rejects_quote_and_newline(self) -> None:
+        # A `"` or newline would inject extra Siril script commands.
+        self.assertEqual(_q(Path("/ok/path.fits")), '"/ok/path.fits"')
+        for bad in ('/x/a"b.fits', "/x/a\nclose\nrm.fits", "/x/a\r.fits"):
+            with self.assertRaises(SirilError):
+                _q(Path(bad))
+
+    def test_run_siril_rejects_spaced_workdir(self) -> None:
+        with patch("mira.siril.find_siril_cli", return_value=Path("siril-cli")):
+            with self.assertRaises(SirilError) as ctx:
+                run_siril("requires 1.2.0\n", work_dir=Path("/tmp/with space"))
+        self.assertIn("space", str(ctx.exception))
 
 
 class TestRunSiril(TestCase):

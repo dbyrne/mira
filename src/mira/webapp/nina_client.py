@@ -195,10 +195,20 @@ class NinaClient:
 
     def _mount_radec_deg(self) -> tuple[float | None, float | None, bool, bool]:
         info = self.mount_info()
-        ra_h = info.get("RightAscension")
-        dec = info.get("Declination")
-        ra_deg = float(ra_h) * 15.0 if ra_h is not None else None
-        dec_deg = float(dec) if dec is not None else None
+        # A versioned plugin can return "N/A"/null for RA/Dec — never let a
+        # non-numeric value raise; that would break preposition()'s
+        # abort-safely-no-slew guarantee. (`mount_info` may still raise
+        # requests.RequestException / ValueError on transport / non-JSON;
+        # preposition handles those.)
+        def _f(v: Any) -> float | None:
+            try:
+                return float(v) if v is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        ra_h = _f(info.get("RightAscension"))
+        dec_deg = _f(info.get("Declination"))
+        ra_deg = ra_h * 15.0 if ra_h is not None else None
         return ra_deg, dec_deg, bool(info.get("Connected")), bool(info.get("AtPark"))
 
     def unpark(self, timeout: float = 30.0) -> dict[str, Any]:
@@ -257,10 +267,12 @@ class NinaClient:
             ok=False, message="", requested_ra_deg=ra_deg, requested_dec_deg=dec_deg
         )
 
+        # ValueError covers a non-JSON body from _get(); TypeError guards
+        # any remaining bad-shape access. Either way: abort, no slew.
         try:
             ra_now, dec_now, connected, at_park = self._mount_radec_deg()
-        except requests.RequestException as exc:
-            out.message = f"Mount not reachable: {exc}"
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            out.message = f"Mount not reachable / bad reply: {exc}"
             return out
         if not connected:
             out.message = "Mount reports not connected; aborting (no slew issued)."
@@ -274,7 +286,7 @@ class NinaClient:
             try:
                 self.unpark()
                 out.steps.append("unpark: requested")
-            except requests.RequestException as exc:
+            except (requests.RequestException, ValueError, TypeError) as exc:
                 out.message = f"Unpark failed: {exc}; aborting."
                 return out
 
@@ -282,8 +294,9 @@ class NinaClient:
             reply = self.slew(
                 ra_deg, dec_deg, center=center, wait=True, timeout=slew_timeout
             )
-            out.steps.append(f"slew: {reply.get('Response', reply)}")
-        except requests.RequestException as exc:
+            resp = reply.get("Response", reply) if isinstance(reply, dict) else reply
+            out.steps.append(f"slew: {resp}")
+        except (requests.RequestException, ValueError, TypeError) as exc:
             out.message = f"Slew request failed: {exc}. Mount state unknown — check NINA."
             return out
 
@@ -291,13 +304,13 @@ class NinaClient:
             try:
                 self.set_tracking(TRACKING_SIDEREAL)
                 out.steps.append("tracking: sidereal requested")
-            except requests.RequestException as exc:
+            except (requests.RequestException, ValueError, TypeError) as exc:
                 out.steps.append(f"tracking: FAILED ({exc})")
 
         # The decisive check: where did it actually end up?
         try:
             ra_act, dec_act, _, _ = self._mount_radec_deg()
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError, TypeError) as exc:
             out.message = f"Slew issued but read-back failed: {exc}. Verify in NINA."
             return out
         out.actual_ra_deg, out.actual_dec_deg = ra_act, dec_act

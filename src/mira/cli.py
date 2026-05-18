@@ -171,6 +171,30 @@ def main() -> None:
         help="Skip the stretched PNG preview; write only the linear TIFF.",
     )
 
+    finish_parser = subparsers.add_parser(
+        "finish",
+        help="Finishing stage: turn a linear stacked master into a presentable "
+        "image — GraXpert background/denoise/deconv (optional) → Siril "
+        "autostretch+saturation → edge crop. Reproducible; idempotent on the input.",
+    )
+    finish_parser.add_argument("--input", required=True, help="Linear stacked master (TIFF/FITS), e.g. a `mira stack` output.")
+    finish_parser.add_argument("--out", required=True, help="Output image path (.png or .tif); the other format is written alongside.")
+    finish_parser.add_argument("--no-bg", dest="do_bg", action="store_false", help="Skip GraXpert background extraction.")
+    finish_parser.add_argument("--no-denoise", dest="do_denoise", action="store_false", help="Skip GraXpert AI denoise.")
+    finish_parser.add_argument("--no-deconv", dest="do_deconv", action="store_false", help="Skip GraXpert object deconvolution.")
+    finish_parser.add_argument("--saturation", type=float, default=0.20, help="Siril saturation boost after stretch (0 disables). Default 0.20.")
+    finish_parser.add_argument(
+        "--crop", default="auto",
+        help="'auto' (trim under-sampled stack borders), 'none', or a per-side "
+        "fraction like 0.06 for a fixed symmetric crop. Default auto.",
+    )
+    finish_parser.add_argument("--gpu", action="store_true", help="Let GraXpert use the GPU (default CPU).")
+    finish_parser.add_argument(
+        "--graxpert-path", default=None,
+        help="Override GraXpert location (executable path or 'python -m graxpert.main'). "
+        "Else $MIRA_GRAXPERT, then PATH, then the installed graxpert module.",
+    )
+
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
         help="Walk state_dir/<run_id>.json files and (re-)populate the SQLite session store.",
@@ -258,6 +282,8 @@ def main() -> None:
         submit(args)
     elif args.command == "stack":
         stack(args)
+    elif args.command == "finish":
+        finish(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -787,6 +813,49 @@ def stack(args: argparse.Namespace) -> None:
     print(f"Wrote {result.output_path} (linear)")
     if result.preview_path is not None:
         print(f"Wrote {result.preview_path} (stretched preview)")
+
+
+def finish(args: argparse.Namespace) -> None:
+    """Finishing stage. Decoupled from `stack` on purpose: re-run it with
+    different params against the same linear master without re-stacking
+    (the iterative workflow). GraXpert is optional — the Siril-only path
+    (--no-bg --no-denoise --no-deconv) needs no extra install."""
+    from .finishing import GraXpertError, GraXpertNotFound, run_finish
+    from .siril import SirilError, SirilNotFound
+
+    input_path = Path(args.input)
+    if not input_path.is_file():
+        print(f"Input '{input_path}' does not exist.")
+        return
+
+    print(f"Finishing '{input_path}'...")
+    try:
+        result = run_finish(
+            input_path=input_path,
+            out_path=Path(args.out),
+            do_bg=args.do_bg,
+            do_denoise=args.do_denoise,
+            do_deconv=args.do_deconv,
+            saturation=args.saturation,
+            crop=args.crop,
+            gpu=args.gpu,
+            graxpert_path=args.graxpert_path,
+            on_step=lambda m: print(f"  {m}"),
+        )
+    except GraXpertNotFound as exc:
+        print(f"GraXpert not available: {exc}")
+        return
+    except (GraXpertError, SirilError, SirilNotFound) as exc:
+        print(f"Finishing failed: {exc}")
+        return
+    except FileNotFoundError as exc:
+        print(str(exc))
+        return
+
+    print(f"\nSteps: {' -> '.join(result.steps)}")
+    print(f"Wrote {result.output_path}")
+    if result.preview_path and result.preview_path != result.output_path:
+        print(f"Wrote {result.preview_path}")
 
 
 def tonight(args: argparse.Namespace) -> None:

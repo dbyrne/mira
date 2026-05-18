@@ -37,6 +37,7 @@ def create_app(
     captures_root: Path | None = None,
     nina_base_url: str = "http://localhost:1888",
     state_dir: Path | None = None,
+    finish_progress_dir: Path | None = None,
 ) -> Flask:
     here = Path(__file__).parent
     app = Flask(
@@ -48,6 +49,11 @@ def create_app(
     output_dir = (output_dir or Path("output/s30_pro_jc/tonight")).resolve()
     captures_root = (captures_root or Path("captures")).resolve()
     state_dir = (state_dir or Path("data/webapp_runs")).resolve()
+    # Shared with the CLI's `mira finish --progress-dir` default so a
+    # terminal-started finish run shows up here live too. Overridable so
+    # tests (and alternate setups) can isolate it.
+    from ..finish_progress import default_progress_dir
+    finish_progress_dir = (finish_progress_dir or default_progress_dir()).resolve()
 
     runs = RunRegistry(max_workers=2, state_dir=state_dir)
     nina = NinaClient(base_url=nina_base_url)
@@ -58,6 +64,7 @@ def create_app(
     app.config["OUTPUT_DIR"] = output_dir
     app.config["CAPTURES_ROOT"] = captures_root
     app.config["STATE_DIR"] = state_dir
+    app.config["FINISH_PROGRESS_DIR"] = finish_progress_dir
     app.config["RUNS"] = runs
     app.config["NINA"] = nina
     app.config["SESSION_STORE"] = session_store

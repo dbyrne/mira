@@ -28,7 +28,12 @@ from ._paths import (
     resolved_session_date,
     submit_kind,
 )
-from ._runner import execute_submit, execute_tonight, read_aavso_preview
+from ._runner import (
+    execute_finish,
+    execute_submit,
+    execute_tonight,
+    read_aavso_preview,
+)
 from .runs import RunRegistry
 
 
@@ -99,6 +104,75 @@ def register_routes(app: Flask) -> None:
         if record is None:
             abort(404)
         return render_template("run_status_partial.html", run=record)
+
+    # --- Siril finishing: launch + monitor (incl. CLI-started runs) ---
+
+    @app.route("/finish")
+    def finish_index():
+        from ..finish_progress import load_all
+
+        progress_dir: Path = current_app.config["FINISH_PROGRESS_DIR"]
+        return render_template(
+            "finish.html",
+            runs=load_all(progress_dir),
+            output_dir=current_app.config["OUTPUT_DIR"],
+        )
+
+    @app.route("/finish/run", methods=["POST"])
+    def finish_run():
+        from ..finish_progress import load_all
+
+        runs: RunRegistry = current_app.config["RUNS"]
+        progress_dir: Path = current_app.config["FINISH_PROGRESS_DIR"]
+        input_path = Path(request.form.get("input", "").strip())
+        out_raw = request.form.get("out", "").strip()
+        if not input_path.is_file():
+            return render_template(
+                "finish.html",
+                runs=load_all(progress_dir),
+                output_dir=current_app.config["OUTPUT_DIR"],
+                error=f"Input not found: {input_path}",
+            ), 400
+        out_path = Path(out_raw) if out_raw else input_path.with_name(input_path.stem + "_finished.png")
+        do_bg = request.form.get("no_bg") != "on"
+        do_denoise = request.form.get("no_denoise") != "on"
+        do_deconv = request.form.get("no_deconv") != "on"
+        try:
+            saturation = float(request.form.get("saturation", "0.20"))
+        except ValueError:
+            saturation = 0.20
+        crop = request.form.get("crop", "auto").strip() or "auto"
+
+        record = runs.submit(
+            kind="finish",
+            label=f"finish: {input_path.name}",
+            target_callable=lambda rec: execute_finish(
+                rec, input_path, out_path,
+                do_bg=do_bg, do_denoise=do_denoise, do_deconv=do_deconv,
+                saturation=saturation, crop=crop, progress_dir=progress_dir,
+            ),
+        )
+        return redirect(url_for("finish_status", run_id=record.run_id))
+
+    @app.route("/finish/<run_id>")
+    def finish_status(run_id):
+        from ..finish_progress import load
+
+        progress_dir: Path = current_app.config["FINISH_PROGRESS_DIR"]
+        snap = load(progress_dir, run_id)
+        if snap is None:
+            abort(404)
+        return render_template("finish_run.html", run=snap)
+
+    @app.route("/finish/<run_id>/partial")
+    def finish_status_partial(run_id):
+        from ..finish_progress import load
+
+        progress_dir: Path = current_app.config["FINISH_PROGRESS_DIR"]
+        snap = load(progress_dir, run_id)
+        if snap is None:
+            abort(404)
+        return render_template("finish_partial.html", run=snap)
 
     @app.route("/schedule")
     def schedule():

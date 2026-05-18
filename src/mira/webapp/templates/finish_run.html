@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Finish {{ run.run_id }} - Mira{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>{{ run.label or 'Siril finish' }}</h2>
+  <p class="meta">
+    Input: <code>{{ run.input_path }}</code>
+    <span class="htmx-indicator" id="finish-poll-indicator">polling…</span>
+  </p>
+  <div id="finish-poll"
+       hx-get="{{ url_for('finish_status_partial', run_id=run.run_id) }}"
+       hx-trigger="load, every 2s"
+       hx-swap="innerHTML"
+       hx-indicator="#finish-poll-indicator">
+    {% include "finish_partial.html" %}
+  </div>
+  <p style="margin-top: 1rem;">
+    <a href="{{ url_for('finish_index') }}" class="btn">← All finish runs</a>
+    <a href="{{ url_for('index') }}" class="btn">Home</a>
+  </p>
+</section>
+{% endblock %}

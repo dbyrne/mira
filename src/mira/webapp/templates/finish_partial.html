@@ -1,0 +1,45 @@
+<div class="run-status-block">
+  <p>
+    Status: <span class="status-{{ run.status }}">{{ run.status }}</span>
+    {% if run.status == 'running' %}
+    <progress value="{{ run.progress }}" max="1"></progress>
+    {% endif %}
+    <span class="meta">— {{ run.phases | selectattr('status','equalto','done') | list | length }}/{{ run.phases | length }} phases</span>
+  </p>
+  {% if run.error %}
+  <p class="error"><strong>Failed:</strong> {{ run.error }}</p>
+  {% endif %}
+
+  <ul class="phase-list">
+    {% for p in run.phases %}
+    <li class="{{ p.status }}">
+      <span class="icon">
+        {%- if p.status == 'done' -%}✓
+        {%- elif p.status == 'running' -%}▶
+        {%- elif p.status == 'failed' -%}✗
+        {%- elif p.status == 'skipped' -%}–
+        {%- else -%}○{%- endif -%}
+      </span>
+      <span class="name">{{ p.label }}</span>
+      {% if p.started and p.ended %}
+        <span class="timing">{{ p.started[11:19] }} → {{ p.ended[11:19] }}</span>
+      {% elif p.started %}
+        <span class="timing">started {{ p.started[11:19] }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if run.status == 'done' and run.output_path %}
+  <p>Output: <code>{{ run.output_path }}</code></p>
+  {% endif %}
+</div>
+{% if run.status in ('done', 'failed') %}
+<script>
+  // Terminal — stop the 2s poll so we don't hammer a finished run.
+  (function(){
+    var c = document.getElementById('finish-poll');
+    if (c) { c.removeAttribute('hx-trigger'); if (window.htmx) htmx.process(c); }
+  })();
+</script>
+{% endif %}

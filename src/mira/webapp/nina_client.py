@@ -331,3 +331,70 @@ class NinaClient:
                 "state and inspect the mount before re-issuing."
             )
         return out
+
+    # -- camera / imaging --------------------------------------------------
+
+    def camera_state(self) -> str:
+        """Best-effort CameraState ('Idle'|'Exposing'|...). Empty string if
+        unreachable / unparseable (callers poll, don't assert)."""
+        try:
+            info = self._get("/equipment/camera/info").get("Response", {}) or {}
+            return str(info.get("CameraState", "")) if isinstance(info, dict) else ""
+        except (requests.RequestException, ValueError, TypeError):
+            return ""
+
+    def wait_camera_idle(self, timeout_s: float = 60.0, poll_s: float = 1.0) -> bool:
+        """Block until the camera reports Idle. True if it did, False on
+        timeout. Read errors during polling are swallowed (transient)."""
+        import time
+
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            if self.camera_state() == "Idle":
+                return True
+            time.sleep(poll_s)
+        return self.camera_state() == "Idle"
+
+    def capture(
+        self,
+        *,
+        duration: float,
+        gain: int | None = None,
+        save: bool = True,
+        solve: bool = False,
+        target_name: str = "",
+        timeout_s: float = 120.0,
+    ) -> dict[str, Any]:
+        """Synchronous single exposure (waitForResult=true). The image bytes
+        are omitted (omitImage=true) — callers read frame stats via
+        image-history, not the response. Lets _get exceptions propagate;
+        the caller (e.g. tuning.run_tune) records per-frame failure."""
+        params: dict[str, Any] = {
+            "duration": duration,
+            "save": str(bool(save)).lower(),
+            "solve": str(bool(solve)).lower(),
+            "waitForResult": "true",
+            "omitImage": "true",
+        }
+        if gain is not None:
+            params["gain"] = int(gain)
+        if target_name:
+            params["targetName"] = target_name
+        return self._get("/equipment/camera/capture", params=params, timeout=timeout_s)
+
+    def image_history(self, all_images: bool = True) -> list[dict[str, Any]]:
+        """The plugin's image-history list (Stars/HFR/Max/Mean/Median/
+        ExposureTime/Gain/Filename per frame). Empty list on any error —
+        callers degrade gracefully rather than crash a tuning run."""
+        try:
+            resp = self._get(
+                "/image-history", params={"all": str(bool(all_images)).lower()}
+            ).get("Response")
+            return [e for e in resp if isinstance(e, dict)] if isinstance(resp, list) else []
+        except (requests.RequestException, ValueError, TypeError):
+            return []
+
+    def latest_image_stats(self) -> dict[str, Any] | None:
+        """Stats for the most recent frame, or None if history is empty."""
+        hist = self.image_history()
+        return hist[-1] if hist else None

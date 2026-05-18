@@ -152,6 +152,59 @@ class TestPrepositionMalformedReply(TestCase):
         self.assertIn("did not report a position", r.message)
 
 
+class TestCaptureImaging(TestCase):
+    def test_capture_param_contract(self) -> None:
+        c = NinaClient(base_url="http://x:1888")
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": "ok"})) as g:
+            c.capture(duration=12, gain=120, save=True, solve=False,
+                      target_name="M94", timeout_s=99)
+        url = g.call_args[0][0]
+        p = g.call_args[1]["params"]
+        self.assertEqual(url, "http://x:1888/v2/api/equipment/camera/capture")
+        self.assertEqual(p["duration"], 12)
+        self.assertEqual(p["gain"], 120)            # int, not hours/str
+        self.assertEqual(p["save"], "true")
+        self.assertEqual(p["solve"], "false")
+        self.assertEqual(p["waitForResult"], "true")
+        self.assertEqual(p["omitImage"], "true")
+        self.assertEqual(p["targetName"], "M94")
+        self.assertGreaterEqual(g.call_args[1]["timeout"], 60)
+
+    def test_capture_omits_gain_when_none(self) -> None:
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": "ok"})) as g:
+            c.capture(duration=5)
+        self.assertNotIn("gain", g.call_args[1]["params"])
+        self.assertNotIn("targetName", g.call_args[1]["params"])
+
+    def test_image_history_filters_and_tolerates_errors(self) -> None:
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": [{"Max": 1}, "garbage", {"Max": 2}]})):
+            self.assertEqual(c.image_history(), [{"Max": 1}, {"Max": 2}])
+            self.assertEqual(c.latest_image_stats(), {"Max": 2})
+
+        bad = MagicMock()
+        bad.status_code = 200
+        bad.raise_for_status.side_effect = None
+        bad.json.side_effect = ValueError("no json")
+        with patch("mira.webapp.nina_client.requests.get", return_value=bad):
+            self.assertEqual(c.image_history(), [])
+            self.assertIsNone(c.latest_image_stats())
+
+    def test_camera_state_and_idle_wait(self) -> None:
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": {"CameraState": "Idle"}})):
+            self.assertEqual(c.camera_state(), "Idle")
+            self.assertTrue(c.wait_camera_idle(timeout_s=0.0))
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": {"CameraState": "Exposing"}})):
+            self.assertFalse(c.wait_camera_idle(timeout_s=0.0))  # fast: no sleep loop
+
+
 class TestStatus(TestCase):
     def test_reachable_via_version(self) -> None:
         c = NinaClient()

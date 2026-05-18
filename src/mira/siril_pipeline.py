@@ -112,7 +112,12 @@ def _brightest_star_xy(image: np.ndarray) -> tuple[float, float] | None:
     if tbl is None or not len(tbl):
         return None
     tbl.sort("flux", reverse=True)
-    return float(tbl["xcentroid"][0]), float(tbl["ycentroid"][0])
+    # photutils 3.0 renamed xcentroid/ycentroid -> x_centroid/y_centroid
+    # (old names removed in 4.0). Pick whichever this version exposes.
+    cols = tbl.colnames
+    xcol = "x_centroid" if "x_centroid" in cols else "xcentroid"
+    ycol = "y_centroid" if "y_centroid" in cols else "ycentroid"
+    return float(tbl[xcol][0]), float(tbl[ycol][0])
 
 
 def verify_wcs_preserved(original: Path, calibrated: Path) -> None:

@@ -1,0 +1,7 @@
+[
+  {"label": "77", "ra_deg": 200.83558, "dec_deg": 46.12264, "catalog_mag": 7.679, "catalog_band": "V"},
+  {"label": "85", "ra_deg": 199.42150, "dec_deg": 45.88514, "catalog_mag": 8.507, "catalog_band": "V"},
+  {"label": "87", "ra_deg": 199.45425, "dec_deg": 45.58489, "catalog_mag": 8.667, "catalog_band": "V"},
+  {"label": "89", "ra_deg": 199.11454, "dec_deg": 46.22419, "catalog_mag": 8.878, "catalog_band": "V"},
+  {"label": "96", "ra_deg": 199.11604, "dec_deg": 45.72044, "catalog_mag": 9.594, "catalog_band": "V"}
+]

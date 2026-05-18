@@ -145,11 +145,15 @@ def build_stack_script(
     ]
 
     def convert(name: str, src: Path, extra: str = "") -> None:
-        # -fitseq: emit a single-file sequence. Without it Siril 1.4 writes
-        # the per-frame .fit files but no .seq index, so register/stack/
-        # calibrate can't find the sequence.
+        # Individual-file sequence (NOT -fitseq). -fitseq transcodes into a
+        # single container and mangles NINA 16-bit-unsigned FITS ("bitpix
+        # set as 20" / numerical-overflow on read). Per-frame conversion
+        # writes light_NNNNN.fit + a `<name>_.seq` index; Siril resolves the
+        # short name (`register light`, `stack r_light`) to it. The earlier
+        # "no .seq without -fitseq" was the m3 dir's mixed-size JPG/PNG
+        # contamination erroring convert, not a real need for -fitseq.
         lines.append(f"cd {_q(src)}")
-        lines.append(f"convert {name} -fitseq {extra}-out={_outarg(work_dir)}".rstrip())
+        lines.append(f"convert {name} {extra}-out={_outarg(work_dir)}".rstrip())
         lines.append(f"cd {_q(work_dir)}")
 
     light_master = ""
@@ -173,23 +177,18 @@ def build_stack_script(
     if biases_dir is not None and darks_dir is None:
         light_master += " -bias=bias_stacked"
 
-    # Lights.
-    convert("light", lights_dir)
+    # Lights. Convert exactly ONCE: a second `convert` into the same
+    # sequence name corrupts the FITSEQ (Siril reports a bitpix mismatch /
+    # "numerical overflow" on read). With masters, `calibrate` does the
+    # debayering; with no masters, debayer at convert time instead.
     if light_master:
+        convert("light", lights_dir)
         cfa = " -cfa -equalize_cfa" if debayer else ""
         deb = " -debayer" if debayer else ""
         lines.append(f"calibrate light{light_master}{cfa}{deb}")
         reg_seq = "pp_light"
     else:
-        deb = " -debayer" if debayer else ""
-        # No masters: debayer at conversion time instead (re-run convert
-        # with -debayer would re-read; simplest is to debayer on register
-        # input via a fresh convert). Keep it simple: reconvert lights with
-        # debayer when there are no masters and CFA data.
-        if debayer:
-            lines.append(f"cd {_q(lights_dir)}")
-            lines.append(f"convert light -fitseq -debayer -out={_outarg(work_dir)}")
-            lines.append(f"cd {_q(work_dir)}")
+        convert("light", lights_dir, extra="-debayer " if debayer else "")
         reg_seq = "light"
 
     lines.append(f"register {reg_seq}")
@@ -234,12 +233,14 @@ def build_calibrate_script(
     lines = ["requires 1.2.0", "setext fit"]
 
     def convert(name: str, src: Path) -> None:
-        # -fitseq so a .seq index exists for calibrate to consume. calibrate
-        # itself is run WITHOUT -fitseq below, so it writes per-frame
-        # pp_light_NNNNN.fit (photometry needs individual frames, not a
-        # collapsed cube).
+        # Individual-file sequence, NOT -fitseq: the same NINA 16-bit-unsigned
+        # FITS corruption that broke the stack path ("bitpix set as 20" /
+        # numerical overflow) applies here too. `convert` writes
+        # <name>_NNNNN.fit + <name>_.seq; `calibrate <name>` resolves the
+        # short name and (without -fitseq) emits per-frame pp_<name>_NNNNN.fit,
+        # which is what photometry needs (individual frames, not a cube).
         lines.append(f"cd {_q(src)}")
-        lines.append(f"convert {name} -fitseq -out={_outarg(work_dir)}")
+        lines.append(f"convert {name} -out={_outarg(work_dir)}")
         lines.append(f"cd {_q(work_dir)}")
 
     master = ""

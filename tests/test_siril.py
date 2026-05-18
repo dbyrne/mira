@@ -100,6 +100,25 @@ class TestScriptGeneration(TestCase):
         self.assertIn("savetif32", s)
         self.assertIn("autostretch", s)
         self.assertNotIn("calibrate", s)
+        # Regression: -fitseq corrupts NINA 16-bit FITS ("bitpix set as
+        # 20"); the lights must be converted exactly once (a second
+        # convert into the same sequence also corrupts it).
+        self.assertNotIn("-fitseq", s)
+        self.assertEqual(s.count("convert light"), 1)
+
+    def test_no_masters_debayer_single_convert(self) -> None:
+        # The bug: no-masters + CFA did `convert light` then a second
+        # `convert light -debayer`, corrupting the FITSEQ. Must be one
+        # convert, debayered, no -fitseq.
+        s = build_stack_script(
+            work_dir=Path("/w"), lights_dir=Path("/lights"),
+            result_stem=Path("/out/result"), preview_path=None,
+            debayer=True, stretch=False,
+        )
+        self.assertEqual(s.count("convert light"), 1)
+        self.assertIn("convert light -debayer", s)
+        self.assertNotIn("-fitseq", s)
+        self.assertNotIn("calibrate", s)
 
     def test_stack_script_with_masters_calibrates(self) -> None:
         s = build_stack_script(
@@ -125,6 +144,7 @@ class TestScriptGeneration(TestCase):
         self.assertNotIn("register light", s)
         self.assertNotIn("stack r_", s)
         self.assertNotIn("debayer", s)  # photometry must keep CFA geometry
+        self.assertNotIn("-fitseq", s)  # same NINA-FITS corruption applies here
 
 
 class TestRunSiril(TestCase):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -22,6 +23,17 @@ _run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main() -> None:
+    # The CLI prints non-ASCII (em-dashes, ≈, ±) in human-readable output.
+    # A Windows console defaults to cp1252 and raises UnicodeEncodeError mid-
+    # command (it killed `submit` right before the photometry loop). Upgrade
+    # the real console to UTF-8, replacing anything truly unencodable rather
+    # than crashing. No-op for StringIO in tests (no reconfigure attr).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     parser = argparse.ArgumentParser(description="Mira — backyard variable-star observing assistant.")
     subparsers = parser.add_subparsers(dest="command")
 

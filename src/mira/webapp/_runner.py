@@ -308,6 +308,62 @@ def execute_submit(
     return record.result
 
 
+def execute_finish(
+    record: RunRecord,
+    input_path: Path,
+    out_path: Path,
+    *,
+    do_bg: bool,
+    do_denoise: bool,
+    do_deconv: bool,
+    saturation: float,
+    crop: str,
+    progress_dir: Path,
+) -> dict:
+    """Webapp wrapper around finishing.run_finish. Publishes phase progress
+    to the SAME shared JSON dir the CLI writes, so the finish view renders
+    webapp- and terminal-started runs identically."""
+    from ..finish_progress import FinishProgress, plan_phases
+    from ..finishing import run_finish
+
+    fp = FinishProgress.create(
+        label=f"finish: {input_path.name} -> {out_path.name}",
+        input_path=str(input_path),
+        phase_ids=plan_phases(do_bg=do_bg, do_denoise=do_denoise, do_deconv=do_deconv),
+        progress_dir=progress_dir,
+        run_id=record.run_id,  # unify ids so the run page and finish JSON match
+    )
+    advance = fp.make_on_step()
+
+    def _on_step(message: str) -> None:
+        record.log(message)
+        advance(message)
+        record.set_progress(fp.progress)
+
+    try:
+        result = run_finish(
+            input_path=input_path,
+            out_path=out_path,
+            do_bg=do_bg,
+            do_denoise=do_denoise,
+            do_deconv=do_deconv,
+            saturation=saturation,
+            crop=crop,
+            on_step=_on_step,
+        )
+    except Exception as exc:
+        fp.fail(str(exc))
+        raise
+    fp.complete(str(result.output_path))
+    record.set_progress(1.0)
+    return {
+        "output_path": str(result.output_path),
+        "preview_path": str(result.preview_path) if result.preview_path else "",
+        "steps": result.steps,
+        "finish_run_id": fp.run_id,
+    }
+
+
 def collect_prior_session_observations(
     runs: RunRegistry | None,
     target_slug: str | None,

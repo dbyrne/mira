@@ -194,6 +194,11 @@ def main() -> None:
         help="Override GraXpert location (executable path or 'python -m graxpert.main'). "
         "Else $MIRA_GRAXPERT, then PATH, then the installed graxpert module.",
     )
+    finish_parser.add_argument(
+        "--progress-dir", default=None,
+        help="Directory to publish phase-progress JSON to (so the webapp can "
+        "show this run live). Default: data/finish_progress.",
+    )
 
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
@@ -820,6 +825,11 @@ def finish(args: argparse.Namespace) -> None:
     different params against the same linear master without re-stacking
     (the iterative workflow). GraXpert is optional — the Siril-only path
     (--no-bg --no-denoise --no-deconv) needs no extra install."""
+    from .finish_progress import (
+        FinishProgress,
+        default_progress_dir,
+        plan_phases,
+    )
     from .finishing import GraXpertError, GraXpertNotFound, run_finish
     from .siril import SirilError, SirilNotFound
 
@@ -828,7 +838,22 @@ def finish(args: argparse.Namespace) -> None:
         print(f"Input '{input_path}' does not exist.")
         return
 
-    print(f"Finishing '{input_path}'...")
+    progress_dir = Path(args.progress_dir) if args.progress_dir else default_progress_dir()
+    fp = FinishProgress.create(
+        label=f"finish: {input_path.name} -> {Path(args.out).name}",
+        input_path=str(input_path),
+        phase_ids=plan_phases(
+            do_bg=args.do_bg, do_denoise=args.do_denoise, do_deconv=args.do_deconv
+        ),
+        progress_dir=progress_dir,
+    )
+    _advance = fp.make_on_step()
+
+    def _on_step(message: str) -> None:
+        print(f"  {message}")
+        _advance(message)  # publishes phase progress for the webapp
+
+    print(f"Finishing '{input_path}'... (progress: {progress_dir / (fp.run_id + '.json')})")
     try:
         result = run_finish(
             input_path=input_path,
@@ -840,18 +865,22 @@ def finish(args: argparse.Namespace) -> None:
             crop=args.crop,
             gpu=args.gpu,
             graxpert_path=args.graxpert_path,
-            on_step=lambda m: print(f"  {m}"),
+            on_step=_on_step,
         )
     except GraXpertNotFound as exc:
+        fp.fail(str(exc))
         print(f"GraXpert not available: {exc}")
         return
     except (GraXpertError, SirilError, SirilNotFound) as exc:
+        fp.fail(str(exc))
         print(f"Finishing failed: {exc}")
         return
     except FileNotFoundError as exc:
+        fp.fail(str(exc))
         print(str(exc))
         return
 
+    fp.complete(str(result.output_path))
     print(f"\nSteps: {' -> '.join(result.steps)}")
     print(f"Wrote {result.output_path}")
     if result.preview_path and result.preview_path != result.output_path:

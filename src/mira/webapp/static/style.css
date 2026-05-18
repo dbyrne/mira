@@ -347,3 +347,20 @@ img.lightcurve {
   main { padding: 0.6rem; }
   section.card { padding: 0.85rem 0.9rem; }
 }
+
+/* Siril finishing: phase progress */
+.phase-list { list-style: none; padding: 0; margin: 0.75rem 0; }
+.phase-list li {
+  display: flex; align-items: baseline; gap: 0.6rem;
+  padding: 0.4rem 0.2rem; border-bottom: 1px solid var(--border, #333);
+}
+.phase-list li .icon { width: 1.2rem; text-align: center; flex: none; }
+.phase-list li .name { flex: 1; }
+.phase-list li .timing { color: var(--fg-dim); font-size: 0.8rem; flex: none; }
+.phase-list li.pending .name { color: var(--fg-dim); }
+.phase-list li.running .name { color: var(--status-running); font-weight: 600; }
+.phase-list li.done .icon { color: var(--status-done); }
+.phase-list li.failed .name { color: var(--status-failed); font-weight: 600; }
+.phase-list li.skipped .name { color: var(--fg-dim); font-style: italic; }
+.finish-run-row { display: flex; gap: 0.75rem; align-items: baseline; }
+.finish-run-row .grow { flex: 1; }

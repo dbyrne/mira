@@ -142,9 +142,9 @@ def build_stack_script(
     stretch: bool,
 ) -> str:
     """Generate the imaging .ssf script: convert -> (build & apply masters)
-    -> register -> rejection stack -> save linear result (+ optional
-    stretched preview). `result_stem` is a path without extension; Siril
-    appends the FITS extension, and we savetif/savepng alongside it.
+    -> register -> rejection stack -> save linear result as FITS (+
+    optional stretched PNG preview). `result_stem` is a path without
+    extension; Siril appends `.fit` to the linear result.
 
     Master frames: bias is stacked nonorm; flats are bias-calibrated then
     stacked with multiplicative norm; darks are stacked nonorm. Lights are
@@ -219,11 +219,13 @@ def build_stack_script(
     )
     lines.append("load result")
     lines.append(f"cd {_q(result_stem.parent)}")
-    # save* take a STEM — Siril appends the extension (passing "x.tif"
-    # yields "x.tif.tif"). cwd is the destination dir, so bare names land
-    # the files exactly at result_stem.with_suffix(...). Linear 32-bit TIFF
-    # is the science-faithful artifact; the PNG is a stretched preview only.
-    lines.append(f"savetif32 {_q(Path(result_stem.name))} -astro")
+    # save* takes a STEM — Siril appends the extension. We write FITS (.fit)
+    # so the linear result carries the WCS keywords from the reference frame
+    # forward; downstream photometry (mira submit, AAVSO uploads) needs a
+    # solved WCS. TIFF can't carry FITS headers. The PNG is a stretched
+    # preview only. cwd is the destination dir, so bare names land the
+    # files at result_stem.with_suffix(...).
+    lines.append(f"save {_q(Path(result_stem.name))}")
     if preview_path is not None:
         if stretch:
             lines.append("autostretch")

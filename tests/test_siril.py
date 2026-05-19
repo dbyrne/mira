@@ -98,7 +98,11 @@ class TestScriptGeneration(TestCase):
         self.assertIn("convert light", s)
         self.assertIn("register light", s)
         self.assertIn("stack r_light rej 3 3", s)
-        self.assertIn("savetif32", s)
+        # Linear stack saves as FITS so the WCS header from the reference
+        # frame survives — TIFF can't carry FITS keywords, and photometry
+        # downstream needs the WCS.
+        self.assertNotIn("savetif32", s)
+        self.assertIn('save "result"', s)  # bare `save` writes FITS
         self.assertIn("autostretch", s)
         self.assertNotIn("calibrate", s)
         # Regression: -fitseq corrupts NINA 16-bit FITS ("bitpix set as

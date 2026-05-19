@@ -52,8 +52,9 @@ def run_siril_stack(
     cli_path: Path | None = None,
 ) -> SirilResult:
     """Convert -> calibrate -> register -> rejection-stack `lights_dir`
-    into `out_path`. Writes a linear 32-bit TIFF next to `out_path` and,
-    when `stretch`, a stretched PNG preview. Returns a SirilResult."""
+    into `out_path`. Writes the linear stack as FITS (preserving the WCS
+    from the reference frame so the result is photometry-ready) and, when
+    `stretch`, a stretched PNG preview. Returns a SirilResult."""
     from .siril import _should_debayer  # local: keep the heuristic in one place
 
     lights = discover_frames(lights_dir)
@@ -81,10 +82,10 @@ def run_siril_stack(
             stretch=stretch,
         )
         log = run_siril(script, work_dir=work_dir, cli_path=cli_path)
-        produced = result_stem.with_suffix(".tif")
+        produced = result_stem.with_suffix(".fit")
         if not produced.exists():
             raise SirilError(
-                "Siril reported success but no TIFF was written "
+                "Siril reported success but no FITS was written "
                 f"({produced}). Check the log:\n"
                 + "\n".join(log.strip().splitlines()[-15:])
             )

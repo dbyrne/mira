@@ -191,7 +191,7 @@ def main() -> None:
         "the per-frame time series.",
     )
     stack_parser.add_argument("--lights", required=True, help="Directory of light frames (FITS/raw/JPG/TIFF).")
-    stack_parser.add_argument("--out", required=True, help="Output image path (a linear .tif is written here).")
+    stack_parser.add_argument("--out", required=True, help="Output image path. The linear stack is written as FITS (.fit) regardless of the extension you give — the .fit preserves the WCS header from the reference frame so the stack is photometry-ready. Optional stretched PNG preview lands alongside.")
     stack_parser.add_argument("--darks", default=None, help="Optional dir of dark frames.")
     stack_parser.add_argument("--flats", default=None, help="Optional dir of raw flat frames (Siril builds the master). Mutually exclusive with --auto-flats.")
     stack_parser.add_argument(

@@ -11,9 +11,9 @@
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
   <form method="post" action="{{ url_for('finish_run') }}" class="stack-form">
-    <label>Input master (linear .tif/.fits)
+    <label>Input master (linear .fit/.tif)
       <input type="text" name="input" required
-             placeholder="e.g. {{ output_dir }}/m51_hi.tif">
+             placeholder="e.g. {{ output_dir }}/m51_hi.fit">
     </label>
     <label>Output image (.png/.tif; blank = alongside input)
       <input type="text" name="out" placeholder="optional">

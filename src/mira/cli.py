@@ -326,6 +326,25 @@ def main() -> None:
         "--nina-root", default=None,
         help="Where NINA saves FITS (scanned for new frames to copy out).")
 
+    solve_parser = subparsers.add_parser(
+        "solve",
+        help="Bulk-inject WCS into a captures directory via offline ASTAP. "
+        "NINA's API-driven captures don't save WCS, so photometry "
+        "and WCS-aware stacking need this preflight. Reads RA/Dec hints "
+        "from mira_capture.json for fast guided solves; falls back to "
+        "blind. Idempotent — already-solved frames are skipped.",
+    )
+    solve_parser.add_argument("--lights", required=True, help="Directory of FITS frames to solve in place.")
+    solve_parser.add_argument("--config", default=None, help="Mira site-config YAML; reads fov from capture_defaults if set.")
+    solve_parser.add_argument("--force", action="store_true", help="Re-solve frames even if a WCS is already in the header.")
+    solve_parser.add_argument("--workers", type=int, default=4, help="Parallel astap_cli invocations (default 4).")
+    solve_parser.add_argument("--fov", type=float, default=None, help="Field of view diameter, deg. Defaults to site config; falls back to 4.6 (S30 Pro).")
+    solve_parser.add_argument("--radius", type=float, default=5.0, help="Search radius around the RA/Dec hint, deg. Blind solves use 180.")
+    solve_parser.add_argument("--ra", type=float, default=None, help="Override RA hint deg (default: read from mira_capture.json).")
+    solve_parser.add_argument("--dec", type=float, default=None, help="Override Dec hint deg (default: read from mira_capture.json).")
+    solve_parser.add_argument("--astap-cli", default=None, help="Path to astap_cli. Default: MIRA_ASTAP_CLI env / PATH / standard install.")
+    solve_parser.add_argument("--timeout-s", type=float, default=120.0, help="Per-frame astap_cli timeout, seconds.")
+
     doctor_parser = subparsers.add_parser(
         "doctor",
         help="Preflight the whole rig: deps, numpy<2.3, Siril, ASTAP, "
@@ -432,6 +451,8 @@ def main() -> None:
         capture(args)
     elif args.command == "flats":
         flats(args)
+    elif args.command == "solve":
+        solve(args)
     elif args.command == "doctor":
         doctor(args)
     elif args.command == "migrate-runs":
@@ -1345,6 +1366,55 @@ def flats(args: argparse.Namespace) -> None:
         if r.note:
             line += f"  ({r.note})"
         print(line)
+
+
+def solve(args: argparse.Namespace) -> None:
+    """Bulk plate-solve a captures directory via ASTAP. WCS goes into each
+    FITS in place. Idempotent (skips already-solved unless --force)."""
+    from .solve import AstapNotFound, find_astap_cli, run_solve_dir
+
+    # Site config may set fov_deg; CLI --fov wins. Reuses the same
+    # `capture_defaults` section as mira capture / mira flats.
+    site = _load_site_capture_defaults(args.config)
+    fov = args.fov if args.fov is not None else site.get("fov_deg")
+    if fov is None:
+        from .solve import DEFAULT_FOV_DEG
+        fov = DEFAULT_FOV_DEG
+
+    try:
+        cli = args.astap_cli or find_astap_cli()
+    except AstapNotFound as exc:
+        raise SystemExit(str(exc))
+
+    lights = Path(args.lights)
+    if not lights.is_dir():
+        raise SystemExit(f"--lights: not a directory: {lights}")
+
+    print(f"Solving {lights} with {cli}")
+    res = run_solve_dir(
+        lights,
+        astap_cli=cli,
+        force=args.force,
+        workers=max(1, args.workers),
+        fov_deg=fov,
+        radius_deg=args.radius,
+        timeout_s=args.timeout_s,
+        ra_hint_deg=args.ra,
+        dec_hint_deg=args.dec,
+        on_step=lambda m: print(m),
+    )
+    print(
+        f"\nDONE: {len(res.solved)} solved, "
+        f"{len(res.already_solved)} already solved, "
+        f"{len(res.failed)} failed (of {res.total})."
+    )
+    if res.failed:
+        print("Failed frames:")
+        for r in res.failed[:20]:
+            print(f"  {Path(r.path).name}: {r.note}")
+        if len(res.failed) > 20:
+            print(f"  ... and {len(res.failed) - 20} more")
+        raise SystemExit(2)
 
 
 def doctor(args: argparse.Namespace) -> None:

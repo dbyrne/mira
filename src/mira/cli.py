@@ -153,7 +153,13 @@ def main() -> None:
     stack_parser.add_argument("--lights", required=True, help="Directory of light frames (FITS/raw/JPG/TIFF).")
     stack_parser.add_argument("--out", required=True, help="Output image path (a linear .tif is written here).")
     stack_parser.add_argument("--darks", default=None, help="Optional dir of dark frames.")
-    stack_parser.add_argument("--flats", default=None, help="Optional dir of flat frames.")
+    stack_parser.add_argument("--flats", default=None, help="Optional dir of raw flat frames (Siril builds the master). Mutually exclusive with --auto-flats.")
+    stack_parser.add_argument(
+        "--auto-flats", dest="auto_flats", action="store_true",
+        help="Auto-resolve the prebuilt master flat for these lights from "
+        "their mira_capture.json sidecar (filter+gain) under --flats-root. "
+        "Aborts if no match (won't silently stack without the right flat).")
+    stack_parser.add_argument("--flats-root", default="data/flats", help="Root searched by --auto-flats (default data/flats).")
     stack_parser.add_argument("--biases", default=None, help="Optional dir of bias frames.")
     stack_parser.add_argument(
         "--debayer",
@@ -212,6 +218,60 @@ def main() -> None:
     tune_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames/targetName (optional).")
     tune_parser.add_argument("--ra", type=float, default=None, help="J2000 RA deg — if given with --dec, plate-solve-center there first.")
     tune_parser.add_argument("--dec", type=float, default=None, help="J2000 Dec deg — see --ra.")
+    tune_parser.add_argument("--filter", default=None, help="Filter wheel position to select + confirm before the ramp (aborts if unconfirmed).")
+
+    capture_parser = subparsers.add_parser(
+        "capture",
+        help="Deep-capture loop with DITHERING + re-centering. Dithers "
+        "relative to the fixed nominal coords every sub (breaks walking "
+        "noise AND prevents drift); all reposition slews are blind "
+        "(center=False, no Center loop). Stops at twilight / low altitude.",
+    )
+    capture_parser.add_argument("--ra", type=float, required=True, help="J2000 RA deg (nominal target; dithers are relative to this).")
+    capture_parser.add_argument("--dec", type=float, required=True, help="J2000 Dec deg.")
+    capture_parser.add_argument("--exposure", type=float, required=True, help="Sub exposure seconds.")
+    capture_parser.add_argument("--gain", type=int, default=None, help="Gain ('None' = camera default).")
+    capture_parser.add_argument("--dest", required=True, help="Directory to incrementally copy captured subs into.")
+    capture_parser.add_argument("--dither-arcsec", type=float, default=30.0, help="Max dither offset per axis (0 disables). Default 30\".")
+    capture_parser.add_argument("--dither-every", type=int, default=1, help="Dither every N subs (1 = every sub; best for walking noise).")
+    capture_parser.add_argument("--recenter-every", type=int, default=0, help="If NOT dithering, blind re-center to nominal every N subs.")
+    capture_parser.add_argument("--n-max", type=int, default=1000, help="Hard cap on subs (default 1000; guards usually stop first).")
+    capture_parser.add_argument("--alt-floor", type=float, default=30.0, help="Stop when target drops below this altitude (deg).")
+    capture_parser.add_argument("--sun-max", type=float, default=-15.0, help="Stop when Sun rises above this (deg); -15 = astro twilight.")
+    capture_parser.add_argument("--lat", type=float, default=40.7178, help="Site latitude (default Jersey City).")
+    capture_parser.add_argument("--lon", type=float, default=-74.0431, help="Site longitude (default Jersey City).")
+    capture_parser.add_argument("--settle", type=float, default=2.0, help="Seconds to settle after a reposition slew before exposing.")
+    capture_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    capture_parser.add_argument(
+        "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+        help="Where NINA saves FITS (scanned for new subs to copy out).",
+    )
+    capture_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames.")
+    capture_parser.add_argument("--filter", default=None, help="Filter wheel position to select + confirm before the loop. Aborts before any capture if the wheel can't confirm it (won't shoot a multi-hour stack through the wrong/no filter).")
+
+    flats_parser = subparsers.add_parser(
+        "flats",
+        help="Per-filter flat calibration. Tape paper over the aperture "
+        "once; this drives the filter wheel, auto-brackets exposure "
+        "(wide then fine, target ~30k ADU), captures a validated series "
+        "per filter, and builds a Siril master flat each. Auto-skips "
+        "opaque positions (e.g. a Dark filter). Freshness + 0-stars "
+        "guards reject stale/sky frames.",
+    )
+    flats_parser.add_argument(
+        "--filters", default=None,
+        help="Comma list of filter names (default: every wheel position, "
+        "auto-discovered; opaque ones are detected and skipped).")
+    flats_parser.add_argument("--gain", type=int, default=120, help="Gain (match your lights' gain; default 120).")
+    flats_parser.add_argument("--target-adu", type=float, default=30000.0, help="Target median ADU for the flats (default 30000).")
+    flats_parser.add_argument("--frames", type=int, default=25, help="Frames per filter (default 25).")
+    flats_parser.add_argument("--min-exp", type=float, default=0.005, help="Shortest bracket exposure, sec (camera floor; default 0.005).")
+    flats_parser.add_argument("--max-exp", type=float, default=30.0, help="Longest bracket exposure, sec (default 30).")
+    flats_parser.add_argument("--out", default="data/flats", help="Root dir for masters (default data/flats; gitignored).")
+    flats_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    flats_parser.add_argument(
+        "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+        help="Where NINA saves FITS (scanned for new frames to copy out).")
 
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
@@ -304,6 +364,10 @@ def main() -> None:
         finish(args)
     elif args.command == "tune":
         tune(args)
+    elif args.command == "capture":
+        capture(args)
+    elif args.command == "flats":
+        flats(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -811,6 +875,21 @@ def stack(args: argparse.Namespace) -> None:
         print(f"Lights directory '{lights_dir}' does not exist.")
         return
 
+    flat_master = None
+    if args.auto_flats:
+        if args.flats:
+            print("--auto-flats and --flats are mutually exclusive; pick one.")
+            return
+        from .flats import resolve_master_for_lights
+
+        master, why = resolve_master_for_lights(lights_dir, Path(args.flats_root))
+        if master is None:
+            print(f"--auto-flats: {why}\nAborting (refusing to stack without "
+                  "the matched flat — pass --flats explicitly to override).")
+            return
+        flat_master = master
+        print(f"--auto-flats: {why} -> {master}")
+
     print(f"Stacking '{lights_dir}' with Siril...")
     try:
         result = run_siril_stack(
@@ -818,6 +897,7 @@ def stack(args: argparse.Namespace) -> None:
             out_path=Path(args.out),
             darks_dir=Path(args.darks) if args.darks else None,
             flats_dir=Path(args.flats) if args.flats else None,
+            flat_master=flat_master,
             biases_dir=Path(args.biases) if args.biases else None,
             debayer=args.debayer,
             stretch=args.stretch,
@@ -940,10 +1020,93 @@ def tune(args: argparse.Namespace) -> None:
         exposures=exposures,
         gains=gains,
         target_name=args.target_name,
+        filter_name=args.filter,
         on_step=lambda m: print(m),
     )
     print()
     print(format_report(results, recommend(results)))
+
+
+def capture(args: argparse.Namespace) -> None:
+    """Deep-capture loop with dithering + re-centering. Dithers relative to
+    the fixed nominal coords (breaks walking noise AND prevents drift);
+    blind reposition slews (no Center loop). Stops at twilight / low alt."""
+    from .capture import altitude_sun_guard, run_capture
+    from .webapp.nina_client import NinaClient
+
+    client = NinaClient(base_url=args.nina_url)
+    guard = altitude_sun_guard(
+        args.ra, args.dec, args.lat, args.lon,
+        alt_floor_deg=args.alt_floor, sun_max_deg=args.sun_max,
+    )
+    print(
+        f"Capture loop: RA {args.ra}, Dec {args.dec}, {args.exposure}s "
+        f"gain={args.gain} dither={args.dither_arcsec}\" every {args.dither_every} "
+        f"filter={args.filter or '(current)'} "
+        f"-> {args.dest}. Stops at <{args.alt_floor} deg alt or sun >{args.sun_max}."
+    )
+    res = run_capture(
+        client,
+        ra_deg=args.ra, dec_deg=args.dec,
+        exposure_s=args.exposure, gain=args.gain,
+        dest_dir=Path(args.dest), nina_root=Path(args.nina_root),
+        n_max=args.n_max,
+        dither_arcsec=args.dither_arcsec, dither_every=args.dither_every,
+        recenter_every=args.recenter_every, settle_s=args.settle,
+        target_name=args.target_name,
+        filter_name=args.filter,
+        should_continue=guard,
+        on_step=lambda m: print(m),
+    )
+    print(
+        f"\nDONE: {res.captured} captured, {res.copied} copied to {res.dest_dir}, "
+        f"{res.dithers} dithers, {res.recenters} re-centers"
+        f"{', filter=' + res.filter_name if res.filter_name else ''}. "
+        f"Stopped: {res.stopped_reason}"
+    )
+
+
+def flats(args: argparse.Namespace) -> None:
+    """Per-filter flat calibration: drive the wheel, auto-bracket, capture
+    a validated series, build a Siril master per filter. Paper stays taped
+    over the aperture for the whole run."""
+    from .flats import run_flats
+    from .webapp.nina_client import NinaClient
+
+    client = NinaClient(base_url=args.nina_url)
+    filters = (
+        [s.strip() for s in args.filters.split(",") if s.strip()]
+        if args.filters else None
+    )
+    discovered = [f.get("Name") for f in client.available_filters()]
+    if not discovered:
+        print("No filter wheel reported by NINA at "
+              f"{args.nina_url}. Is it connected? Aborting.")
+        return
+    print(
+        f"Filter wheel: {discovered}. Flats for "
+        f"{filters or 'ALL (opaque auto-skipped)'} @ gain {args.gain}, "
+        f"target {args.target_adu:.0f} ADU, {args.frames} frames each.\n"
+        "Paper must stay taped over the aperture for the whole run."
+    )
+    res = run_flats(
+        client,
+        filters=filters, gain=args.gain, target_adu=args.target_adu,
+        frames=args.frames, out_root=Path(args.out),
+        nina_root=Path(args.nina_root),
+        min_exp=args.min_exp, max_exp=args.max_exp,
+        on_step=lambda m: print(m),
+    )
+    print("\n=== flats summary ===")
+    for r in res.results:
+        line = (f"{r.filter_name:>8}: {r.status:<14} "
+                f"exp={r.exposure_s:.4g}s med={r.median_adu:.0f} "
+                f"good={r.n_good} rej={r.n_rejected}")
+        if r.master_path:
+            line += f" -> {r.master_path}"
+        if r.note:
+            line += f"  ({r.note})"
+        print(line)
 
 
 def tonight(args: argparse.Namespace) -> None:

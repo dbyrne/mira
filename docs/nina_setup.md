@@ -29,8 +29,11 @@ further human input. Then a separate post-processing step (described in
    **ASCOM Alpaca** as the protocol. NINA's discovery should find the
    Seestar on the network.
 3. Repeat for Equipment → Camera (also ASCOM Alpaca, same Seestar).
-4. Equipment → Focuser, Filter Wheel: leave disconnected. The Seestar S30
-   Pro has fixed focus and a single OSC sensor.
+4. Equipment → Focuser: leave disconnected (the S30 Pro has fixed focus).
+   Filter Wheel: connect it if you have the S30 Pro filter wheel (ASCOM
+   Alpaca, same Seestar) — `mira flats` drives it for per-filter flat
+   calibration. It exposes `Dark` (opaque/blocking), `IR`, and `LP`
+   (light-pollution) positions. Leave disconnected if you have no wheel.
 5. Equipment → Plate Solver: pick **ASTAP** (free, fast, recommended) or
    **astrometry.net** (slower but no install). Configure with default star
    catalog.
@@ -114,6 +117,39 @@ run the exposure plan → repeat.
 FITS files land in NINA's configured image directory, organized by
 target name. The next batch (Phase 3) covers automated photometry +
 AAVSO submission against those FITS files.
+
+### 5. Flat calibration (optional, any time)
+
+With the filter wheel connected, tape a sheet of plain paper flush over
+the aperture, illuminate it evenly and steadily (a dim screen at a
+distance, an even wall, or twilight sky — *not* a hand-held tablet; it
+fluctuates), then:
+
+```powershell
+mira flats --gain 120 --frames 25
+```
+
+It cycles every wheel position, auto-brackets the exposure to ~30k ADU,
+captures a validated 25-frame series, and writes a Siril master flat per
+filter to `data/flats/<filter>_g<gain>_<date>/`. Match `--gain` to the
+gain you image your lights at. The opaque `Dark` position is detected and
+skipped automatically. Because the S30 Pro is a sealed optical system,
+each master is reusable for that filter/gain on future sessions until
+focus or optics change — but flats only help vignette/dust, not an
+urban light-pollution sky gradient.
+
+For the master flat to actually apply, the lights must be captured
+through the **same filter**. `mira capture --filter <name>` and
+`mira tune --filter <name>` select and *confirm* the wheel before
+shooting and abort if it can't confirm — so a multi-hour stack never
+silently goes through the wrong (or a blocking) filter.
+
+`mira capture` also drops a `mira_capture.json` sidecar next to the subs
+recording the filter and gain (NINA's FITS headers don't store the
+filter for this rig). `mira stack --lights <dir> --auto-flats` reads that
+sidecar and automatically applies the newest matching
+`data/flats/<filter>_g<gain>_*` master — or aborts if none matches,
+rather than stacking uncalibrated. Pass `--flats <dir>` to override.
 
 ## Dry-running with NINA simulators
 

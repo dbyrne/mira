@@ -1,0 +1,19 @@
+# M51 Whirlpool Galaxy — session profile for `mira capture --session`.
+#
+# Multi-night project: keys off ra/dec for re-acquisition framing. Anchor
+# coords are J2000 from SIMBAD. Use with:
+#   mira capture --session targets/m51.yaml --dest data/captures/m51_<UTC>
+#
+# Any CLI flag overrides the value here. To skip plate-solve on a given
+# night (e.g. clouds rolled in and you just want subs), pass
+# `--no-platesolve-center` on the CLI.
+
+ra: 202.4696
+dec: 47.1952
+exposure: 30
+gain: 120
+filter: LP
+target_name: M51
+platesolve_center: true
+autofocus_every_min: 45
+dither_arcsec: 30

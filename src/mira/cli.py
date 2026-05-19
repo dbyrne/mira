@@ -4,6 +4,7 @@ import argparse
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from .aavso import apply_aavso_score, enrich_candidates_with_aavso, fetch_recent_observation_count
 from .config import load_config
@@ -266,30 +267,36 @@ def main() -> None:
         "noise AND prevents drift); all reposition slews are blind "
         "(center=False, no Center loop). Stops at twilight / low altitude.",
     )
-    capture_parser.add_argument("--ra", type=float, required=True, help="J2000 RA deg (nominal target; dithers are relative to this).")
-    capture_parser.add_argument("--dec", type=float, required=True, help="J2000 Dec deg.")
-    capture_parser.add_argument("--exposure", type=float, required=True, help="Sub exposure seconds.")
+    # Argparse defaults are deliberately None so resolve_capture_config can
+    # tell "user didn't pass this flag" from "user explicitly passed the
+    # builtin default value". A session profile (--session) fills the gaps;
+    # CAPTURE_BUILTIN_DEFAULTS is the final fallback. Precedence:
+    # CLI > session > builtin.
+    capture_parser.add_argument("--session", default=None, help="Path to a session profile YAML (e.g. targets/m51.yaml). Any flag the user does NOT pass on the CLI is taken from this file. The four required fields (--ra / --dec / --exposure / --dest) can also live there.")
+    capture_parser.add_argument("--ra", type=float, default=None, help="J2000 RA deg (nominal target; dithers are relative to this).")
+    capture_parser.add_argument("--dec", type=float, default=None, help="J2000 Dec deg.")
+    capture_parser.add_argument("--exposure", type=float, default=None, help="Sub exposure seconds.")
     capture_parser.add_argument("--gain", type=int, default=None, help="Gain ('None' = camera default).")
-    capture_parser.add_argument("--dest", required=True, help="Directory to incrementally copy captured subs into.")
-    capture_parser.add_argument("--dither-arcsec", type=float, default=30.0, help="Max dither offset per axis (0 disables). Default 30\".")
-    capture_parser.add_argument("--dither-every", type=int, default=1, help="Dither every N subs (1 = every sub; best for walking noise).")
-    capture_parser.add_argument("--recenter-every", type=int, default=0, help="If NOT dithering, blind re-center to nominal every N subs.")
-    capture_parser.add_argument("--n-max", type=int, default=1000, help="Hard cap on subs (default 1000; guards usually stop first).")
-    capture_parser.add_argument("--alt-floor", type=float, default=30.0, help="Stop when target drops below this altitude (deg).")
-    capture_parser.add_argument("--sun-max", type=float, default=-15.0, help="Stop when Sun rises above this (deg); -15 = astro twilight.")
-    capture_parser.add_argument("--lat", type=float, default=40.7178, help="Site latitude (default Jersey City).")
-    capture_parser.add_argument("--lon", type=float, default=-74.0431, help="Site longitude (default Jersey City).")
-    capture_parser.add_argument("--settle", type=float, default=2.0, help="Seconds to settle after a reposition slew before exposing.")
-    capture_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    capture_parser.add_argument("--dest", default=None, help="Directory to incrementally copy captured subs into.")
+    capture_parser.add_argument("--dither-arcsec", type=float, default=None, help="Max dither offset per axis (0 disables). Default 30\".")
+    capture_parser.add_argument("--dither-every", type=int, default=None, help="Dither every N subs (1 = every sub; best for walking noise).")
+    capture_parser.add_argument("--recenter-every", type=int, default=None, help="If NOT dithering, blind re-center to nominal every N subs.")
+    capture_parser.add_argument("--n-max", type=int, default=None, help="Hard cap on subs (default 1000; guards usually stop first).")
+    capture_parser.add_argument("--alt-floor", type=float, default=None, help="Stop when target drops below this altitude (deg).")
+    capture_parser.add_argument("--sun-max", type=float, default=None, help="Stop when Sun rises above this (deg); -15 = astro twilight.")
+    capture_parser.add_argument("--lat", type=float, default=None, help="Site latitude (default Jersey City).")
+    capture_parser.add_argument("--lon", type=float, default=None, help="Site longitude (default Jersey City).")
+    capture_parser.add_argument("--settle", type=float, default=None, help="Seconds to settle after a reposition slew before exposing.")
+    capture_parser.add_argument("--nina-url", default=None, help="NINA Advanced API base URL.")
     capture_parser.add_argument(
-        "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+        "--nina-root", default=None,
         help="Where NINA saves FITS (scanned for new subs to copy out).",
     )
-    capture_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames.")
+    capture_parser.add_argument("--target-name", default=None, help="Label stamped into NINA filenames.")
     capture_parser.add_argument("--filter", default=None, help="Filter wheel position to select + confirm before the loop. Aborts before any capture if the wheel can't confirm it (won't shoot a multi-hour stack through the wrong/no filter).")
-    capture_parser.add_argument("--platesolve-center", action="store_true", help="Before the loop, slew with NINA's plate-solve Center to pin the mount on the requested RA/Dec. Establishes the framing reference (essential for multi-night runs at the same target). Fails soft: a failed center logs a warning, loop proceeds with the blind anchored-dither.")
-    capture_parser.add_argument("--autofocus-every-min", type=int, default=0, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
-    capture_parser.add_argument("--autofocus-timeout-s", type=float, default=600.0, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
+    capture_parser.add_argument("--platesolve-center", action=argparse.BooleanOptionalAction, default=None, help="Before the loop, slew with NINA's plate-solve Center to pin the mount on the requested RA/Dec. Use --no-platesolve-center to override a session profile that enables it. Fails soft: a failed center logs a warning, loop proceeds with the blind anchored-dither.")
+    capture_parser.add_argument("--autofocus-every-min", type=int, default=None, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
+    capture_parser.add_argument("--autofocus-timeout-s", type=float, default=None, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
 
     flats_parser = subparsers.add_parser(
         "flats",
@@ -1088,6 +1095,73 @@ def tune(args: argparse.Namespace) -> None:
     print(format_report(results, recommend(results)))
 
 
+CAPTURE_BUILTIN_DEFAULTS: dict[str, Any] = {
+    "gain": None,
+    "dither_arcsec": 30.0,
+    "dither_every": 1,
+    "recenter_every": 0,
+    "n_max": 1000,
+    "alt_floor": 30.0,
+    "sun_max": -15.0,
+    "lat": 40.7178,
+    "lon": -74.0431,
+    "settle": 2.0,
+    "nina_url": "http://localhost:1888",
+    "nina_root": r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+    "target_name": "",
+    "filter": None,
+    "platesolve_center": False,
+    "autofocus_every_min": 0,
+    "autofocus_timeout_s": 600.0,
+}
+CAPTURE_REQUIRED: tuple[str, ...] = ("ra", "dec", "exposure", "dest")
+
+
+def resolve_capture_config(
+    args: argparse.Namespace,
+    session: dict[str, Any] | None = None,
+    builtin: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Three-tier merge for `mira capture` args. CLI > session profile >
+    builtin default. Missing values stay missing (caller validates required
+    fields). `session` is the parsed YAML from --session; `builtin` defaults
+    to CAPTURE_BUILTIN_DEFAULTS but is overridable for testing.
+
+    Keys are the argparse dest names (underscored, e.g. `dither_arcsec`).
+    """
+    session = session or {}
+    builtin = CAPTURE_BUILTIN_DEFAULTS if builtin is None else builtin
+    out: dict[str, Any] = {}
+    keys = set(CAPTURE_REQUIRED) | set(builtin) | set(session)
+    for key in keys:
+        cli_val = getattr(args, key, None)
+        if cli_val is not None:
+            out[key] = cli_val
+        elif key in session:
+            out[key] = session[key]
+        else:
+            out[key] = builtin.get(key)
+    return out
+
+
+def _load_session_profile(path: str | None) -> dict[str, Any]:
+    """Parse a --session YAML to a flat mapping of argparse-dest -> value.
+    Accepts hyphenated keys (dither-arcsec) and normalizes to underscores
+    so the YAML can mirror either form."""
+    if not path:
+        return {}
+    import yaml  # local import keeps mira-cli import cheap when unused
+    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise SystemExit(
+            f"--session {path}: expected a YAML mapping at top level, got "
+            f"{type(raw).__name__}"
+        )
+    return {str(k).replace("-", "_"): v for k, v in raw.items()}
+
+
 def capture(args: argparse.Namespace) -> None:
     """Deep-capture loop with dithering + re-centering. Dithers relative to
     the fixed nominal coords (breaks walking noise AND prevents drift);
@@ -1095,40 +1169,53 @@ def capture(args: argparse.Namespace) -> None:
     from .capture import altitude_sun_guard, run_capture
     from .webapp.nina_client import NinaClient
 
-    client = NinaClient(base_url=args.nina_url)
+    cfg = resolve_capture_config(args, session=_load_session_profile(args.session))
+    missing = [k for k in CAPTURE_REQUIRED if cfg.get(k) is None]
+    if missing:
+        flags = ", ".join(f"--{m.replace('_', '-')}" for m in missing)
+        raise SystemExit(
+            f"missing required capture config: {flags}. Provide on the CLI or "
+            f"in a --session profile."
+        )
+
+    client = NinaClient(base_url=cfg["nina_url"])
     guard = altitude_sun_guard(
-        args.ra, args.dec, args.lat, args.lon,
-        alt_floor_deg=args.alt_floor, sun_max_deg=args.sun_max,
+        cfg["ra"], cfg["dec"], cfg["lat"], cfg["lon"],
+        alt_floor_deg=cfg["alt_floor"], sun_max_deg=cfg["sun_max"],
     )
     print(
-        f"Capture loop: RA {args.ra}, Dec {args.dec}, {args.exposure}s "
-        f"gain={args.gain} dither={args.dither_arcsec}\" every {args.dither_every} "
-        f"filter={args.filter or '(current)'} "
-        f"-> {args.dest}. Stops at <{args.alt_floor} deg alt or sun >{args.sun_max}."
+        f"Capture loop: RA {cfg['ra']}, Dec {cfg['dec']}, {cfg['exposure']}s "
+        f"gain={cfg['gain']} dither={cfg['dither_arcsec']}\" every "
+        f"{cfg['dither_every']} filter={cfg['filter'] or '(current)'} "
+        f"-> {cfg['dest']}. Stops at <{cfg['alt_floor']} deg alt or sun "
+        f">{cfg['sun_max']}."
     )
+    if args.session:
+        print(f"(session profile: {args.session})")
     res = run_capture(
         client,
-        ra_deg=args.ra, dec_deg=args.dec,
-        exposure_s=args.exposure, gain=args.gain,
-        dest_dir=Path(args.dest), nina_root=Path(args.nina_root),
-        n_max=args.n_max,
-        dither_arcsec=args.dither_arcsec, dither_every=args.dither_every,
-        recenter_every=args.recenter_every, settle_s=args.settle,
-        target_name=args.target_name,
-        filter_name=args.filter,
-        platesolve_center=args.platesolve_center,
-        autofocus_every_min=args.autofocus_every_min,
-        autofocus_timeout_s=args.autofocus_timeout_s,
+        ra_deg=cfg["ra"], dec_deg=cfg["dec"],
+        exposure_s=cfg["exposure"], gain=cfg["gain"],
+        dest_dir=Path(cfg["dest"]), nina_root=Path(cfg["nina_root"]),
+        n_max=cfg["n_max"],
+        dither_arcsec=cfg["dither_arcsec"], dither_every=cfg["dither_every"],
+        recenter_every=cfg["recenter_every"], settle_s=cfg["settle"],
+        target_name=cfg["target_name"],
+        filter_name=cfg["filter"],
+        platesolve_center=cfg["platesolve_center"],
+        autofocus_every_min=cfg["autofocus_every_min"],
+        autofocus_timeout_s=cfg["autofocus_timeout_s"],
         # Fields the loop itself doesn't see (they're baked into the
         # altitude_sun_guard closure or the NinaClient base_url) — pipe them
         # into the sidecar's audit block so the run is fully reproducible.
         sidecar_audit={
-            "alt_floor_deg": args.alt_floor,
-            "sun_max_deg": args.sun_max,
-            "lat_deg": args.lat,
-            "lon_deg": args.lon,
-            "nina_url": args.nina_url,
-            "dest_dir": str(Path(args.dest).resolve()),
+            "alt_floor_deg": cfg["alt_floor"],
+            "sun_max_deg": cfg["sun_max"],
+            "lat_deg": cfg["lat"],
+            "lon_deg": cfg["lon"],
+            "nina_url": cfg["nina_url"],
+            "session_profile": args.session,
+            "dest_dir": str(Path(cfg["dest"]).resolve()),
         },
         should_continue=guard,
         on_step=lambda m: print(m),

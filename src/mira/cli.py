@@ -200,6 +200,19 @@ def main() -> None:
         "show this run live). Default: data/finish_progress.",
     )
 
+    tune_parser = subparsers.add_parser(
+        "tune",
+        help="Dial in exposure/gain: shoot a test frame per exposure x gain "
+        "via NINA, read back HFR/saturation, recommend the longest "
+        "non-saturating exposure per gain (flags probable trailing).",
+    )
+    tune_parser.add_argument("--exposures", default="3,5,8,12", help="Comma list of exposure seconds (default 3,5,8,12).")
+    tune_parser.add_argument("--gains", default="120,200", help="Comma list of gains; 'default' = camera default (e.g. 120,200).")
+    tune_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    tune_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames/targetName (optional).")
+    tune_parser.add_argument("--ra", type=float, default=None, help="J2000 RA deg — if given with --dec, plate-solve-center there first.")
+    tune_parser.add_argument("--dec", type=float, default=None, help="J2000 Dec deg — see --ra.")
+
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
         help="Walk state_dir/<run_id>.json files and (re-)populate the SQLite session store.",
@@ -289,6 +302,8 @@ def main() -> None:
         stack(args)
     elif args.command == "finish":
         finish(args)
+    elif args.command == "tune":
+        tune(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -885,6 +900,50 @@ def finish(args: argparse.Namespace) -> None:
     print(f"Wrote {result.output_path}")
     if result.preview_path and result.preview_path != result.output_path:
         print(f"Wrote {result.preview_path}")
+
+
+def tune(args: argparse.Namespace) -> None:
+    """Empirical exposure/gain dial-in via NINA test frames. Optional
+    plate-solve-center first (only if --ra/--dec given — `tune` deliberately
+    does not resolve names; DSOs aren't in VSX)."""
+    from .tuning import format_report, recommend, run_tune
+    from .webapp.nina_client import NinaClient
+
+    try:
+        exposures = [float(x) for x in args.exposures.split(",") if x.strip()]
+        gains = [
+            None if x.strip().lower() == "default" else int(x)
+            for x in args.gains.split(",") if x.strip()
+        ]
+    except ValueError as exc:
+        print(f"Bad --exposures/--gains: {exc}")
+        return
+    if not exposures or not gains:
+        print("Need at least one exposure and one gain.")
+        return
+
+    client = NinaClient(base_url=args.nina_url)
+
+    if args.ra is not None and args.dec is not None:
+        print(f"Plate-solve-centering on RA {args.ra}, Dec {args.dec} ...")
+        res = client.preposition(args.ra, args.dec, center=True, set_sidereal=True)
+        print(f"  {res.message}")
+        if not res.ok:
+            print("  Pointing not confirmed; continuing anyway (frames may be off-target).")
+
+    print(
+        f"Tuning: gains={args.gains} exposures={args.exposures}s "
+        f"({len(gains) * len(exposures)} test frames). Camera will expose."
+    )
+    results = run_tune(
+        client,
+        exposures=exposures,
+        gains=gains,
+        target_name=args.target_name,
+        on_step=lambda m: print(m),
+    )
+    print()
+    print(format_report(results, recommend(results)))
 
 
 def tonight(args: argparse.Namespace) -> None:

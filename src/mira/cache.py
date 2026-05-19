@@ -11,6 +11,10 @@ import requests
 
 CACHE_ROOT = Path("data/cache")
 DEFAULT_MAX_AGE_DAYS = 30
+# requests treats timeout=None as "wait forever" — a hang risk on flaky
+# field internet. No caller should be able to hang indefinitely, so a
+# missing/zero timeout is coerced to this sane bound.
+DEFAULT_TIMEOUT_SECONDS = 30
 
 
 class CachedResponse:
@@ -41,7 +45,9 @@ def cached_get(
         except (OSError, ValueError, KeyError):
             pass
 
-    response = requests.get(url, params=params, timeout=timeout)
+    response = requests.get(
+        url, params=params, timeout=timeout or DEFAULT_TIMEOUT_SECONDS
+    )
     if response.status_code < 400:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {

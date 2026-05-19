@@ -1,0 +1,29 @@
+# Mira pinned dependency lock — the known-good set this project's full
+# test suite (441 tests) is green against and `mira doctor` validated on
+# 2026-05-19 (Python 3.11.9, Windows).
+#
+# Install order (see scripts/bootstrap.ps1 / docs/FIELD_GUIDE.md):
+#     pip install -r requirements-lock.txt
+#     pip install -e . --no-deps
+#
+# Scope, stated honestly: these are the DIRECT runtime deps, hard-pinned.
+# Transitive deps are left to pip's resolver from these pins (a full
+# hash-locked transitive freeze of the scientific stack is heavy and
+# fragile for a single-user field tool; this is the deliberate tradeoff).
+# numpy is the one load-bearing transitive-sensitive pin: GraXpert
+# (`mira[finishing]`) requires numpy<2.3 — we hit numpy 2.4 breaking it
+# and pinned back to 2.2.6. `mira doctor` enforces this at preflight.
+#
+# `mira[finishing]` / graxpert is intentionally NOT locked here: it pulls
+# a large ML tree, is optional (only `mira finish` AI steps need it), and
+# is installed separately. Keep numpy==2.2.6 when you add it.
+
+astropy==7.2.0
+photutils==3.0.0
+scipy==1.17.1
+numpy==2.2.6
+Flask==3.1.3
+PyYAML==6.0.3
+requests==2.33.1
+matplotlib==3.10.9
+tzdata==2026.2

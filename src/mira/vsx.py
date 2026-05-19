@@ -14,6 +14,13 @@ from .cache import CachedResponse, cached_get
 from .config import VsxQueryConfig
 from .models import VsxTarget
 
+class VsxUnavailableError(RuntimeError):
+    """VSX/VizieR was totally unreachable (every bin request failed and
+    none succeeded). Raised instead of silently returning an empty queue
+    so `mira tonight`/`run` fail loudly on a dead connection rather than
+    writing an empty schedule the user discovers in the field."""
+
+
 VIZIER_ASU_TSV_URL = "https://vizier.cds.unistra.fr/viz-bin/asu-tsv"
 VSX_COLUMNS = (
     "OID",
@@ -40,6 +47,9 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
     per_bin_request = per_bin_target * oversample
     half_request = max(1, per_bin_request // 2)
 
+    successes = 0
+    network_failures = 0
+
     for index in range(bins):
         ra_min = index * bin_degrees
         ra_max = min(360.0, ra_min + bin_degrees)
@@ -56,7 +66,9 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
             params["-sort"] = sort_value
             response = _get_with_retries(params, timeout_seconds)
             if response is None:
+                network_failures += 1
                 continue
+            successes += 1
             for target in parse_vsx_tsv(response.text):
                 bin_rows.setdefault(target.oid, target)
 
@@ -67,6 +79,17 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
             targets[target.oid] = target
         if len(targets) >= config.row_limit:
             break
+
+    # Total outage: every request failed and none succeeded. Fail loudly
+    # instead of returning [] -> an empty schedule the user only notices
+    # when they're set up under the sky. A partial result (some bins
+    # succeeded) is still returned: degraded, but not a dead night.
+    if not targets and successes == 0 and network_failures > 0:
+        raise VsxUnavailableError(
+            f"VSX/VizieR unreachable: all {network_failures} bin request(s) "
+            "failed after retries, 0 succeeded. Check internet/tether "
+            "(VSX is required to build a queue). No schedule was produced."
+        )
 
     return list(targets.values())[: config.row_limit]
 

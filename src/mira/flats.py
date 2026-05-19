@@ -277,6 +277,12 @@ def capture_series(
 
 def _siril_master_script(flats_dir: Path, work_dir: Path) -> str:
     from .siril import _outarg, _q
+    # siril-cli overrides its CWD to its own configured default (e.g.
+    # `~/Pictures` on Windows) at startup, ignoring the subprocess cwd we
+    # pass — so relative paths in the script resolve from the wrong place.
+    # Always emit absolute paths.
+    flats_dir = Path(flats_dir).resolve()
+    work_dir = Path(work_dir).resolve()
     return "\n".join([
         "requires 1.2.0",
         "setext fit",

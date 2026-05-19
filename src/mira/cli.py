@@ -202,6 +202,14 @@ def main() -> None:
     stack_parser.add_argument("--flats-root", default="data/flats", help="Root searched by --auto-flats (default data/flats).")
     stack_parser.add_argument("--biases", default=None, help="Optional dir of bias frames.")
     stack_parser.add_argument(
+        "--auto-solve", action="store_true",
+        help="Before stacking, run `mira solve` over any frames in --lights "
+        "that don't already carry a WCS. Required if you want the FITS stack "
+        "output to inherit WCS from the reference frame (NINA's API captures "
+        "save no WCS by default). Skipped when all frames are already solved. "
+        "Aborts the stack on any solve failure.",
+    )
+    stack_parser.add_argument(
         "--debayer",
         dest="debayer",
         action="store_true",
@@ -214,7 +222,7 @@ def main() -> None:
     )
     stack_parser.add_argument(
         "--no-stretch", dest="stretch", action="store_false",
-        help="Skip the stretched PNG preview; write only the linear TIFF.",
+        help="Skip the stretched PNG preview; write only the linear FITS.",
     )
 
     finish_parser = subparsers.add_parser(
@@ -967,6 +975,38 @@ def stack(args: argparse.Namespace) -> None:
     if not lights_dir.is_dir():
         print(f"Lights directory '{lights_dir}' does not exist.")
         return
+
+    if getattr(args, "auto_solve", False):
+        # Only solve what needs solving — the cheap header check makes this
+        # idempotent on re-runs after a previous solve. A solve failure
+        # aborts the stack: better to bail loudly than silently produce a
+        # WCS-less FITS that the photometry path will then reject.
+        from .solve import AstapNotFound, find_astap_cli, has_wcs, run_solve_dir
+
+        frames = sorted(p for p in lights_dir.glob("*.fit*") if p.is_file())
+        unsolved = [f for f in frames if not has_wcs(f)]
+        if not unsolved:
+            print(f"--auto-solve: all {len(frames)} frames already have WCS, "
+                  "skipping ASTAP")
+        else:
+            print(f"--auto-solve: {len(unsolved)}/{len(frames)} frames "
+                  "missing WCS; running ASTAP first...")
+            try:
+                cli = find_astap_cli()
+            except AstapNotFound as exc:
+                print(f"--auto-solve: {exc}")
+                return
+            res = run_solve_dir(
+                lights_dir, astap_cli=cli,
+                on_step=lambda m: print(m),
+            )
+            if res.failed:
+                print(
+                    f"--auto-solve: {len(res.failed)} frame(s) failed to "
+                    "solve; aborting stack to prevent a WCS-less output. "
+                    "Run `mira solve` manually to investigate."
+                )
+                return
 
     flat_master = None
     if args.auto_flats:

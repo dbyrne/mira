@@ -136,6 +136,29 @@ class TestScriptGeneration(TestCase):
         self.assertIn("register pp_light", s)
         self.assertNotIn("autostretch", s)  # stretch=False
 
+    def test_prebuilt_flat_master_skips_restack(self) -> None:
+        s = build_stack_script(
+            work_dir=Path("/w"), lights_dir=Path("/lights"),
+            result_stem=Path("/out/result"), preview_path=None,
+            flat_master=Path("/data/flats/IR_g120_20260519/master_flat.fit"),
+            debayer=True, stretch=False,
+        )
+        self.assertIn(
+            "-flat=/data/flats/IR_g120_20260519/master_flat.fit", s)
+        self.assertNotIn("convert flat", s)            # no re-convert
+        self.assertNotIn("stack flat", s)              # no re-stack
+        self.assertIn("calibrate light", s)
+
+    def test_flat_master_takes_precedence_over_flats_dir(self) -> None:
+        s = build_stack_script(
+            work_dir=Path("/w"), lights_dir=Path("/lights"),
+            result_stem=Path("/out/r"), preview_path=None,
+            flats_dir=Path("/f"), flat_master=Path("/m/master_flat.fit"),
+            debayer=False, stretch=False,
+        )
+        self.assertIn("-flat=/m/master_flat.fit", s)
+        self.assertNotIn("stack flat", s)
+
     def test_calibrate_script_has_no_register_or_stack_of_lights(self) -> None:
         s = build_calibrate_script(
             work_dir=Path("/w"), lights_dir=Path("/lights"),

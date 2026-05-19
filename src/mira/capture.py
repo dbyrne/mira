@@ -39,6 +39,8 @@ class _Client(Protocol):
     def wait_camera_idle(self, timeout_s: float = ..., poll_s: float = ...) -> bool: ...
     def capture(self, *, duration: float, gain: int | None = ..., save: bool = ...,
                 solve: bool = ..., target_name: str = ..., timeout_s: float = ...) -> dict: ...
+    def set_filter(self, filter_ref: str | int, *, wait: bool = ...,
+                    timeout_s: float = ...) -> bool: ...
 
 
 @dataclass
@@ -49,6 +51,7 @@ class CaptureResult:
     recenters: int = 0
     stopped_reason: str = ""
     dest_dir: str = ""
+    filter_name: str = ""
 
 
 def random_dither_deg(
@@ -115,6 +118,7 @@ def run_capture(
     settle_s: float = 2.0,
     slew_timeout_s: float = 180.0,
     target_name: str = "",
+    filter_name: str | None = None,
     should_continue: Callable[[int], str | None] | None = None,
     on_step: Callable[[str], None] | None = None,
     rng: random.Random | None = None,
@@ -134,6 +138,31 @@ def run_capture(
     def _emit(m: str) -> None:
         if on_step is not None:
             on_step(m)
+
+    # Filter preflight. Selecting + CONFIRMING the wheel before a multi-hour
+    # stack is a hard gate: shooting the whole run through the wrong (or a
+    # blocking) filter silently invalidates calibration against the
+    # per-filter master flat. Refuse to start rather than waste the night.
+    if filter_name:
+        _emit(f"selecting filter '{filter_name}'...")
+        if not client.set_filter(filter_name, wait=True):
+            res.stopped_reason = (
+                f"filter '{filter_name}' not confirmed by the wheel; aborting "
+                "before capture (refusing to shoot through the wrong/no filter)"
+            )
+            _emit(res.stopped_reason)
+            return res
+        res.filter_name = filter_name
+        _emit(f"filter '{filter_name}' confirmed")
+
+    # Provenance sidecar so `mira stack --auto-flats` can later match the
+    # right per-filter master (the NINA FITS carry no FILTER keyword).
+    from .flats import write_capture_sidecar
+
+    write_capture_sidecar(
+        dest_dir, filter=res.filter_name, gain=gain, exposure_s=exposure_s,
+        ra_deg=ra_deg, dec_deg=dec_deg, target_name=target_name,
+    )
 
     exp_tag = f"{float(exposure_s):.2f}s"
     seen = set(glob.glob(os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*"),

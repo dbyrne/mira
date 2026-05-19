@@ -5,6 +5,7 @@ so it also re-centers), and every reposition slew is center=False (no
 NINA Center loop)."""
 from __future__ import annotations
 
+import json
 import math
 import random
 from pathlib import Path
@@ -20,13 +21,21 @@ from mira.capture import (
 
 
 class FakeClient:
-    def __init__(self, fail_slew_on=()):
+    def __init__(self, fail_slew_on=(), fail_filter=False):
         self.slews: list[tuple] = []  # (ra,dec,center)
         self.captures: list[dict] = []
+        self.filters: list[str] = []
         self._fail = set(fail_slew_on)
+        self._fail_filter = fail_filter
         self._n = 0
         self.nina_root: Path | None = None
         self.exp_tag = ""
+
+    def set_filter(self, filter_ref, *, wait=True, timeout_s=60.0):
+        if self._fail_filter:
+            return False
+        self.filters.append(str(filter_ref))
+        return True
 
     def slew(self, ra_deg, dec_deg, *, center=True, wait=True, timeout=180.0):
         self.slews.append((ra_deg, dec_deg, center))
@@ -135,6 +144,33 @@ class TestRunCaptureDither(TestCase):
             c, res = self._run(d, n_max=2, dither_arcsec=0.0)
             self.assertEqual(res.captured, 2)
             self.assertIn("n_max=2", res.stopped_reason)
+
+    def test_filter_selected_and_confirmed_before_capture(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=3, dither_arcsec=0.0, filter_name="IR")
+            self.assertEqual(c.filters, ["IR"])      # wheel was driven
+            self.assertEqual(res.filter_name, "IR")
+            self.assertEqual(res.captured, 3)        # then it ran normally
+
+    def test_unconfirmed_filter_aborts_before_any_capture(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=5, dither_arcsec=10.0,
+                               filter_name="LP",
+                               client_kw={"fail_filter": True})
+            self.assertEqual(res.captured, 0)        # refused to shoot
+            self.assertEqual(len(c.captures), 0)
+            self.assertEqual(len(c.slews), 0)        # didn't even slew
+            self.assertIn("LP", res.stopped_reason)
+            self.assertIn("not confirmed", res.stopped_reason)
+
+    def test_capture_writes_filter_sidecar_for_auto_flats(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=2, dither_arcsec=0.0, filter_name="IR")
+            sidecar = Path(d) / "dest" / "mira_capture.json"
+            self.assertTrue(sidecar.exists())        # stack --auto-flats reads this
+            meta = json.loads(sidecar.read_text())
+            self.assertEqual(meta["filter"], "IR")
+            self.assertEqual(meta["gain"], 120)
 
 
 class TestGuard(TestCase):

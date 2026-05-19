@@ -14,10 +14,18 @@ from mira.tuning import (
 
 
 class FakeClient:
-    def __init__(self, stats_for):
+    def __init__(self, stats_for, fail_filter=False):
         self.calls: list[tuple] = []
+        self.filters: list[str] = []
         self._stats_for = stats_for
+        self._fail_filter = fail_filter
         self._last = None
+
+    def set_filter(self, filter_ref, *, wait=True, timeout_s=60.0):
+        if self._fail_filter:
+            return False
+        self.filters.append(str(filter_ref))
+        return True
 
     def wait_camera_idle(self, timeout_s: float = 90.0, poll_s: float = 1.0) -> bool:
         return True
@@ -62,6 +70,18 @@ class TestRunTune(TestCase):
         res = run_tune(c, exposures=[5, 10], gains=[200])
         self.assertFalse(res[0].saturated)            # 35000
         self.assertTrue(res[1].saturated)             # 70000 >= 60000
+
+    def test_filter_selected_before_ramp(self) -> None:
+        c = FakeClient(lambda g, e: _stats(1000))
+        run_tune(c, exposures=[5], gains=[200], filter_name="IR")
+        self.assertEqual(c.filters, ["IR"])
+        self.assertEqual(c.calls, [(200, 5)])
+
+    def test_unconfirmed_filter_aborts_ramp(self) -> None:
+        c = FakeClient(lambda g, e: _stats(1000), fail_filter=True)
+        res = run_tune(c, exposures=[5, 10], gains=[200], filter_name="LP")
+        self.assertEqual(res, [])                     # no ramp at all
+        self.assertEqual(c.calls, [])                 # no captures
 
 
 class TestRecommend(TestCase):

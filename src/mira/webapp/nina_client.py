@@ -398,3 +398,64 @@ class NinaClient:
         """Stats for the most recent frame, or None if history is empty."""
         hist = self.image_history()
         return hist[-1] if hist else None
+
+    # -- filter wheel ------------------------------------------------------
+
+    def filter_wheel_info(self) -> dict[str, Any]:
+        """Raw FilterWheel `Response` (Connected/IsMoving/SelectedFilter/
+        AvailableFilters), or {} if unreachable/absent."""
+        try:
+            info = self._get("/equipment/filterwheel/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def available_filters(self) -> list[dict[str, Any]]:
+        """[{'Name':..,'Id':..}, ...] in wheel order, or [] if no wheel."""
+        fs = self.filter_wheel_info().get("AvailableFilters")
+        return [f for f in fs if isinstance(f, dict)] if isinstance(fs, list) else []
+
+    def current_filter(self) -> dict[str, Any] | None:
+        """The SelectedFilter dict ({'Name','Id'}), or None."""
+        sel = self.filter_wheel_info().get("SelectedFilter")
+        return sel if isinstance(sel, dict) else None
+
+    def set_filter(
+        self, filter_ref: str | int, *, wait: bool = True, timeout_s: float = 60.0
+    ) -> bool:
+        """Move the wheel to `filter_ref` (a filter Name or Id). Resolves the
+        name against AvailableFilters, issues change-filter, then (if `wait`)
+        polls until IsMoving is false AND SelectedFilter matches. Returns
+        True on confirmed move, False otherwise. Never raises — a wheel that
+        won't move must not crash an unattended flat run."""
+        import time
+
+        filters = self.available_filters()
+        target = None
+        for f in filters:
+            if str(filter_ref) in (str(f.get("Id")), str(f.get("Name"))):
+                target = f
+                break
+        if target is None:
+            return False
+        fid = target.get("Id")
+        try:
+            self._get(
+                "/equipment/filterwheel/change-filter",
+                params={"filterId": fid},
+                timeout=timeout_s,
+            )
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+        if not wait:
+            return True
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            info = self.filter_wheel_info()
+            sel = info.get("SelectedFilter") or {}
+            if not info.get("IsMoving", False) and str(sel.get("Id")) == str(fid):
+                return True
+            time.sleep(0.5)
+        sel = (self.filter_wheel_info().get("SelectedFilter") or {})
+        return str(sel.get("Id")) == str(fid)

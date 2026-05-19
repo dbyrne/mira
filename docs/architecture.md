@@ -41,6 +41,10 @@ report.py               Research notes, candidate packets, queue CSVs
 
 photometry.py           FITS aperture photometry, multi-comp ensemble,
                         AAVSO Extended File writer
+flats.py                Per-filter flat calibration: drive wheel,
+                        auto-bracket exposure, validated series,
+                        Siril master (data/flats/, gitignored);
+                        resolve_master_for_lights() for stack --auto-flats
 vsp.py                  AAVSO VSP comp-star auto-fetch
 lightcurve.py           matplotlib plots (JD-vs-mag, phase-folded)
                         with AAVSO + prior-session overlays
@@ -103,6 +107,15 @@ data/                                 # gitignored (regenerable)
 │   ├── gaia/<digest>.json
 │   ├── vsp/<digest>.json
 │   └── ztf/<digest>.json
+├── flats/                            # `mira flats` per-filter calibration
+│   └── <filter>_g<gain>_<date>/
+│       ├── raw/<frame>.fits          # validated raw flats
+│       ├── master_flat.fit           # CANONICAL master (Siril calibrate -flat=)
+│       ├── master_flat.tif/_preview.png  # human previews only
+│       └── metadata.json             # filter, gain, exposure, ADU, n_frames
+│   # lights from `mira capture --filter` carry a mira_capture.json
+│   # sidecar; `mira stack --auto-flats` matches it to the master above
+│   # (NINA's FITS carry GAIN but no FILTER keyword — verified)
 └── webapp_runs/                      # webapp state, configurable via --state-dir
     ├── <run_id>.json                 # one per pipeline/photometry run; canonical source of truth
     ├── sessions.db                   # SQLite index of finished photometry sessions
@@ -116,12 +129,15 @@ data/                                 # gitignored (regenerable)
 - `captures/<TARGET>/<DATE>/` is appended to during a NINA session; photometry
   re-writes the AAVSO file + plots in place when the user re-runs.
 - `data/cache/` is purged by `mira cleanup --cache --older-than Nd`.
+- `data/flats/<filter>_g<gain>_<date>/` is written once per `mira flats`
+  run; masters are reusable session-to-session (sealed S30 Pro) until
+  focus/optics change.
 - `data/webapp_runs/<run_id>.json` is the canonical run record. Submitted
   sessions are protected from `cleanup --runs`; everything else ages out.
 - `data/webapp_runs/sessions.db` is a queryable index that can be rebuilt
   any time from the JSON files via `mira migrate-runs`.
 
-**Gitignore:** `data/cache/` and `data/webapp_runs/` are gitignored.
+**Gitignore:** `data/cache/`, `data/flats/`, and `data/webapp_runs/` are gitignored.
 `output/` is *committed* as handoff artifacts so a fresh clone has
 example outputs to inspect.
 

@@ -57,6 +57,28 @@ the comp stars listed in the JSON file, and writes
 `aavso_<TARGET>.txt` (AAVSO Extended File Format) for manual upload at
 https://www.aavso.org/webobs/file.
 
+Per-filter flat calibration (tape paper over the aperture once, then walk away):
+
+```powershell
+mira flats --gain 120 --target-adu 30000 --frames 25
+mira flats --filters LP,IR --gain 120          # explicit subset
+```
+
+The loop closes via the capture sidecar (NINA FITS have no FILTER keyword):
+
+```powershell
+mira capture --ra .. --dec .. --exposure 45 --gain 120 --filter LP --dest captures/x
+mira stack --lights captures/x --out output/x.tif --auto-flats   # resolves LP_g120 master
+```
+
+Drives the NINA filter wheel, auto-brackets exposure (wide geometric scan
+then a linear-model fine refine to ~target ADU), captures a validated
+series per filter, and builds a Siril master flat each into
+`data/flats/<filter>_g<gain>_<date>/` (+ `metadata.json`, gitignored).
+Opaque positions (e.g. a `Dark` blocking filter) are auto-detected and
+skipped. The S30 Pro is a sealed system, so a master flat is reusable
+session-to-session for that filter/gain until focus or optics change.
+
 Fast smoke test:
 
 ```powershell
@@ -118,7 +140,9 @@ Cross-cutting modules:
 - `session_plan.py` produces a phone-readable Markdown plan plus a NINA-importable CSV. Per-target exposure recommendations (`recommended_exposure_plan`) are tuned for the S30 Pro in EQ mode: 5s/15s/30s/60s for bright/mid/faint/very-faint targets. Adjust per actual sky conditions.
 - `config/s30_pro_jc.yaml` is the gear-tuned profile: 30mm OSC sensor reach (`prefer_max_mag: 12`), urban-amplitude floor (`min_catalog_amplitude_mag: 0.20`), no fast eclipsing/short-period types in `include_types`, ZTF disabled.
 - `photometry.py` performs circular-aperture differential photometry on NINA-captured FITS. Requires NINA to have plate-solved (a celestial WCS in headers). Picks the brightest viable comp star per frame, propagates flux errors, writes the AAVSO Extended File Format. Uses `astropy.io.fits` + `astropy.wcs` + `photutils.aperture`. Tested with synthetic FITS that pin the magnitude recovery to within 0.4 mag of planted values.
-- `docs/nina_setup.md` and `docs/photometry.md` walk through the per-night workflow end-to-end (NINA configuration, Target Scheduler plugin, comp-star JSON, submit command). Keep these docs aligned with code changes that affect the workflow.
+- `flats.py` is per-filter flat calibration (`mira flats`). `solve_exposure` is pure (least-squares invert of `median ≈ bias + k·exposure`); saturated samples are filtered out before the fit (the clipped plateau carries no slope and flattens it — a real bug caught in test). `bracket_filter` does a wide geometric scan then a fine refine + a two-shot repeatability gate (the 2026-05-19 session proved a hand-placed diffuse source can be non-repeatable). Two guards are core, not options: **freshness** (image-history `Filename` must change — the `NoState` stale-frame trap returned byte-identical stats twice that night) and **0-stars** (a frame with stars is sky, not a flat). Opaque positions (`Dark`) are auto-detected (near-bias median at the longest exposure) and skipped. Captured frame→file mapping is by image-history `Filename` basename, not newest-mtime (mtime collides when frames are written within one filesystem tick). Pure math + injected client → unit-tested without NINA, mirroring `capture.py`. Masters go to `data/flats/<filter>_g<gain>_<date>/` as `master_flat.fit` (the canonical Siril master; `.tif`/`.png` are previews), gitignored; reusable session-to-session because the S30 Pro is sealed. `mira capture --filter` and `mira tune --filter` select + **confirm** the wheel before shooting and hard-abort if it can't confirm (a multi-hour stack must never silently run through the wrong/no filter — that invalidates flat calibration); the wheel is driven via `nina_client.set_filter`, which never raises.
+- Auto-resolve: NINA's API-capture FITS carry `GAIN` but **no `FILTER`** keyword (verified 2026-05-19 — the same lossy-metadata path as the missing-WCS bug; do not try to read the filter from light FITS). So `mira capture` writes a `mira_capture.json` sidecar (filter/gain/exposure) into the dest dir, and `mira stack --auto-flats` keys off *that* (not the FITS) to resolve the newest matching `data/flats/<filter>_g<gain>_*/master_flat.fit`, feeding Siril the prebuilt master via `calibrate -flat=` (no re-stack). `resolve_master_for_lights` returns `(None, reason)` on any miss and the CLI **hard-aborts** rather than silently stacking without the matched flat; `--flats` (raw dir, Siril rebuilds) still works and overrides. `flat_master` in `build_stack_script` takes precedence over `flats_dir`.
+- `docs/nina_setup.md` and `docs/photometry.md` walk through the per-night workflow end-to-end (NINA configuration, Target Scheduler plugin, comp-star JSON, submit command, per-filter `mira flats`). Keep these docs aligned with code changes that affect the workflow.
 - `webapp/` is a Flask app that wraps the CLI commands as a web UI. Three layers: (1) kick off `tonight` and view the schedule, (2) run photometry on capture directories with live results, (3) live NINA monitoring via the Advanced API plugin. Single user, single machine, no auth. Background tasks via `ThreadPoolExecutor`; in-memory state. HTMX for partial updates so there's no JS framework to maintain. Templates use the same red-light dark-mode CSS as the static `nightly_html.py`.
 - Start it with `mira webapp --output-dir ... --captures-root ... --nina-url http://localhost:1888`. The `serve` subcommand is now a deprecated alias that forwards to `webapp` with default settings.
 - `scheduler.py` builds the prescriptive session schedule via greedy selection: at each step pick the candidate with the highest `score + setting-soon urgency bonus` whose recommended integration fits before its observable window closes. Setting-soon urgency = `max(0, URGENCY_HORIZON_MINUTES - time_until_set)`, which biases toward grabbing targets before they drop. Observable window per candidate is approximated as `best_local_time ± minutes_above_minimum/2`; if a tighter approximation matters later, walk the per-sample altitude data in `observability.py` and store start/end on `Observability`.

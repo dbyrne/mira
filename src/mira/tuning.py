@@ -32,6 +32,8 @@ class _Client(Protocol):
     def capture(self, *, duration: float, gain: int | None = ..., save: bool = ...,
                 solve: bool = ..., target_name: str = ..., timeout_s: float = ...) -> dict: ...
     def latest_image_stats(self) -> dict[str, Any] | None: ...
+    def set_filter(self, filter_ref: str | int, *, wait: bool = ...,
+                    timeout_s: float = ...) -> bool: ...
 
 
 @dataclass
@@ -61,17 +63,28 @@ def run_tune(
     exposures: list[float],
     gains: list[int | None],
     target_name: str = "",
+    filter_name: str | None = None,
     idle_timeout_s: float = 90.0,
     capture_timeout_s: float = 180.0,
     on_step: Callable[[str], None] | None = None,
 ) -> list[FrameStat]:
     """One test frame per (gain, exposure). Per-combo failures are captured
     on the FrameStat.error (the ramp continues — a single bad frame must
-    not abort the dial-in)."""
+    not abort the dial-in). If `filter_name` is given the wheel is selected
+    and CONFIRMED first; an unconfirmed filter aborts the ramp (tuning
+    through the wrong filter would dial in the wrong exposure)."""
 
     def _emit(msg: str) -> None:
         if on_step is not None:
             on_step(msg)
+
+    if filter_name:
+        _emit(f"selecting filter '{filter_name}'...")
+        if not client.set_filter(filter_name, wait=True):
+            _emit(f"filter '{filter_name}' not confirmed by the wheel; "
+                  "aborting tune (refusing to dial in through the wrong filter)")
+            return []
+        _emit(f"filter '{filter_name}' confirmed")
 
     out: list[FrameStat] = []
     for gain in gains:

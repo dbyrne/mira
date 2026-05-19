@@ -136,6 +136,7 @@ def build_stack_script(
     preview_path: Path | None,
     darks_dir: Path | None = None,
     flats_dir: Path | None = None,
+    flat_master: Path | None = None,
     biases_dir: Path | None = None,
     debayer: bool,
     stretch: bool,
@@ -149,6 +150,10 @@ def build_stack_script(
     stacked with multiplicative norm; darks are stacked nonorm. Lights are
     calibrated with whatever masters were supplied (-cc=dark cosmetic
     correction only when a dark is present).
+
+    `flat_master` is a *prebuilt* master flat FITS (from `mira flats`);
+    when given it is applied directly via `calibrate -flat=<file>` with no
+    re-stack, and takes precedence over `flats_dir`.
     """
     lines = [
         "requires 1.2.0",
@@ -172,7 +177,10 @@ def build_stack_script(
     if biases_dir is not None:
         convert("bias", biases_dir)
         lines.append("stack bias rej 3 3 -nonorm -out=bias_stacked")
-    if flats_dir is not None:
+    if flat_master is not None:
+        # Prebuilt master (mira flats): apply as-is, no convert/re-stack.
+        light_master += f" -flat={_outarg(flat_master)}"
+    elif flats_dir is not None:
         convert("flat", flats_dir)
         if biases_dir is not None:
             lines.append("calibrate flat -bias=bias_stacked")

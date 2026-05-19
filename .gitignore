@@ -5,6 +5,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 data/cache/
-data/flats/
+# data/flats/ holds per-filter master flats. The masters themselves are
+# committed — the optical system is sealed so they're reusable across
+# sessions — but the bulky raw frames + Siril scratch are not.
+data/flats/*/raw/
+data/flats/*/_siril_work/
 logs/
 *.egg-info/

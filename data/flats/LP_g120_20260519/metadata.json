@@ -1,0 +1,13 @@
+{
+  "filter": "LP",
+  "gain": 120,
+  "exposure_s": 0.23539436782297984,
+  "target_adu": 30000.0,
+  "measured_median_adu": 30016.0,
+  "n_frames": 50,
+  "n_rejected": 0,
+  "captured_utc": "2026-05-19T16:28:57.661952+00:00",
+  "scope": "Seestar S30 Pro",
+  "recipe": "siril convert + rej stack -norm=mul",
+  "reusable": "sealed optical system \u2014 valid for future captures at this filter/gain until focus/optics change"
+}

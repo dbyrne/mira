@@ -76,6 +76,47 @@ class GetWithRetriesTests(TestCase):
         self.assertEqual(mock_get.call_count, 3)
 
 
+class FetchVsxTargetsOutageTests(TestCase):
+    """fetch_vsx_targets must fail LOUDLY on a total outage instead of
+    returning [] (a silent empty queue the user finds under the sky)."""
+
+    def _cfg(self):
+        from mira.config import VsxQueryConfig
+
+        # ra_bin_degrees=180 -> 2 bins; each bin issues 2 sort queries.
+        return VsxQueryConfig(
+            row_limit=10, ra_bin_degrees=180.0, oversample_factor=1,
+            min_declination_deg=-30.0, max_bright_mag=15.0,
+            require_period=False, include_types=("RR*",),
+        )
+
+    def test_total_outage_raises(self) -> None:
+        with patch.object(vsx, "_get_with_retries", return_value=None):
+            with self.assertRaises(vsx.VsxUnavailableError) as cm:
+                vsx.fetch_vsx_targets(self._cfg())
+        self.assertIn("unreachable", str(cm.exception).lower())
+
+    def test_partial_success_does_not_raise(self) -> None:
+        # Some bins fail, some return rows -> degraded, not fatal.
+        seq = [None, None, _ok_response(SAMPLE_TSV), _ok_response(SAMPLE_TSV)]
+        with patch.object(vsx, "_get_with_retries", side_effect=seq):
+            out = vsx.fetch_vsx_targets(self._cfg())
+        self.assertTrue(out)                       # returned what it could
+
+    def test_queried_ok_but_empty_does_not_raise(self) -> None:
+        # Server reachable, genuinely no matching rows -> [] is legitimate.
+        empty = _ok_response(
+            "OID\tName\tType\tmax\tmin\tn_max\tf_min\tn_min\tPeriod\tSp\t"
+            "RAJ2000\tDEJ2000\nstring\tstring\tstring\tdouble\tdouble\t"
+            "string\tstring\tstring\tdouble\tstring\tdouble\tdouble\n"
+            "deg\tdeg\tdeg\tmag\tmag\t-\t-\t-\td\t-\tdeg\tdeg\n"
+            "----\t----\t----\t----\t----\t----\t----\t----\t----\t----\t"
+            "----\t----\n")
+        with patch.object(vsx, "_get_with_retries", return_value=empty):
+            out = vsx.fetch_vsx_targets(self._cfg())
+        self.assertEqual(out, [])                  # no raise
+
+
 class FetchVsxTargetByNameTests(TestCase):
     def test_exact_case_match_wins_when_multiple_results(self) -> None:
         # When VizieR returns multiple matches (e.g. partial-name search),

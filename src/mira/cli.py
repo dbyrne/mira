@@ -16,10 +16,44 @@ from .report import (
 )
 from .scoring import apply_ztf_score, build_candidates, build_single_candidate, candidate_sort_key
 from .simbad import enrich_candidates_with_simbad, fetch_simbad_match
-from .vsx import fetch_vsx_target_by_name, fetch_vsx_targets
+from .vsx import VsxUnavailableError, fetch_vsx_target_by_name, fetch_vsx_targets
 from .ztf import enrich_with_ztf
 
 _run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _mira_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("mira")
+    except Exception:
+        return "unknown"
+
+
+def _init_field_log() -> None:
+    """Rotating WARN+ log to logs/mira.log so a field failure can be
+    diagnosed offline (no internet, no assistant). Best-effort: a logging
+    setup problem must never stop a command from running."""
+    try:
+        import logging
+        from logging.handlers import RotatingFileHandler
+
+        Path("logs").mkdir(exist_ok=True)
+        root = logging.getLogger()
+        if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+            return
+        handler = RotatingFileHandler(
+            "logs/mira.log", maxBytes=2_000_000, backupCount=3,
+            encoding="utf-8")
+        handler.setLevel(logging.WARNING)
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        root.addHandler(handler)
+        if root.level == logging.NOTSET or root.level > logging.WARNING:
+            root.setLevel(logging.WARNING)
+    except Exception:
+        pass
 
 
 def main() -> None:
@@ -34,7 +68,12 @@ def main() -> None:
         except (AttributeError, ValueError):
             pass
 
+    _init_field_log()
+
     parser = argparse.ArgumentParser(description="Mira — backyard variable-star observing assistant.")
+    parser.add_argument(
+        "--version", action="version", version=f"mira {_mira_version()}",
+        help="Print the installed Mira version and exit.")
     subparsers = parser.add_subparsers(dest="command")
 
     run_parser = subparsers.add_parser("run", help="Fetch VSX targets and generate candidate packets.")
@@ -273,6 +312,17 @@ def main() -> None:
         "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
         help="Where NINA saves FITS (scanned for new frames to copy out).")
 
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Preflight the whole rig: deps, numpy<2.3, Siril, ASTAP, "
+        "GraXpert, NINA API (1888/1889), filter wheel, darkness tonight, "
+        "disk space, config. Run before a session; exits non-zero on any "
+        "hard failure.",
+    )
+    doctor_parser.add_argument("--config", default="config/s30_pro_jc.yaml", help="YAML config to validate + darkness-check.")
+    doctor_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL (also probes :1889).")
+    doctor_parser.add_argument("--captures-root", default="captures", help="Capture drive to check free space on (default ./captures).")
+
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
         help="Walk state_dir/<run_id>.json files and (re-)populate the SQLite session store.",
@@ -368,6 +418,8 @@ def main() -> None:
         capture(args)
     elif args.command == "flats":
         flats(args)
+    elif args.command == "doctor":
+        doctor(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -567,7 +619,13 @@ def run(args: argparse.Namespace) -> None:
     clean_previous_outputs(Path(output_dir))
 
     print(f"Fetching up to {config.vsx_query.row_limit} VSX rows from VizieR...")
-    targets = fetch_vsx_targets(config.vsx_query)
+    try:
+        targets = fetch_vsx_targets(config.vsx_query)
+    except VsxUnavailableError as exc:
+        print(f"\nERROR: {exc}\n"
+              "(Previous outputs in this dir were already cleared. Restore "
+              "connectivity and re-run; nothing else to do here.)")
+        raise SystemExit(1)
     print(f"Fetched {len(targets)} candidate catalog rows.")
 
     start_date = date.fromisoformat(args.start_date) if args.start_date else None
@@ -1109,6 +1167,22 @@ def flats(args: argparse.Namespace) -> None:
         print(line)
 
 
+def doctor(args: argparse.Namespace) -> None:
+    """Preflight the rig. Prints an ASCII report and exits non-zero on any
+    hard failure so bootstrap.ps1 / scripts can gate on it."""
+    from .doctor import format_report, run_doctor, summarize
+
+    checks = run_doctor(
+        config_path=args.config,
+        nina_url=args.nina_url,
+        captures_root=args.captures_root,
+    )
+    print(format_report(checks))
+    _, code = summarize(checks)
+    if code != 0:
+        raise SystemExit(code)
+
+
 def tonight(args: argparse.Namespace) -> None:
     """Drive the shared tonight pipeline; both this and the webapp's
     `/run` POST end up in the same orchestration to avoid drift."""
@@ -1133,7 +1207,13 @@ def tonight(args: argparse.Namespace) -> None:
         archive=False,
         extra_metadata={"run_started_utc": _run_timestamp},
     )
-    result = run_tonight_pipeline(opts, PrintReporter())
+    try:
+        result = run_tonight_pipeline(opts, PrintReporter())
+    except VsxUnavailableError as exc:
+        print(f"\nERROR: {exc}\n"
+              "(No schedule written. Restore internet/tether and re-run "
+              "`mira tonight`.)")
+        raise SystemExit(1)
     if result is None:
         print(
             "Nothing in the next window. Try: increase --hours, run later when "

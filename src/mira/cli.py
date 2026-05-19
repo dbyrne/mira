@@ -208,6 +208,34 @@ def main() -> None:
     tune_parser.add_argument("--ra", type=float, default=None, help="J2000 RA deg — if given with --dec, plate-solve-center there first.")
     tune_parser.add_argument("--dec", type=float, default=None, help="J2000 Dec deg — see --ra.")
 
+    capture_parser = subparsers.add_parser(
+        "capture",
+        help="Deep-capture loop with DITHERING + re-centering. Dithers "
+        "relative to the fixed nominal coords every sub (breaks walking "
+        "noise AND prevents drift); all reposition slews are blind "
+        "(center=False, no Center loop). Stops at twilight / low altitude.",
+    )
+    capture_parser.add_argument("--ra", type=float, required=True, help="J2000 RA deg (nominal target; dithers are relative to this).")
+    capture_parser.add_argument("--dec", type=float, required=True, help="J2000 Dec deg.")
+    capture_parser.add_argument("--exposure", type=float, required=True, help="Sub exposure seconds.")
+    capture_parser.add_argument("--gain", type=int, default=None, help="Gain ('None' = camera default).")
+    capture_parser.add_argument("--dest", required=True, help="Directory to incrementally copy captured subs into.")
+    capture_parser.add_argument("--dither-arcsec", type=float, default=30.0, help="Max dither offset per axis (0 disables). Default 30\".")
+    capture_parser.add_argument("--dither-every", type=int, default=1, help="Dither every N subs (1 = every sub; best for walking noise).")
+    capture_parser.add_argument("--recenter-every", type=int, default=0, help="If NOT dithering, blind re-center to nominal every N subs.")
+    capture_parser.add_argument("--n-max", type=int, default=1000, help="Hard cap on subs (default 1000; guards usually stop first).")
+    capture_parser.add_argument("--alt-floor", type=float, default=30.0, help="Stop when target drops below this altitude (deg).")
+    capture_parser.add_argument("--sun-max", type=float, default=-15.0, help="Stop when Sun rises above this (deg); -15 = astro twilight.")
+    capture_parser.add_argument("--lat", type=float, default=40.7178, help="Site latitude (default Jersey City).")
+    capture_parser.add_argument("--lon", type=float, default=-74.0431, help="Site longitude (default Jersey City).")
+    capture_parser.add_argument("--settle", type=float, default=2.0, help="Seconds to settle after a reposition slew before exposing.")
+    capture_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    capture_parser.add_argument(
+        "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+        help="Where NINA saves FITS (scanned for new subs to copy out).",
+    )
+    capture_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames.")
+
     migrate_parser = subparsers.add_parser(
         "migrate-runs",
         help="Walk state_dir/<run_id>.json files and (re-)populate the SQLite session store.",
@@ -299,6 +327,8 @@ def main() -> None:
         finish(args)
     elif args.command == "tune":
         tune(args)
+    elif args.command == "capture":
+        capture(args)
     elif args.command == "migrate-runs":
         migrate_runs(args)
     elif args.command == "cleanup":
@@ -915,6 +945,42 @@ def tune(args: argparse.Namespace) -> None:
     )
     print()
     print(format_report(results, recommend(results)))
+
+
+def capture(args: argparse.Namespace) -> None:
+    """Deep-capture loop with dithering + re-centering. Dithers relative to
+    the fixed nominal coords (breaks walking noise AND prevents drift);
+    blind reposition slews (no Center loop). Stops at twilight / low alt."""
+    from .capture import altitude_sun_guard, run_capture
+    from .webapp.nina_client import NinaClient
+
+    client = NinaClient(base_url=args.nina_url)
+    guard = altitude_sun_guard(
+        args.ra, args.dec, args.lat, args.lon,
+        alt_floor_deg=args.alt_floor, sun_max_deg=args.sun_max,
+    )
+    print(
+        f"Capture loop: RA {args.ra}, Dec {args.dec}, {args.exposure}s "
+        f"gain={args.gain} dither={args.dither_arcsec}\" every {args.dither_every} "
+        f"-> {args.dest}. Stops at <{args.alt_floor} deg alt or sun >{args.sun_max}."
+    )
+    res = run_capture(
+        client,
+        ra_deg=args.ra, dec_deg=args.dec,
+        exposure_s=args.exposure, gain=args.gain,
+        dest_dir=Path(args.dest), nina_root=Path(args.nina_root),
+        n_max=args.n_max,
+        dither_arcsec=args.dither_arcsec, dither_every=args.dither_every,
+        recenter_every=args.recenter_every, settle_s=args.settle,
+        target_name=args.target_name,
+        should_continue=guard,
+        on_step=lambda m: print(m),
+    )
+    print(
+        f"\nDONE: {res.captured} captured, {res.copied} copied to {res.dest_dir}, "
+        f"{res.dithers} dithers, {res.recenters} re-centers. "
+        f"Stopped: {res.stopped_reason}"
+    )
 
 
 def tonight(args: argparse.Namespace) -> None:

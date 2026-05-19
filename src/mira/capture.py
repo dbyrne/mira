@@ -41,6 +41,8 @@ class _Client(Protocol):
                 solve: bool = ..., target_name: str = ..., timeout_s: float = ...) -> dict: ...
     def set_filter(self, filter_ref: str | int, *, wait: bool = ...,
                     timeout_s: float = ...) -> bool: ...
+    def run_autofocus(self, *, timeout_s: float = ...,
+                       poll_s: float = ...) -> dict: ...
 
 
 @dataclass
@@ -49,6 +51,8 @@ class CaptureResult:
     copied: int = 0
     dithers: int = 0
     recenters: int = 0
+    autofocus_runs: int = 0
+    platesolve_centered: bool = False
     stopped_reason: str = ""
     dest_dir: str = ""
     filter_name: str = ""
@@ -119,6 +123,10 @@ def run_capture(
     slew_timeout_s: float = 180.0,
     target_name: str = "",
     filter_name: str | None = None,
+    platesolve_center: bool = False,
+    autofocus_every_min: int = 0,
+    autofocus_timeout_s: float = 600.0,
+    sidecar_audit: dict[str, Any] | None = None,
     should_continue: Callable[[int], str | None] | None = None,
     on_step: Callable[[str], None] | None = None,
     rng: random.Random | None = None,
@@ -155,20 +163,109 @@ def run_capture(
         res.filter_name = filter_name
         _emit(f"filter '{filter_name}' confirmed")
 
-    # Provenance sidecar so `mira stack --auto-flats` can later match the
-    # right per-filter master (the NINA FITS carry no FILTER keyword).
+    # Provenance sidecar. Two purposes:
+    #  - `mira stack --auto-flats` keys off filter/gain at the top level
+    #    (existing contract — don't move those).
+    #  - Full effective config goes under `config` for post-run audit. The
+    #    same file is rewritten on shutdown with a `result` block so a
+    #    single artifact answers both "what was the intent?" and "what
+    #    happened?". `sidecar_audit` lets the CLI inject site-level fields
+    #    (lat/lon/alt_floor/sun_max/mira_version) that run_capture itself
+    #    doesn't see — they're baked into the should_continue closure.
     from .flats import write_capture_sidecar
+    from . import __version__ as _mira_version
 
-    write_capture_sidecar(
-        dest_dir, filter=res.filter_name, gain=gain, exposure_s=exposure_s,
-        ra_deg=ra_deg, dec_deg=dec_deg, target_name=target_name,
-    )
+    effective_config = {
+        "exposure_s": exposure_s,
+        "gain": gain,
+        "ra_deg": ra_deg,
+        "dec_deg": dec_deg,
+        "filter": res.filter_name or None,
+        "target_name": target_name,
+        "dither_arcsec": dither_arcsec,
+        "dither_every": dither_every,
+        "recenter_every": recenter_every,
+        "n_max": n_max,
+        "settle_s": settle_s,
+        "slew_timeout_s": slew_timeout_s,
+        "platesolve_center": platesolve_center,
+        "autofocus_every_min": autofocus_every_min,
+        "autofocus_timeout_s": autofocus_timeout_s,
+        "nina_root": str(nina_root),
+        "mira_version": _mira_version,
+        **(sidecar_audit or {}),
+    }
+    started_utc = datetime.now(timezone.utc).isoformat()
+
+    def _persist_sidecar() -> None:
+        write_capture_sidecar(
+            dest_dir,
+            filter=res.filter_name, gain=gain, exposure_s=exposure_s,
+            ra_deg=ra_deg, dec_deg=dec_deg, target_name=target_name,
+            config=effective_config,
+            result={
+                "captured": res.captured,
+                "copied": res.copied,
+                "dithers": res.dithers,
+                "recenters": res.recenters,
+                "autofocus_runs": res.autofocus_runs,
+                "platesolve_centered": res.platesolve_centered,
+                "stopped_reason": res.stopped_reason,
+                "started_utc": started_utc,
+                "ended_utc": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    _persist_sidecar()
+
+    # Pre-loop plate-solve-center. The in-loop slews are all blind
+    # (center=False) by design — that's correct for *staying* on target
+    # (anchored dither prevents drift) but does nothing to verify we got
+    # *to* the target in the first place. One synchronous Center here pins
+    # the mount to the actual nominal coords, which is also what subsequent
+    # nights need to re-acquire identical framing in a multi-night run.
+    if platesolve_center:
+        _emit("plate-solve centering on nominal coords...")
+        try:
+            client.slew(ra_deg, dec_deg, center=True, wait=True,
+                        timeout=max(slew_timeout_s, 300.0))
+            res.platesolve_centered = True
+            _emit("  plate-solve center done")
+        except Exception as exc:
+            _emit(f"  plate-solve center FAILED (continuing with blind slews): {exc}")
+
+    # Autofocus schedule. Wall-clock based (NOT sub-count) because the loop
+    # stop time is dynamic — alt-floor / sun-rise guards can cut a planned
+    # 3-hour session to 90 minutes. A sub-count "every N frames" or quartile
+    # schedule would land the last 2-3 AF runs after we've already stopped.
+    af_interval_s = max(0, int(autofocus_every_min)) * 60.0
+    next_af_at = 0.0  # 0 == "fire now (pre-loop)"; only meaningful if af_interval_s > 0
+
+    def _try_autofocus(reason: str) -> None:
+        nonlocal next_af_at
+        _emit(f"autofocus run ({reason})...")
+        try:
+            client.run_autofocus(timeout_s=autofocus_timeout_s)
+            res.autofocus_runs += 1
+            _emit("  autofocus done")
+        except Exception as exc:  # noqa: BLE001 — fail-soft
+            _emit(f"  autofocus FAILED (continuing with last-known focus): {exc}")
+        # Schedule next AF from "now" even on failure, so a transient
+        # cloud-induced AF abort doesn't trigger immediate retry storms.
+        next_af_at = time.monotonic() + af_interval_s
+
+    if af_interval_s > 0:
+        _try_autofocus("pre-loop")
 
     exp_tag = f"{float(exposure_s):.2f}s"
     seen = set(glob.glob(os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*"),
                          recursive=True))
 
     for i in range(1, n_max + 1):
+        # Periodic AF (wall-clock). Skipped on i==1 because pre-loop already
+        # fired one moments ago; from i=2 onward we just check elapsed time.
+        if af_interval_s > 0 and i > 1 and time.monotonic() >= next_af_at:
+            _try_autofocus(f"+{autofocus_every_min}min")
         if should_continue is not None:
             reason = should_continue(i)
             if reason:
@@ -225,4 +322,5 @@ def run_capture(
 
     if not res.stopped_reason:
         res.stopped_reason = f"reached n_max={n_max}"
+    _persist_sidecar()
     return res

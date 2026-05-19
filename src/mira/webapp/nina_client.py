@@ -399,6 +399,46 @@ class NinaClient:
         hist = self.image_history()
         return hist[-1] if hist else None
 
+    # -- focuser / autofocus ----------------------------------------------
+
+    def run_autofocus(
+        self,
+        *,
+        timeout_s: float = 600.0,
+        poll_s: float = 5.0,
+        min_wait_s: float = 20.0,
+    ) -> dict[str, Any]:
+        """Trigger NINA's autofocus run and block until it finishes.
+
+        `/equipment/focuser/auto-focus` is fire-and-forget (the plugin returns
+        "Autofocus started" immediately and the run happens on a background
+        task). We detect completion by polling `/equipment/focuser/last-af`
+        and watching for a report file newer than the one that existed before
+        we started. Returns that fresh report. Raises TimeoutError if AF
+        hasn't completed within `timeout_s`. `min_wait_s` is a floor (AF
+        always takes at least ~20s; polling sooner just wastes calls)."""
+        import time
+
+        def _last_af_signature() -> Any:
+            try:
+                rep = self._get("/equipment/focuser/last-af", timeout=10.0).get("Response")
+                if isinstance(rep, dict):
+                    return rep.get("Timestamp") or rep.get("Time") or rep.get("Date") or rep
+                return rep
+            except (requests.RequestException, ValueError, TypeError):
+                return None
+
+        baseline = _last_af_signature()
+        self._get("/equipment/focuser/auto-focus", timeout=30.0)
+        time.sleep(min_wait_s)
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            cur = _last_af_signature()
+            if cur is not None and cur != baseline:
+                return self._get("/equipment/focuser/last-af", timeout=10.0)
+            time.sleep(poll_s)
+        raise TimeoutError(f"autofocus did not complete within {timeout_s:.0f}s")
+
     # -- filter wheel ------------------------------------------------------
 
     def filter_wheel_info(self) -> dict[str, Any]:

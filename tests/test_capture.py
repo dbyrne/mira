@@ -21,12 +21,14 @@ from mira.capture import (
 
 
 class FakeClient:
-    def __init__(self, fail_slew_on=(), fail_filter=False):
+    def __init__(self, fail_slew_on=(), fail_filter=False, fail_autofocus=False):
         self.slews: list[tuple] = []  # (ra,dec,center)
         self.captures: list[dict] = []
         self.filters: list[str] = []
+        self.autofocus_calls: list[str] = []  # records each AF trigger
         self._fail = set(fail_slew_on)
         self._fail_filter = fail_filter
+        self._fail_autofocus = fail_autofocus
         self._n = 0
         self.nina_root: Path | None = None
         self.exp_tag = ""
@@ -55,6 +57,12 @@ class FakeClient:
             d.mkdir(parents=True, exist_ok=True)
             (d / f"2026_{self.exp_tag}_{self._n:04d}.fits").write_text("x")
         return {"Response": "Capture started"}
+
+    def run_autofocus(self, *, timeout_s=600.0, poll_s=5.0):
+        self.autofocus_calls.append(f"af#{len(self.autofocus_calls) + 1}")
+        if self._fail_autofocus:
+            raise RuntimeError("AF boom")
+        return {"Response": {"HFR": 2.4}}
 
 
 class TestDitherMath(TestCase):
@@ -171,6 +179,81 @@ class TestRunCaptureDither(TestCase):
             meta = json.loads(sidecar.read_text())
             self.assertEqual(meta["filter"], "IR")
             self.assertEqual(meta["gain"], 120)
+
+    def test_platesolve_center_runs_once_before_loop_and_is_centered(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=2, dither_arcsec=10.0,
+                                platesolve_center=True)
+            # First slew is the plate-solve center call: center=True, on
+            # exact nominal coords. All subsequent slews are blind dithers.
+            self.assertGreaterEqual(len(c.slews), 1)
+            ra0, dec0, center0 = c.slews[0]
+            self.assertEqual((ra0, dec0, center0), (200.0, 40.0, True))
+            for _, _, center in c.slews[1:]:
+                self.assertFalse(center)  # dithers stay blind
+            self.assertTrue(res.platesolve_centered)
+            self.assertEqual(res.captured, 2)
+
+    def test_platesolve_failure_does_not_abort_run(self) -> None:
+        with TemporaryDirectory() as d:
+            # First slew is the plate-solve center; force it to fail.
+            c, res = self._run(d, n_max=2, dither_arcsec=10.0,
+                                platesolve_center=True,
+                                client_kw={"fail_slew_on": (1,)})
+            self.assertFalse(res.platesolve_centered)
+            self.assertEqual(res.captured, 2)       # loop continued anyway
+
+    def test_autofocus_fires_pre_loop_when_enabled(self) -> None:
+        with TemporaryDirectory() as d:
+            # Big interval -> only the pre-loop AF should fire in a 3-sub run.
+            c, res = self._run(d, n_max=3, dither_arcsec=0.0,
+                                autofocus_every_min=60)
+            self.assertEqual(len(c.autofocus_calls), 1)
+            self.assertEqual(res.autofocus_runs, 1)
+
+    def test_autofocus_disabled_when_zero(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=3, dither_arcsec=0.0,
+                                autofocus_every_min=0)
+            self.assertEqual(len(c.autofocus_calls), 0)
+            self.assertEqual(res.autofocus_runs, 0)
+
+    def test_sidecar_records_effective_config_and_result(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(
+                d, n_max=3, dither_arcsec=20.0,
+                filter_name="LP", platesolve_center=True,
+                autofocus_every_min=60,
+                sidecar_audit={"lat_deg": 40.72, "alt_floor_deg": 30.0},
+            )
+            sidecar = json.loads(
+                (Path(d) / "dest" / "mira_capture.json").read_text())
+            # Backward-compat fields stay at the top level (resolve_master_for_lights
+            # keys off these).
+            self.assertEqual(sidecar["filter"], "LP")
+            self.assertEqual(sidecar["gain"], 120)
+            # Effective config — both run_capture params and CLI-injected audit.
+            cfg = sidecar["config"]
+            self.assertEqual(cfg["dither_arcsec"], 20.0)
+            self.assertTrue(cfg["platesolve_center"])
+            self.assertEqual(cfg["autofocus_every_min"], 60)
+            self.assertEqual(cfg["lat_deg"], 40.72)         # from sidecar_audit
+            self.assertIn("mira_version", cfg)               # injected automatically
+            # Result block reflects what actually happened.
+            self.assertEqual(sidecar["result"]["captured"], 3)
+            self.assertEqual(sidecar["result"]["autofocus_runs"], 1)
+            self.assertTrue(sidecar["result"]["platesolve_centered"])
+            self.assertIn("started_utc", sidecar["result"])
+            self.assertIn("ended_utc", sidecar["result"])
+
+    def test_autofocus_failure_does_not_kill_run(self) -> None:
+        with TemporaryDirectory() as d:
+            c, res = self._run(d, n_max=2, dither_arcsec=0.0,
+                                autofocus_every_min=60,
+                                client_kw={"fail_autofocus": True})
+            self.assertEqual(len(c.autofocus_calls), 1)   # attempted
+            self.assertEqual(res.autofocus_runs, 0)       # but didn't count
+            self.assertEqual(res.captured, 2)             # loop continued
 
 
 class TestGuard(TestCase):

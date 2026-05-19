@@ -287,6 +287,9 @@ def main() -> None:
     )
     capture_parser.add_argument("--target-name", default="", help="Label stamped into NINA filenames.")
     capture_parser.add_argument("--filter", default=None, help="Filter wheel position to select + confirm before the loop. Aborts before any capture if the wheel can't confirm it (won't shoot a multi-hour stack through the wrong/no filter).")
+    capture_parser.add_argument("--platesolve-center", action="store_true", help="Before the loop, slew with NINA's plate-solve Center to pin the mount on the requested RA/Dec. Establishes the framing reference (essential for multi-night runs at the same target). Fails soft: a failed center logs a warning, loop proceeds with the blind anchored-dither.")
+    capture_parser.add_argument("--autofocus-every-min", type=int, default=0, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
+    capture_parser.add_argument("--autofocus-timeout-s", type=float, default=600.0, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
 
     flats_parser = subparsers.add_parser(
         "flats",
@@ -1113,12 +1116,28 @@ def capture(args: argparse.Namespace) -> None:
         recenter_every=args.recenter_every, settle_s=args.settle,
         target_name=args.target_name,
         filter_name=args.filter,
+        platesolve_center=args.platesolve_center,
+        autofocus_every_min=args.autofocus_every_min,
+        autofocus_timeout_s=args.autofocus_timeout_s,
+        # Fields the loop itself doesn't see (they're baked into the
+        # altitude_sun_guard closure or the NinaClient base_url) — pipe them
+        # into the sidecar's audit block so the run is fully reproducible.
+        sidecar_audit={
+            "alt_floor_deg": args.alt_floor,
+            "sun_max_deg": args.sun_max,
+            "lat_deg": args.lat,
+            "lon_deg": args.lon,
+            "nina_url": args.nina_url,
+            "dest_dir": str(Path(args.dest).resolve()),
+        },
         should_continue=guard,
         on_step=lambda m: print(m),
     )
     print(
         f"\nDONE: {res.captured} captured, {res.copied} copied to {res.dest_dir}, "
-        f"{res.dithers} dithers, {res.recenters} re-centers"
+        f"{res.dithers} dithers, {res.recenters} re-centers, "
+        f"{res.autofocus_runs} AF runs"
+        f"{', plate-solve-centered' if res.platesolve_centered else ''}"
         f"{', filter=' + res.filter_name if res.filter_name else ''}. "
         f"Stopped: {res.stopped_reason}"
     )

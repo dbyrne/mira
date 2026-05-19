@@ -1,0 +1,13 @@
+{
+  "filter": "IR",
+  "gain": 120,
+  "exposure_s": 1.3813299540786166,
+  "target_adu": 30000.0,
+  "measured_median_adu": 30360.0,
+  "n_frames": 25,
+  "n_rejected": 0,
+  "captured_utc": "2026-05-19T17:06:22.876136+00:00",
+  "scope": "Seestar S30 Pro",
+  "recipe": "siril convert + rej stack -norm=mul",
+  "reusable": "sealed optical system \u2014 valid for future captures at this filter/gain until focus/optics change"
+}

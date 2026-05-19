@@ -11,6 +11,7 @@ from mira.cli import (
     CAPTURE_BUILTIN_DEFAULTS,
     CAPTURE_REQUIRED,
     _load_session_profile,
+    _load_site_capture_defaults,
     resolve_capture_config,
 )
 
@@ -38,6 +39,26 @@ class TestResolveCaptureConfig(TestCase):
         self.assertEqual(cfg["dither_every"], 4)             # session wins (no CLI)
         self.assertEqual(cfg["recenter_every"],               # builtin (neither set)
                           CAPTURE_BUILTIN_DEFAULTS["recenter_every"])
+
+    def test_full_precedence_cli_session_site_builtin(self) -> None:
+        args = _ns(lat=10.0)                                  # CLI
+        session = {"lat": 20.0, "lon": 30.0}                  # session
+        site = {"lat": 40.0, "lon": 50.0, "nina_root": "/N"}  # site config
+        cfg = resolve_capture_config(args, session=session, site=site)
+        self.assertEqual(cfg["lat"], 10.0)                    # CLI wins
+        self.assertEqual(cfg["lon"], 30.0)                    # session beats site
+        self.assertEqual(cfg["nina_root"], "/N")              # site beats builtin
+        # builtin path: setting that none of CLI/session/site touched
+        self.assertEqual(cfg["dither_arcsec"],
+                          CAPTURE_BUILTIN_DEFAULTS["dither_arcsec"])
+
+    def test_site_only_satisfies_no_required_field(self) -> None:
+        # capture_defaults is for site/rig constants, NOT target identity.
+        # ra/dec/exposure/dest must still come from session or CLI.
+        site = {"lat": 40.0, "lon": -74.0, "nina_root": "/N"}
+        cfg = resolve_capture_config(_ns(), session={}, site=site)
+        missing = [k for k in CAPTURE_REQUIRED if cfg.get(k) is None]
+        self.assertEqual(set(missing), set(CAPTURE_REQUIRED))
 
     def test_session_fills_required_fields(self) -> None:
         args = _ns()
@@ -96,6 +117,51 @@ class TestLoadSessionProfile(TestCase):
             p = Path(d) / "empty.yaml"
             p.write_text("# only comments\n", encoding="utf-8")
             self.assertEqual(_load_session_profile(str(p)), {})
+
+
+class TestLoadSiteCaptureDefaults(TestCase):
+    def test_returns_empty_when_path_is_none(self) -> None:
+        self.assertEqual(_load_site_capture_defaults(None), {})
+
+    def test_reads_capture_defaults_section_only(self) -> None:
+        with TemporaryDirectory() as d:
+            p = Path(d) / "site.yaml"
+            p.write_text(
+                "sites:\n  - name: anywhere\n"
+                "capture_defaults:\n  lat: 40.7178\n  nina_root: /tmp/N\n",
+                encoding="utf-8",
+            )
+            site = _load_site_capture_defaults(str(p))
+            self.assertEqual(site, {"lat": 40.7178, "nina_root": "/tmp/N"})
+
+    def test_missing_section_returns_empty(self) -> None:
+        with TemporaryDirectory() as d:
+            p = Path(d) / "site.yaml"
+            p.write_text("sites:\n  - name: anywhere\n", encoding="utf-8")
+            self.assertEqual(_load_site_capture_defaults(str(p)), {})
+
+    def test_non_mapping_section_is_a_clear_error(self) -> None:
+        with TemporaryDirectory() as d:
+            p = Path(d) / "site.yaml"
+            p.write_text("capture_defaults:\n  - 1\n  - 2\n", encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                _load_site_capture_defaults(str(p))
+            self.assertIn("capture_defaults", str(cm.exception))
+
+
+class TestShippedSiteConfig(TestCase):
+    """Smoke test config/s30_pro_jc.yaml carries the right capture_defaults
+    so a `mira capture --config config/s30_pro_jc.yaml --session
+    targets/m51.yaml --dest …` invocation needs no other flags."""
+
+    def test_s30_pro_jc_capture_defaults_complete(self) -> None:
+        path = Path(__file__).parent.parent / "config" / "s30_pro_jc.yaml"
+        site = _load_site_capture_defaults(str(path))
+        for k in ("lat", "lon", "nina_url", "nina_root",
+                  "alt_floor", "sun_max", "settle"):
+            self.assertIn(k, site, f"capture_defaults missing {k}")
+        # The on-this-laptop nina_root must NOT be the OneDrive default.
+        self.assertNotIn("OneDrive", site["nina_root"])
 
 
 class TestShippedM51Profile(TestCase):

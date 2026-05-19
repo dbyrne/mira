@@ -122,3 +122,19 @@ ztf:
 output:
   directory: output/s30_pro_jc
   top_packets: 15
+
+# Site/rig constants consumed by `mira capture --config config/s30_pro_jc.yaml`
+# (lowest-priority tier; CLI flags + session profiles still win). Lets session
+# YAMLs and CLI invocations stay terse — the things that don't change per run
+# live here. nina_root is the literal path NINA saves into on this laptop
+# (verified 2026-05-19 — NOT the OneDrive\Documents default in cli.py's
+# CAPTURE_BUILTIN_DEFAULTS, which is the wrong-host fallback).
+capture_defaults:
+  lat: 40.7178
+  lon: -74.0431
+  nina_url: http://localhost:1888
+  nina_root: "C:/Users/david/Documents/N.I.N.A"
+  alt_floor: 30.0
+  sun_max: -15.0
+  settle: 2.0
+  n_max: 1000

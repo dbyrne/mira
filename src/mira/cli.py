@@ -272,6 +272,7 @@ def main() -> None:
     # builtin default value". A session profile (--session) fills the gaps;
     # CAPTURE_BUILTIN_DEFAULTS is the final fallback. Precedence:
     # CLI > session > builtin.
+    capture_parser.add_argument("--config", default=None, help="Path to a mira site-config YAML (e.g. config/s30_pro_jc.yaml). Its `capture_defaults` section provides rig/site constants (lat, lon, nina_root, alt_floor, ...). Lowest-priority tier of the four (CLI > session > config > builtin).")
     capture_parser.add_argument("--session", default=None, help="Path to a session profile YAML (e.g. targets/m51.yaml). Any flag the user does NOT pass on the CLI is taken from this file. The four required fields (--ra / --dec / --exposure / --dest) can also live there.")
     capture_parser.add_argument("--ra", type=float, default=None, help="J2000 RA deg (nominal target; dithers are relative to this).")
     capture_parser.add_argument("--dec", type=float, default=None, help="J2000 Dec deg.")
@@ -1120,28 +1121,53 @@ CAPTURE_REQUIRED: tuple[str, ...] = ("ra", "dec", "exposure", "dest")
 def resolve_capture_config(
     args: argparse.Namespace,
     session: dict[str, Any] | None = None,
+    site: dict[str, Any] | None = None,
     builtin: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Three-tier merge for `mira capture` args. CLI > session profile >
-    builtin default. Missing values stay missing (caller validates required
-    fields). `session` is the parsed YAML from --session; `builtin` defaults
-    to CAPTURE_BUILTIN_DEFAULTS but is overridable for testing.
+    """Four-tier merge for `mira capture` args. Precedence (highest first):
+    CLI > session profile > site config > builtin default. Missing values
+    stay missing (caller validates required fields). `session` / `site` are
+    parsed YAML mappings; `builtin` defaults to CAPTURE_BUILTIN_DEFAULTS.
 
     Keys are the argparse dest names (underscored, e.g. `dither_arcsec`).
     """
     session = session or {}
+    site = site or {}
     builtin = CAPTURE_BUILTIN_DEFAULTS if builtin is None else builtin
     out: dict[str, Any] = {}
-    keys = set(CAPTURE_REQUIRED) | set(builtin) | set(session)
+    keys = set(CAPTURE_REQUIRED) | set(builtin) | set(session) | set(site)
     for key in keys:
         cli_val = getattr(args, key, None)
         if cli_val is not None:
             out[key] = cli_val
         elif key in session:
             out[key] = session[key]
+        elif key in site:
+            out[key] = site[key]
         else:
             out[key] = builtin.get(key)
     return out
+
+
+def _load_site_capture_defaults(path: str | None) -> dict[str, Any]:
+    """Read the `capture_defaults` section out of a mira config YAML
+    (the same file `mira run --config` uses, e.g. config/s30_pro_jc.yaml).
+    Site-level constants (lat/lon, nina_url, nina_root, alt_floor, ...)
+    live here so they don't have to be repeated in every session profile
+    and every CLI invocation. Missing section -> empty mapping."""
+    if not path:
+        return {}
+    import yaml  # local import keeps mira-cli import cheap when unused
+    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return {}
+    section = raw.get("capture_defaults") or {}
+    if not isinstance(section, dict):
+        raise SystemExit(
+            f"--config {path}: `capture_defaults` must be a mapping, got "
+            f"{type(section).__name__}"
+        )
+    return {str(k).replace("-", "_"): v for k, v in section.items()}
 
 
 def _load_session_profile(path: str | None) -> dict[str, Any]:
@@ -1169,7 +1195,11 @@ def capture(args: argparse.Namespace) -> None:
     from .capture import altitude_sun_guard, run_capture
     from .webapp.nina_client import NinaClient
 
-    cfg = resolve_capture_config(args, session=_load_session_profile(args.session))
+    cfg = resolve_capture_config(
+        args,
+        session=_load_session_profile(args.session),
+        site=_load_site_capture_defaults(args.config),
+    )
     missing = [k for k in CAPTURE_REQUIRED if cfg.get(k) is None]
     if missing:
         flags = ", ".join(f"--{m.replace('_', '-')}" for m in missing)
@@ -1215,6 +1245,7 @@ def capture(args: argparse.Namespace) -> None:
             "lon_deg": cfg["lon"],
             "nina_url": cfg["nina_url"],
             "session_profile": args.session,
+            "site_config": args.config,
             "dest_dir": str(Path(cfg["dest"]).resolve()),
         },
         should_continue=guard,

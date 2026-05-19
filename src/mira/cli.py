@@ -308,19 +308,22 @@ def main() -> None:
         "opaque positions (e.g. a Dark filter). Freshness + 0-stars "
         "guards reject stale/sky frames.",
     )
+    # Defaults are None so resolve_flats_config can distinguish user-set from
+    # not-set. Final fallback values live in FLATS_BUILTIN_DEFAULTS.
+    flats_parser.add_argument("--config", default=None, help="Mira site-config YAML (e.g. config/s30_pro_jc.yaml). Provides nina_url/nina_root/gain from the `capture_defaults` section so flats and capture share the same site truth — no more `--nina-root` per invocation.")
     flats_parser.add_argument(
         "--filters", default=None,
         help="Comma list of filter names (default: every wheel position, "
         "auto-discovered; opaque ones are detected and skipped).")
-    flats_parser.add_argument("--gain", type=int, default=120, help="Gain (match your lights' gain; default 120).")
-    flats_parser.add_argument("--target-adu", type=float, default=30000.0, help="Target median ADU for the flats (default 30000).")
-    flats_parser.add_argument("--frames", type=int, default=25, help="Frames per filter (default 25).")
-    flats_parser.add_argument("--min-exp", type=float, default=0.005, help="Shortest bracket exposure, sec (camera floor; default 0.005).")
-    flats_parser.add_argument("--max-exp", type=float, default=30.0, help="Longest bracket exposure, sec (default 30).")
-    flats_parser.add_argument("--out", default="data/flats", help="Root dir for masters (default data/flats; gitignored).")
-    flats_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    flats_parser.add_argument("--gain", type=int, default=None, help="Gain (match your lights' gain; default 120).")
+    flats_parser.add_argument("--target-adu", type=float, default=None, help="Target median ADU for the flats (default 30000).")
+    flats_parser.add_argument("--frames", type=int, default=None, help="Frames per filter (default 25).")
+    flats_parser.add_argument("--min-exp", type=float, default=None, help="Shortest bracket exposure, sec (camera floor; default 0.005).")
+    flats_parser.add_argument("--max-exp", type=float, default=None, help="Longest bracket exposure, sec (default 30).")
+    flats_parser.add_argument("--out", default=None, help="Root dir for masters (default data/flats; gitignored).")
+    flats_parser.add_argument("--nina-url", default=None, help="NINA Advanced API base URL.")
     flats_parser.add_argument(
-        "--nina-root", default=r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+        "--nina-root", default=None,
         help="Where NINA saves FITS (scanned for new frames to copy out).")
 
     doctor_parser = subparsers.add_parser(
@@ -1149,6 +1152,42 @@ def resolve_capture_config(
     return out
 
 
+FLATS_BUILTIN_DEFAULTS: dict[str, Any] = {
+    "gain": 120,
+    "target_adu": 30000.0,
+    "frames": 25,
+    "min_exp": 0.005,
+    "max_exp": 30.0,
+    "out": "data/flats",
+    "nina_url": "http://localhost:1888",
+    "nina_root": r"C:\Users\david\OneDrive\Documents\N.I.N.A",
+    "filters": None,
+}
+
+
+def resolve_flats_config(
+    args: argparse.Namespace,
+    site: dict[str, Any] | None = None,
+    builtin: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Three-tier merge for `mira flats` args: CLI > site config > builtin.
+    Reads from the same `capture_defaults` section as `mira capture` —
+    nina_url/nina_root/gain are universal NINA-driven defaults, not
+    capture-specific."""
+    site = site or {}
+    builtin = FLATS_BUILTIN_DEFAULTS if builtin is None else builtin
+    out: dict[str, Any] = {}
+    for key in set(builtin) | set(site):
+        cli_val = getattr(args, key, None)
+        if cli_val is not None:
+            out[key] = cli_val
+        elif key in site:
+            out[key] = site[key]
+        else:
+            out[key] = builtin.get(key)
+    return out
+
+
 def _load_site_capture_defaults(path: str | None) -> dict[str, Any]:
     """Read the `capture_defaults` section out of a mira config YAML
     (the same file `mira run --config` uses, e.g. config/s30_pro_jc.yaml).
@@ -1268,28 +1307,32 @@ def flats(args: argparse.Namespace) -> None:
     from .flats import run_flats
     from .webapp.nina_client import NinaClient
 
-    client = NinaClient(base_url=args.nina_url)
+    cfg = resolve_flats_config(
+        args, site=_load_site_capture_defaults(args.config))
+    client = NinaClient(base_url=cfg["nina_url"])
     filters = (
-        [s.strip() for s in args.filters.split(",") if s.strip()]
-        if args.filters else None
+        [s.strip() for s in cfg["filters"].split(",") if s.strip()]
+        if cfg["filters"] else None
     )
     discovered = [f.get("Name") for f in client.available_filters()]
     if not discovered:
         print("No filter wheel reported by NINA at "
-              f"{args.nina_url}. Is it connected? Aborting.")
+              f"{cfg['nina_url']}. Is it connected? Aborting.")
         return
     print(
         f"Filter wheel: {discovered}. Flats for "
-        f"{filters or 'ALL (opaque auto-skipped)'} @ gain {args.gain}, "
-        f"target {args.target_adu:.0f} ADU, {args.frames} frames each.\n"
+        f"{filters or 'ALL (opaque auto-skipped)'} @ gain {cfg['gain']}, "
+        f"target {cfg['target_adu']:.0f} ADU, {cfg['frames']} frames each.\n"
         "Paper must stay taped over the aperture for the whole run."
     )
+    if args.config:
+        print(f"(site config: {args.config})")
     res = run_flats(
         client,
-        filters=filters, gain=args.gain, target_adu=args.target_adu,
-        frames=args.frames, out_root=Path(args.out),
-        nina_root=Path(args.nina_root),
-        min_exp=args.min_exp, max_exp=args.max_exp,
+        filters=filters, gain=cfg["gain"], target_adu=cfg["target_adu"],
+        frames=cfg["frames"], out_root=Path(cfg["out"]),
+        nina_root=Path(cfg["nina_root"]),
+        min_exp=cfg["min_exp"], max_exp=cfg["max_exp"],
         on_step=lambda m: print(m),
     )
     print("\n=== flats summary ===")

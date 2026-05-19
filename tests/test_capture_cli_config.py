@@ -10,9 +10,11 @@ from unittest import TestCase
 from mira.cli import (
     CAPTURE_BUILTIN_DEFAULTS,
     CAPTURE_REQUIRED,
+    FLATS_BUILTIN_DEFAULTS,
     _load_session_profile,
     _load_site_capture_defaults,
     resolve_capture_config,
+    resolve_flats_config,
 )
 
 
@@ -162,6 +164,34 @@ class TestShippedSiteConfig(TestCase):
             self.assertIn(k, site, f"capture_defaults missing {k}")
         # The on-this-laptop nina_root must NOT be the OneDrive default.
         self.assertNotIn("OneDrive", site["nina_root"])
+
+
+class TestResolveFlatsConfig(TestCase):
+    def _flats_ns(self, **kw):
+        return argparse.Namespace(**{**{
+            "gain": None, "target_adu": None, "frames": None,
+            "min_exp": None, "max_exp": None, "out": None,
+            "nina_url": None, "nina_root": None, "filters": None,
+        }, **kw})
+
+    def test_cli_wins_over_site_wins_over_builtin(self) -> None:
+        args = self._flats_ns(gain=200)
+        site = {"gain": 100, "nina_root": "/sN"}
+        cfg = resolve_flats_config(args, site=site)
+        self.assertEqual(cfg["gain"], 200)              # CLI wins
+        self.assertEqual(cfg["nina_root"], "/sN")        # site wins (no CLI)
+        self.assertEqual(cfg["target_adu"],
+                          FLATS_BUILTIN_DEFAULTS["target_adu"])  # builtin
+
+    def test_site_capture_defaults_are_the_shared_section(self) -> None:
+        """Sharing `capture_defaults` between capture and flats means a
+        single edit to s30_pro_jc.yaml's nina_root fixes both subcommands.
+        The shipped config carries the right path for THIS laptop."""
+        path = Path(__file__).parent.parent / "config" / "s30_pro_jc.yaml"
+        site = _load_site_capture_defaults(str(path))
+        cfg = resolve_flats_config(self._flats_ns(), site=site)
+        self.assertNotIn("OneDrive", cfg["nina_root"])   # was the long-standing bug
+        self.assertEqual(cfg["nina_url"], "http://localhost:1888")
 
 
 class TestShippedM51Profile(TestCase):

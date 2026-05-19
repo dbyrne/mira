@@ -5,8 +5,9 @@
 
 .DESCRIPTION
   Installs the NATIVE Mira processing stack on a clean Windows laptop:
-  Python 3.11 venv + pinned deps, verifies Siril and ASTAP, optionally
-  GraXpert, then runs `mira doctor`.
+  Python 3.11 venv + pinned deps, Siril 1.4.3 (official installer; winget's
+  Free-Astro.Siril is stuck at 1.2.6), ASTAP CLI (via SourceForge), optionally
+  GraXpert and the D50 star DB, then runs `mira doctor`.
 
   It deliberately DOES NOT install NINA / ASCOM / the Seestar driver:
   those are interactive Windows GUI installs with plugins and pairing,
@@ -18,13 +19,19 @@
   finish` AI steps need it. numpy is re-pinned to 2.2.6 afterwards
   because GraXpert can drag in an incompatible numpy.
 
+.PARAMETER WithStarDB
+  Also download + install the ASTAP D50 star database (~870 MB). Without
+  it ASTAP solves return "No solution". Skip on metered connections.
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -WithFinishing
+  powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -WithFinishing -WithStarDB
 #>
 [CmdletBinding()]
 param(
-    [switch]$WithFinishing
+    [switch]$WithFinishing,
+    [switch]$WithStarDB
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +42,35 @@ function Say($msg)  { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Ok($msg)   { Write-Host "    [ok] $msg" -ForegroundColor Green }
 function Warn($msg) { Write-Host "    [warn] $msg" -ForegroundColor Yellow }
 function Have($name) { return [bool](Get-Command $name -ErrorAction SilentlyContinue) }
+
+function Add-ToUserPath($dir) {
+    # Idempotent: append $dir to the user PATH if it isn't already there. Affects
+    # future shells only; the current process PATH is updated in-place too so the
+    # rest of this script can invoke the binary by name.
+    $cur = [Environment]::GetEnvironmentVariable("Path","User")
+    if ($cur -notlike "*$dir*") {
+        [Environment]::SetEnvironmentVariable("Path", "$cur;$dir", "User")
+        Ok "added $dir to user PATH (new shells only)"
+    }
+    if ($env:Path -notlike "*$dir*") { $env:Path = "$env:Path;$dir" }
+}
+
+function Get-SourceForgeFile($projectPath, $outFile) {
+    # SourceForge's /download URL serves an HTML interstitial with a meta-refresh
+    # to a one-time mirror-token URL. Fetch the interstitial, extract the token,
+    # download the real file. $projectPath is e.g. "windows_installer/astap_setup.exe".
+    $interstitial = "https://sourceforge.net/projects/astap-program/files/$projectPath/download"
+    $page = Invoke-WebRequest -Uri $interstitial -UseBasicParsing -UserAgent "Mozilla/5.0"
+    if ($page.Content -notmatch 'content="\d+;\s*url=([^"]+)"') {
+        throw "SourceForge interstitial parse failed for $projectPath"
+    }
+    $real = $matches[1] -replace '&amp;','&'
+    Invoke-WebRequest -Uri $real -OutFile $outFile -UseBasicParsing -MaximumRedirection 10 -UserAgent "Mozilla/5.0"
+    $bytes = [System.IO.File]::ReadAllBytes($outFile) | Select-Object -First 2
+    if (-not ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A)) {
+        throw "Downloaded $outFile is not a PE binary (got an HTML page?)"
+    }
+}
 
 Say "Mira bootstrap (repo: $repo)"
 Write-Host "    This installs the native Mira stack. It does NOT install" -ForegroundColor DarkGray
@@ -91,39 +127,71 @@ if ($WithFinishing) {
 }
 
 # --- 4. Siril (stack/finish) ---------------------------------------------
-Say "Siril (needed for mira stack / finish)"
+# winget's `Free-Astro.Siril` is stuck on 1.2.6; mira generates scripts against
+# 1.4.3, so install directly from the official installer instead.
+Say "Siril 1.4.3 (needed for mira stack / finish)"
 $siril = $null
 if ($env:MIRA_SIRIL_CLI -and (Test-Path $env:MIRA_SIRIL_CLI)) { $siril = $env:MIRA_SIRIL_CLI }
 elseif (Have "siril-cli") { $siril = (Get-Command siril-cli).Source }
 elseif (Test-Path "C:\Program Files\Siril\bin\siril-cli.exe") { $siril = "C:\Program Files\Siril\bin\siril-cli.exe" }
 if (-not $siril) {
-    if (Have "winget") {
-        Say "installing Siril via winget"
-        try { winget install -e --id Siril.Siril --silent --accept-package-agreements --accept-source-agreements } catch { Warn "winget Siril install failed: $_" }
-    }
+    try {
+        $url = "https://free-astro.org/download/siril-1.4.3-ucrt64-setup.exe"
+        $tmp = Join-Path $env:TEMP "siril-1.4.3-setup.exe"
+        Say "downloading Siril 1.4.3 (~100 MB)"
+        Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+        $p = Start-Process -FilePath $tmp -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+        if ($p.ExitCode -ne 0) { throw "Siril installer exited $($p.ExitCode)" }
+    } catch { Warn "Siril auto-install failed: $_" }
     if (Test-Path "C:\Program Files\Siril\bin\siril-cli.exe") { $siril = "C:\Program Files\Siril\bin\siril-cli.exe" }
 }
 if ($siril) {
+    Add-ToUserPath (Split-Path $siril)
     $sv = (& $siril -v 2>&1 | Out-String)
     if ($sv -match "1\.4\.3") { Ok "Siril 1.4.3 ($siril)" }
-    else { Warn "Siril found ($siril) but not the tested 1.4.3 - script gen verified against 1.4.3; stacking may still work. If it fails, install Siril 1.4.3 from https://siril.org" }
+    else { Warn "Siril found ($siril) but not the tested 1.4.3 - stacking may still work. If it fails, install 1.4.3 from https://siril.org" }
 } else {
     Warn "Siril not found. Install from https://siril.org and add bin\ to PATH, or set MIRA_SIRIL_CLI. Only mira stack/finish need it."
 }
 
 # --- 5. ASTAP (offline plate solve) --------------------------------------
+# Binary is small (~6 MB) and standalone - safe to auto-install. The star DB
+# (D50, ~870 MB) is gated behind -WithStarDB because of size.
 Say "ASTAP (offline WCS for NINA captures -> photometry/submit)"
 $astap = $null
 if ($env:MIRA_ASTAP_CLI -and (Test-Path $env:MIRA_ASTAP_CLI)) { $astap = $env:MIRA_ASTAP_CLI }
 elseif (Have "astap_cli") { $astap = (Get-Command astap_cli).Source }
 elseif (Test-Path "C:\Program Files\astap\astap_cli.exe") { $astap = "C:\Program Files\astap\astap_cli.exe" }
+if (-not $astap) {
+    try {
+        $tmp = Join-Path $env:TEMP "astap_setup.exe"
+        Say "downloading ASTAP installer"
+        Get-SourceForgeFile "windows_installer/astap_setup.exe" $tmp
+        $p = Start-Process -FilePath $tmp -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+        if ($p.ExitCode -ne 0) { throw "ASTAP installer exited $($p.ExitCode)" }
+    } catch { Warn "ASTAP auto-install failed: $_" }
+    if (Test-Path "C:\Program Files\astap\astap_cli.exe") { $astap = "C:\Program Files\astap\astap_cli.exe" }
+}
 if ($astap) {
-    $db = @(Get-ChildItem -Path (Split-Path $astap) -Filter "*.290" -ErrorAction SilentlyContinue) +
-          @(Get-ChildItem -Path (Split-Path $astap) -Filter "*.1476" -ErrorAction SilentlyContinue)
+    Add-ToUserPath (Split-Path $astap)
+    $astapDir = Split-Path $astap
+    $db = @(Get-ChildItem -Path $astapDir -Filter "*.290" -ErrorAction SilentlyContinue) +
+          @(Get-ChildItem -Path $astapDir -Filter "*.1476" -ErrorAction SilentlyContinue)
+    if ($db.Count -eq 0 -and $WithStarDB) {
+        try {
+            $tmp = Join-Path $env:TEMP "d50_star_database.exe"
+            Say "downloading D50 star database (~870 MB - go get coffee)"
+            Get-SourceForgeFile "star_databases/d50_star_database.exe" $tmp
+            $p = Start-Process -FilePath $tmp -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "D50 installer exited $($p.ExitCode)" }
+            $db = @(Get-ChildItem -Path $astapDir -Filter "*.290" -ErrorAction SilentlyContinue) +
+                  @(Get-ChildItem -Path $astapDir -Filter "*.1476" -ErrorAction SilentlyContinue)
+        } catch { Warn "D50 auto-install failed: $_" }
+    }
     if ($db.Count -gt 0) { Ok "ASTAP + star DB ($astap)" }
-    else { Warn "ASTAP found but NO star database beside it. Download a DB (e.g. D50/H18) from https://www.hnsky.org/astap.htm into the ASTAP folder - solves fail 'No solution' without it." }
+    else { Warn "ASTAP found but NO star database beside it. Re-run with -WithStarDB, or grab D50/H18 from https://www.hnsky.org/astap.htm - solves fail 'No solution' without it." }
 } else {
-    Warn "ASTAP not found. MANUAL (do this at home, the star DB is large): install ASTAP + a star database (D50/H18) from https://www.hnsky.org/astap.htm ; set MIRA_ASTAP_CLI or add to PATH. Required for WCS on NINA captures (submit)."
+    Warn "ASTAP not found. Install + a star database (D50/H18) from https://www.hnsky.org/astap.htm ; set MIRA_ASTAP_CLI or add to PATH. Required for WCS on NINA captures (submit)."
 }
 
 # --- 6. NINA / ASCOM (NOT automated - interactive) -----------------------

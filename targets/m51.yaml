@@ -10,7 +10,12 @@
 
 ra: 202.4696
 dec: 47.1952
-exposure: 30
+# 60s validated 2026-05-19 via `mira tune`: HFR stable at ~2.0 px out to
+# 90s (tracking holds), sky 400x read noise at 30s already (sky-limited),
+# so per-sub SNR on faint galaxy structure scales as sqrt(exposure). 60s
+# wins 1.41x per-sub SNR over 30s with ~140 subs/3hr — plenty for stack
+# rejection.
+exposure: 60
 gain: 120
 filter: LP
 target_name: M51

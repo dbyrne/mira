@@ -202,6 +202,13 @@ def main() -> None:
     stack_parser.add_argument("--flats-root", default="data/flats", help="Root searched by --auto-flats (default data/flats).")
     stack_parser.add_argument("--biases", default=None, help="Optional dir of bias frames.")
     stack_parser.add_argument(
+        "--cull-low-quality", action="store_true",
+        help="Before stacking, move cloud-affected / poorly-focused frames "
+        "to <lights>/_rejected/ via NINA's image-history (HFR + star count). "
+        "Requires NINA still running with image-history populated from this "
+        "session. Fail-soft: a no-history-match no-ops with a warning.",
+    )
+    stack_parser.add_argument(
         "--auto-solve", action="store_true",
         help="Before stacking, run `mira solve` over any frames in --lights "
         "that don't already carry a WCS. Required if you want the FITS stack "
@@ -334,6 +341,20 @@ def main() -> None:
         "--nina-root", default=None,
         help="Where NINA saves FITS (scanned for new frames to copy out).")
 
+    cull_parser = subparsers.add_parser(
+        "cull",
+        help="Flag and move low-quality (cloud-affected / poorly focused) "
+        "frames out of a lights dir. Reads HFR + star counts from NINA's "
+        "image-history (must still be running), computes per-session "
+        "medians, and moves frames below the threshold to "
+        "<lights>/_rejected/ — recoverable, not deleted.",
+    )
+    cull_parser.add_argument("--lights", required=True, help="Directory of FITS frames to cull.")
+    cull_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    cull_parser.add_argument("--min-stars-frac", type=float, default=0.5, help="Keep frames with stars >= this fraction of session median (default 0.5).")
+    cull_parser.add_argument("--max-hfr-frac", type=float, default=1.5, help="Keep frames with HFR <= this fraction of session median (default 1.5).")
+    cull_parser.add_argument("--dry-run", action="store_true", help="Report what would be moved without touching the filesystem.")
+
     solve_parser = subparsers.add_parser(
         "solve",
         help="Bulk-inject WCS into a captures directory via offline ASTAP. "
@@ -461,6 +482,8 @@ def main() -> None:
         flats(args)
     elif args.command == "solve":
         solve(args)
+    elif args.command == "cull":
+        cull(args)
     elif args.command == "doctor":
         doctor(args)
     elif args.command == "migrate-runs":
@@ -976,6 +999,28 @@ def stack(args: argparse.Namespace) -> None:
         print(f"Lights directory '{lights_dir}' does not exist.")
         return
 
+    if getattr(args, "cull_low_quality", False):
+        # Cull first, solve second: no point plate-solving frames we're
+        # about to discard. Fail-soft on any error — a cull that finds
+        # nothing to score (e.g., NINA restarted, history evicted) just
+        # logs a warning and the stack proceeds with all frames.
+        from .cull import run_cull
+        from .webapp.nina_client import NinaClient
+        print("--cull-low-quality: querying NINA image-history...")
+        try:
+            cull_client = NinaClient(base_url="http://localhost:1888")
+            cres = run_cull(
+                lights_dir,
+                history_fetcher=lambda: cull_client.image_history(all_images=True),
+                on_step=lambda m: print(m),
+            )
+            print(
+                f"  cull: {len(cres.kept)} kept, {len(cres.rejected)} "
+                f"rejected to _rejected/, {len(cres.unscored)} unscored."
+            )
+        except Exception as exc:  # noqa: BLE001 — fail-soft
+            print(f"--cull-low-quality: {exc} (continuing with all frames)")
+
     if getattr(args, "auto_solve", False):
         # Only solve what needs solving — the cheap header check makes this
         # idempotent on re-runs after a previous solve. A solve failure
@@ -1406,6 +1451,45 @@ def flats(args: argparse.Namespace) -> None:
         if r.note:
             line += f"  ({r.note})"
         print(line)
+
+
+def cull(args: argparse.Namespace) -> None:
+    """Cull cloud-affected / low-quality frames in a captures dir, by
+    querying NINA's in-memory image-history for HFR + star counts."""
+    from .cull import run_cull
+    from .webapp.nina_client import NinaClient
+
+    lights = Path(args.lights)
+    if not lights.is_dir():
+        raise SystemExit(f"--lights: not a directory: {lights}")
+    client = NinaClient(base_url=args.nina_url)
+
+    print(f"Culling {lights}")
+    if args.dry_run:
+        print("(dry-run — no frames will be moved)")
+    res = run_cull(
+        lights,
+        history_fetcher=lambda: client.image_history(all_images=True),
+        min_stars_frac=args.min_stars_frac,
+        max_hfr_frac=args.max_hfr_frac,
+        dry_run=args.dry_run,
+        on_step=lambda m: print(m),
+    )
+    print()
+    if res.rejected:
+        print(f"{'would reject' if args.dry_run else 'rejected'} "
+              f"({len(res.rejected)}):")
+        for s in res.rejected[:30]:
+            print(f"  {s.path.name}: stars={s.stars}  HFR={s.hfr:.2f}")
+        if len(res.rejected) > 30:
+            print(f"  ... and {len(res.rejected) - 30} more")
+    dest = "would land in" if args.dry_run else "moved to"
+    if res.rejected and not args.dry_run:
+        print(f"  -> {lights / '_rejected'}")
+    print(
+        f"\nDONE: {len(res.kept)} kept, {len(res.rejected)} rejected, "
+        f"{len(res.unscored)} unscored (of {res.total})."
+    )
 
 
 def solve(args: argparse.Namespace) -> None:

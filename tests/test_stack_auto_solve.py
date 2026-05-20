@@ -28,11 +28,13 @@ def _write_fits(p: Path, *, with_wcs: bool = False) -> None:
     hdu.writeto(p, overwrite=True)
 
 
-def _stack_args(lights: Path, out: Path, *, auto_solve: bool) -> argparse.Namespace:
+def _stack_args(lights: Path, out: Path, *, auto_solve: bool = False,
+                cull_low_quality: bool = False) -> argparse.Namespace:
     return argparse.Namespace(
         lights=str(lights), out=str(out),
         darks=None, flats=None, flats_root="data/flats", biases=None,
         auto_flats=False, auto_solve=auto_solve,
+        cull_low_quality=cull_low_quality,
         debayer=None, stretch=False,
     )
 
@@ -129,6 +131,64 @@ class TestStackAutoSolve(TestCase):
             self.assertEqual(len(runner.calls), 0)        # no ASTAP needed
             self.assertEqual(fake_stack.call_count, 1)
             self.assertIn("already have WCS", output)
+
+    def test_cull_low_quality_runs_before_stack(self) -> None:
+        """--cull-low-quality moves low-star frames to _rejected/ before
+        Siril runs, so the stack only sees the kept frames."""
+        with TemporaryDirectory() as d:
+            lights = Path(d) / "lights"
+            lights.mkdir()
+            _write_fits(lights / "good_1.fit", with_wcs=True)
+            _write_fits(lights / "good_2.fit", with_wcs=True)
+            _write_fits(lights / "bad.fit", with_wcs=True)
+
+            # Mock NINA history: good frames at 100 stars, bad at 10 -> rejected.
+            fake_history = [
+                {"Filename": "x/good_1.fit", "Stars": 100, "HFR": 2.0},
+                {"Filename": "x/good_2.fit", "Stars": 110, "HFR": 2.0},
+                {"Filename": "x/bad.fit",    "Stars":  10, "HFR": 2.0},
+            ]
+
+            with patch("mira.webapp.nina_client.NinaClient.image_history",
+                       return_value=fake_history), \
+                 patch("mira.siril_pipeline.run_siril_stack") as fake_stack:
+                fake_stack.return_value = type("R", (), {
+                    "n_input_frames": 2, "output_path": Path("x.fit"),
+                    "preview_path": None,
+                })()
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    cli.stack(_stack_args(lights, Path(d) / "out.fit",
+                                          cull_low_quality=True))
+                output = buf.getvalue()
+            self.assertTrue((lights / "_rejected" / "bad.fit").exists())
+            self.assertFalse((lights / "bad.fit").exists())
+            self.assertTrue((lights / "good_1.fit").exists())
+            self.assertIn("1 rejected", output)
+            self.assertEqual(fake_stack.call_count, 1)
+
+    def test_cull_failure_is_fail_soft(self) -> None:
+        """If cull blows up (NINA down, etc.), stack still runs with
+        all frames — a connectivity blip shouldn't lose the session."""
+        with TemporaryDirectory() as d:
+            lights = Path(d) / "lights"
+            lights.mkdir()
+            _write_fits(lights / "a.fit", with_wcs=True)
+            with patch("mira.webapp.nina_client.NinaClient.image_history",
+                       side_effect=ConnectionError("NINA unreachable")), \
+                 patch("mira.siril_pipeline.run_siril_stack") as fake_stack:
+                fake_stack.return_value = type("R", (), {
+                    "n_input_frames": 1, "output_path": Path("x.fit"),
+                    "preview_path": None,
+                })()
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    cli.stack(_stack_args(lights, Path(d) / "out.fit",
+                                          cull_low_quality=True))
+                output = buf.getvalue()
+            self.assertEqual(fake_stack.call_count, 1)   # stack still ran
+            self.assertIn("NINA unreachable", output)
+            self.assertIn("continuing", output)
 
     def test_auto_solve_aborts_stack_on_solve_failure(self) -> None:
         """If ASTAP fails on any frame, the stack is NOT invoked — better

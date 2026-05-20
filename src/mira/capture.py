@@ -53,6 +53,8 @@ class CaptureResult:
     recenters: int = 0
     autofocus_runs: int = 0
     platesolve_centered: bool = False
+    pointing_verified: bool = False
+    pointing_offset_deg: float | None = None
     stopped_reason: str = ""
     dest_dir: str = ""
     filter_name: str = ""
@@ -106,6 +108,98 @@ def altitude_sun_guard(
     return _guard
 
 
+def _verify_pointing(
+    client: _Client,
+    *,
+    ra_deg: float,
+    dec_deg: float,
+    exposure_s: float,
+    gain: int | None,
+    nina_root: Path,
+    tolerance_deg: float,
+    emit: Callable[[str], None],
+) -> tuple[bool, float | None, str]:
+    """Take one test sub, ASTAP-solve it, compare solved center to nominal.
+
+    Returns (ok, separation_deg, message). When ASTAP can't run at all
+    (no astap_cli on PATH, no star DB), or solve fails for a non-pointing
+    reason (clouds, no stars), we return ok=True with the message — better
+    to capture an un-verified session than refuse a session over a
+    cloudy test sub. The only `ok=False` is when ASTAP solved successfully
+    *and* the solved center is more than `tolerance_deg` from nominal —
+    a real mount-sync drift like the 2026-05-19 M51 disaster.
+    """
+    import glob
+    import os
+
+    from .solve import AstapNotFound, find_astap_cli, solve_one
+    from .webapp.nina_client import angular_separation_deg
+
+    try:
+        astap = find_astap_cli()
+    except AstapNotFound as exc:
+        emit(f"  verify-pointing skipped: {exc}")
+        return True, None, f"astap_cli not found: {exc}"
+
+    exp_tag = f"{float(exposure_s):.2f}s"
+    glob_pat = os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*")
+    before = set(glob.glob(glob_pat, recursive=True))
+
+    emit("verify-pointing: capturing test sub for plate-solve...")
+    try:
+        client.capture(
+            duration=exposure_s, gain=gain, save=True,
+            solve=False, target_name="verify_pointing",
+            timeout_s=max(exposure_s * 2 + 60, 120),
+        )
+    except Exception as exc:
+        emit(f"  verify-pointing skipped (capture failed): {exc}")
+        return True, None, f"test capture failed: {exc}"
+
+    after = set(glob.glob(glob_pat, recursive=True))
+    new_files = after - before
+    if not new_files:
+        emit("  verify-pointing skipped: couldn't find new FITS in nina_root")
+        return True, None, "test FITS not found"
+
+    test_frame = Path(max(new_files, key=os.path.getmtime))
+    emit(f"  test frame: {test_frame.name}; ASTAP-solving with tight hint...")
+    solve_res = solve_one(
+        test_frame, astap_cli=astap,
+        ra_hint_deg=ra_deg, dec_hint_deg=dec_deg,
+        radius_deg=5.0,
+    )
+    if solve_res.status != "solved":
+        emit(f"  verify-pointing skipped: ASTAP {solve_res.note}")
+        return True, None, f"solve failed: {solve_res.note}"
+
+    # solve_one used -update; the FITS now carries WCS.
+    from astropy.io import fits
+    try:
+        hdr = fits.getheader(test_frame)
+        solved_ra = float(hdr["CRVAL1"])
+        solved_dec = float(hdr["CRVAL2"])
+    except (KeyError, OSError, ValueError) as exc:
+        emit(f"  verify-pointing skipped: couldn't read WCS: {exc}")
+        return True, None, f"WCS read failed: {exc}"
+
+    sep = angular_separation_deg(ra_deg, dec_deg, solved_ra, solved_dec)
+    if sep > tolerance_deg:
+        msg = (
+            f"pointing verification FAILED: solved center "
+            f"({solved_ra:.4f}, {solved_dec:.4f}) is {sep:.2f}deg from "
+            f"nominal ({ra_deg:.4f}, {dec_deg:.4f}); exceeds "
+            f"tolerance {tolerance_deg:.2f}deg. Test sub left at "
+            f"{test_frame} for inspection."
+        )
+        emit(msg)
+        return False, sep, msg
+
+    emit(f"  verify-pointing OK: solved center {sep:.3f}deg from nominal "
+         f"(within {tolerance_deg:.2f}deg)")
+    return True, sep, f"verified {sep:.3f}deg from nominal"
+
+
 def run_capture(
     client: _Client,
     *,
@@ -126,6 +220,7 @@ def run_capture(
     platesolve_center: bool = False,
     autofocus_every_min: int = 0,
     autofocus_timeout_s: float = 600.0,
+    verify_pointing_deg: float = 1.0,
     sidecar_audit: dict[str, Any] | None = None,
     should_continue: Callable[[int], str | None] | None = None,
     on_step: Callable[[str], None] | None = None,
@@ -189,6 +284,7 @@ def run_capture(
         "settle_s": settle_s,
         "slew_timeout_s": slew_timeout_s,
         "platesolve_center": platesolve_center,
+        "verify_pointing_deg": verify_pointing_deg,
         "autofocus_every_min": autofocus_every_min,
         "autofocus_timeout_s": autofocus_timeout_s,
         "nina_root": str(nina_root),
@@ -210,13 +306,13 @@ def run_capture(
                 "recenters": res.recenters,
                 "autofocus_runs": res.autofocus_runs,
                 "platesolve_centered": res.platesolve_centered,
+                "pointing_verified": res.pointing_verified,
+                "pointing_offset_deg": res.pointing_offset_deg,
                 "stopped_reason": res.stopped_reason,
                 "started_utc": started_utc,
                 "ended_utc": datetime.now(timezone.utc).isoformat(),
             },
         )
-
-    _persist_sidecar()
 
     # Pre-loop plate-solve-center. The in-loop slews are all blind
     # (center=False) by design — that's correct for *staying* on target
@@ -233,6 +329,27 @@ def run_capture(
             _emit("  plate-solve center done")
         except Exception as exc:
             _emit(f"  plate-solve center FAILED (continuing with blind slews): {exc}")
+
+    # Pre-loop pointing verification. Even when slew(center=True) returned
+    # success, the only ground truth is plate-solving an actual captured
+    # frame: NINA's slew endpoint returns just "Slew finished" with no
+    # solved position, and the mount can self-report a wrong location
+    # (2026-05-19: Seestar reported being on M51 while actually 2.8 deg
+    # east — six hours of imaging lost). Take one test sub, ASTAP-solve
+    # it, abort if solved center is too far from nominal.
+    if platesolve_center and verify_pointing_deg > 0:
+        ok, sep, msg = _verify_pointing(
+            client, ra_deg=ra_deg, dec_deg=dec_deg,
+            exposure_s=exposure_s, gain=gain, nina_root=nina_root,
+            tolerance_deg=verify_pointing_deg, emit=_emit,
+        )
+        res.pointing_offset_deg = sep
+        if ok:
+            res.pointing_verified = True
+        else:
+            res.stopped_reason = msg
+            _persist_sidecar()
+            return res
 
     # Autofocus schedule. Wall-clock based (NOT sub-count) because the loop
     # stop time is dynamic — alt-floor / sun-rise guards can cut a planned
@@ -256,6 +373,13 @@ def run_capture(
 
     if af_interval_s > 0:
         _try_autofocus("pre-loop")
+
+    # Pre-loop sidecar snapshot. Written AFTER platesolve/verify/AF so
+    # the persisted res.platesolve_centered, res.pointing_verified,
+    # res.autofocus_runs reflect actual pre-loop state — not pre-pre-loop
+    # zeros. The post-loop write at the end overwrites this with final
+    # tallies.
+    _persist_sidecar()
 
     exp_tag = f"{float(exposure_s):.2f}s"
     seen = set(glob.glob(os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*"),

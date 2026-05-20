@@ -311,6 +311,7 @@ def main() -> None:
     capture_parser.add_argument("--target-name", default=None, help="Label stamped into NINA filenames.")
     capture_parser.add_argument("--filter", default=None, help="Filter wheel position to select + confirm before the loop. Aborts before any capture if the wheel can't confirm it (won't shoot a multi-hour stack through the wrong/no filter).")
     capture_parser.add_argument("--platesolve-center", action=argparse.BooleanOptionalAction, default=None, help="Before the loop, slew with NINA's plate-solve Center to pin the mount on the requested RA/Dec. Use --no-platesolve-center to override a session profile that enables it. Fails soft: a failed center logs a warning, loop proceeds with the blind anchored-dither.")
+    capture_parser.add_argument("--verify-pointing-deg", type=float, default=None, help="After platesolve-center, take one test sub and ASTAP-solve it to verify the mount is actually on target. Abort if solved center is more than this many degrees from nominal. 0 disables. Catches mount-sync drift where NINA reports a wrong position (2026-05-19 M51 disaster).")
     capture_parser.add_argument("--autofocus-every-min", type=int, default=None, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
     capture_parser.add_argument("--autofocus-timeout-s", type=float, default=None, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
 
@@ -1221,6 +1222,7 @@ CAPTURE_BUILTIN_DEFAULTS: dict[str, Any] = {
     "target_name": "",
     "filter": None,
     "platesolve_center": False,
+    "verify_pointing_deg": 1.0,
     "autofocus_every_min": 0,
     "autofocus_timeout_s": 600.0,
 }
@@ -1378,6 +1380,7 @@ def capture(args: argparse.Namespace) -> None:
         target_name=cfg["target_name"],
         filter_name=cfg["filter"],
         platesolve_center=cfg["platesolve_center"],
+        verify_pointing_deg=cfg["verify_pointing_deg"],
         autofocus_every_min=cfg["autofocus_every_min"],
         autofocus_timeout_s=cfg["autofocus_timeout_s"],
         # Fields the loop itself doesn't see (they're baked into the

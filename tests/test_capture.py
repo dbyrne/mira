@@ -94,6 +94,11 @@ class TestRunCaptureDither(TestCase):
         nina.mkdir()
         c.nina_root = nina
         c.exp_tag = f"{float(kw.get('exposure_s', 45.0)):.2f}s"
+        # Existing tests pre-date verify-pointing and rely on platesolve
+        # being a single slew(center=True). Default verify to 0 here so
+        # they aren't perturbed by ASTAP-availability-dependent behavior;
+        # the dedicated TestVerifyPointing tests override.
+        kw.setdefault("verify_pointing_deg", 0)
         res = run_capture(
             c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
             dest_dir=Path(d) / "dest", nina_root=nina,
@@ -254,6 +259,98 @@ class TestRunCaptureDither(TestCase):
             self.assertEqual(len(c.autofocus_calls), 1)   # attempted
             self.assertEqual(res.autofocus_runs, 0)       # but didn't count
             self.assertEqual(res.captured, 2)             # loop continued
+
+
+class TestVerifyPointing(TestCase):
+    """Patch the verify_pointing helper directly. Real `_verify_pointing`
+    is exercised against fake astap_cli + fake FITS in test_solve.py;
+    here we care about the *integration* with run_capture — does the loop
+    abort vs. proceed based on the verifier's verdict?"""
+
+    def _run_with_verifier(self, d, *, verifier, **kw):
+        from unittest.mock import patch
+
+        c = FakeClient()
+        nina = Path(d) / "nina"
+        nina.mkdir()
+        c.nina_root = nina
+        c.exp_tag = f"{float(kw.get('exposure_s', 45.0)):.2f}s"
+        with patch("mira.capture._verify_pointing", side_effect=verifier):
+            res = run_capture(
+                c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                dest_dir=Path(d) / "dest", nina_root=nina,
+                rng=random.Random(7), settle_s=0.0,
+                platesolve_center=True, verify_pointing_deg=1.0,
+                **kw,
+            )
+        return c, res
+
+    def test_verification_pass_proceeds_to_loop(self) -> None:
+        def verifier(*a, **kw):
+            return True, 0.05, "verified 0.050deg from nominal"
+        with TemporaryDirectory() as d:
+            c, res = self._run_with_verifier(
+                d, verifier=verifier, n_max=2, dither_arcsec=10.0,
+            )
+            self.assertTrue(res.pointing_verified)
+            self.assertEqual(res.pointing_offset_deg, 0.05)
+            self.assertEqual(res.captured, 2)         # loop ran
+
+    def test_verification_fail_aborts_before_loop(self) -> None:
+        def verifier(*a, **kw):
+            return False, 2.81, ("pointing verification FAILED: solved center "
+                                  "is 2.81deg from nominal")
+        with TemporaryDirectory() as d:
+            c, res = self._run_with_verifier(
+                d, verifier=verifier, n_max=10, dither_arcsec=10.0,
+            )
+            self.assertFalse(res.pointing_verified)
+            self.assertEqual(res.pointing_offset_deg, 2.81)
+            self.assertIn("FAILED", res.stopped_reason)
+            self.assertIn("2.81", res.stopped_reason)
+            self.assertEqual(res.captured, 0)         # loop never ran
+
+    def test_verification_zero_tolerance_disables_check(self) -> None:
+        """verify_pointing_deg=0 skips verification entirely — the
+        verifier callable is never invoked. Used by tests + by users
+        opting out of the extra pre-loop sub."""
+        from unittest.mock import patch
+        c = FakeClient()
+        with TemporaryDirectory() as d:
+            nina = Path(d) / "nina"
+            nina.mkdir()
+            c.nina_root = nina
+            c.exp_tag = "45.00s"
+            calls = []
+            def verifier(*a, **kw):
+                calls.append(1)
+                return True, 0.0, ""
+            with patch("mira.capture._verify_pointing", side_effect=verifier):
+                res = run_capture(
+                    c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                    dest_dir=Path(d) / "dest", nina_root=nina,
+                    n_max=1, dither_arcsec=0.0, settle_s=0.0,
+                    platesolve_center=True, verify_pointing_deg=0,
+                )
+            self.assertEqual(calls, [])               # verifier not called
+            self.assertFalse(res.pointing_verified)
+            self.assertEqual(res.captured, 1)
+
+    def test_failed_verification_persists_sidecar(self) -> None:
+        """On abort, the sidecar still captures the failure for audit —
+        no silent drop of a session worth of intent."""
+        def verifier(*a, **kw):
+            return False, 5.0, "pointing verification FAILED: 5.00deg off"
+        with TemporaryDirectory() as d:
+            c, res = self._run_with_verifier(
+                d, verifier=verifier, n_max=10, dither_arcsec=0.0,
+            )
+            sidecar = Path(d) / "dest" / "mira_capture.json"
+            self.assertTrue(sidecar.exists())
+            meta = json.loads(sidecar.read_text())
+            self.assertFalse(meta["result"]["pointing_verified"])
+            self.assertEqual(meta["result"]["pointing_offset_deg"], 5.0)
+            self.assertIn("FAILED", meta["result"]["stopped_reason"])
 
 
 class TestGuard(TestCase):

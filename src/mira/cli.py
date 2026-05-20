@@ -344,16 +344,26 @@ def main() -> None:
 
     cull_parser = subparsers.add_parser(
         "cull",
-        help="Flag and move low-quality (cloud-affected / poorly focused) "
-        "frames out of a lights dir. Reads HFR + star counts from NINA's "
-        "image-history (must still be running), computes per-session "
-        "medians, and moves frames below the threshold to "
+        help="Flag and move low-quality (cloud-affected / trailing / "
+        "out-of-focus) frames out of a lights dir. Default mode reads "
+        "HFR + Stars from NINA's image-history (NINA must still be up). "
+        "`--from-fits` switches to offline mode: pure-Python per-FITS "
+        "metrics (stars, HFR, roundness, target-region sky median) with "
+        "no NINA dependency — works on historical / external data. In "
+        "FITS mode, frames lacking a WCS in an otherwise-solved dir are "
+        "flagged as solve-failed. Rejected frames move to "
         "<lights>/_rejected/ — recoverable, not deleted.",
     )
     cull_parser.add_argument("--lights", required=True, help="Directory of FITS frames to cull.")
-    cull_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL.")
+    cull_parser.add_argument("--nina-url", default="http://localhost:1888", help="NINA Advanced API base URL (default mode only).")
+    cull_parser.add_argument("--from-fits", action="store_true", help="Compute quality metrics from FITS pixels directly (no NINA). Adds target-region sky-median + roundness; detects failed-solve frames.")
+    cull_parser.add_argument("--target-ra", type=float, default=None, help="Target J2000 RA in degrees (FITS mode). Auto-loaded from mira_capture.json sidecar if absent.")
+    cull_parser.add_argument("--target-dec", type=float, default=None, help="Target J2000 Dec in degrees (FITS mode). Auto-loaded from sidecar if absent.")
+    cull_parser.add_argument("--central-frac", type=float, default=0.3, help="When no WCS+target, take sky in this central fraction of the frame (default 0.3).")
     cull_parser.add_argument("--min-stars-frac", type=float, default=0.5, help="Keep frames with stars >= this fraction of session median (default 0.5).")
     cull_parser.add_argument("--max-hfr-frac", type=float, default=1.5, help="Keep frames with HFR <= this fraction of session median (default 1.5).")
+    cull_parser.add_argument("--max-sky-frac", type=float, default=2.0, help="Keep frames with target-region sky <= this fraction of session median (FITS mode; default 2.0).")
+    cull_parser.add_argument("--max-round-frac", type=float, default=2.0, help="Keep frames with |roundness| <= this fraction of session median (FITS mode; default 2.0).")
     cull_parser.add_argument("--dry-run", action="store_true", help="Report what would be moved without touching the filesystem.")
 
     solve_parser = subparsers.add_parser(
@@ -1457,41 +1467,83 @@ def flats(args: argparse.Namespace) -> None:
 
 
 def cull(args: argparse.Namespace) -> None:
-    """Cull cloud-affected / low-quality frames in a captures dir, by
-    querying NINA's in-memory image-history for HFR + star counts."""
+    """Cull cloud-affected / low-quality frames in a captures dir.
+    Default reads NINA's in-memory image-history for HFR + star counts;
+    `--from-fits` reads from FITS pixels directly (works offline)."""
     from .cull import run_cull
-    from .webapp.nina_client import NinaClient
 
     lights = Path(args.lights)
     if not lights.is_dir():
         raise SystemExit(f"--lights: not a directory: {lights}")
-    client = NinaClient(base_url=args.nina_url)
 
-    print(f"Culling {lights}")
-    if args.dry_run:
-        print("(dry-run — no frames will be moved)")
-    res = run_cull(
-        lights,
-        history_fetcher=lambda: client.image_history(all_images=True),
-        min_stars_frac=args.min_stars_frac,
-        max_hfr_frac=args.max_hfr_frac,
-        dry_run=args.dry_run,
-        on_step=lambda m: print(m),
-    )
+    if args.from_fits:
+        # Auto-load target coords from the capture sidecar when the user
+        # didn't pass --target-ra/--target-dec. Sidecar is written by
+        # `mira capture --filter` (see flats.py:write_capture_sidecar).
+        tra, tdec = args.target_ra, args.target_dec
+        if tra is None or tdec is None:
+            from .flats import CAPTURE_SIDECAR
+            sc = lights / CAPTURE_SIDECAR
+            if sc.exists():
+                import json
+                try:
+                    meta = json.loads(sc.read_text(encoding="utf-8"))
+                    if tra is None:
+                        tra = meta.get("ra_deg")
+                    if tdec is None:
+                        tdec = meta.get("dec_deg")
+                    if tra is not None and tdec is not None:
+                        print(f"target from sidecar: RA={tra} Dec={tdec}")
+                except (OSError, ValueError) as exc:
+                    print(f"(could not read {CAPTURE_SIDECAR}: {exc})")
+        print(f"Culling {lights} (FITS mode)")
+        if args.dry_run:
+            print("(dry-run — no frames will be moved)")
+        res = run_cull(
+            lights,
+            from_fits=True,
+            target_ra=tra, target_dec=tdec,
+            central_frac=args.central_frac,
+            min_stars_frac=args.min_stars_frac,
+            max_hfr_frac=args.max_hfr_frac,
+            max_sky_frac=args.max_sky_frac,
+            max_round_frac=args.max_round_frac,
+            dry_run=args.dry_run,
+            on_step=lambda m: print(m),
+        )
+    else:
+        from .webapp.nina_client import NinaClient
+
+        client = NinaClient(base_url=args.nina_url)
+        print(f"Culling {lights}")
+        if args.dry_run:
+            print("(dry-run — no frames will be moved)")
+        res = run_cull(
+            lights,
+            history_fetcher=lambda: client.image_history(all_images=True),
+            min_stars_frac=args.min_stars_frac,
+            max_hfr_frac=args.max_hfr_frac,
+            dry_run=args.dry_run,
+            on_step=lambda m: print(m),
+        )
     print()
     if res.rejected:
         print(f"{'would reject' if args.dry_run else 'rejected'} "
               f"({len(res.rejected)}):")
         for s in res.rejected[:30]:
-            print(f"  {s.path.name}: stars={s.stars}  HFR={s.hfr:.2f}")
+            star_s = "?" if s.stars is None else f"{s.stars:.0f}"
+            hfr_s = "?" if s.hfr is None else f"{s.hfr:.2f}"
+            extra = f"  [{s.note}]" if s.note else ""
+            print(f"  {s.path.name}: stars={star_s} HFR={hfr_s}{extra}")
         if len(res.rejected) > 30:
             print(f"  ... and {len(res.rejected) - 30} more")
-    dest = "would land in" if args.dry_run else "moved to"
     if res.rejected and not args.dry_run:
         print(f"  -> {lights / '_rejected'}")
+    sf = len(res.solve_failed)
+    sf_note = f", {sf} of which were solve-failed" if sf else ""
     print(
-        f"\nDONE: {len(res.kept)} kept, {len(res.rejected)} rejected, "
-        f"{len(res.unscored)} unscored (of {res.total})."
+        f"\nDONE: {len(res.kept)} kept, {len(res.rejected)} rejected"
+        f"{sf_note}, {len(res.unscored)} unscored (of {res.total})."
     )
 
 

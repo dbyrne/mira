@@ -1527,23 +1527,43 @@ def cull(args: argparse.Namespace) -> None:
             on_step=lambda m: print(m),
         )
     print()
-    if res.rejected:
-        print(f"{'would reject' if args.dry_run else 'rejected'} "
-              f"({len(res.rejected)}):")
-        for s in res.rejected[:30]:
-            star_s = "?" if s.stars is None else f"{s.stars:.0f}"
-            hfr_s = "?" if s.hfr is None else f"{s.hfr:.2f}"
-            extra = f"  [{s.note}]" if s.note else ""
-            print(f"  {s.path.name}: stars={star_s} HFR={hfr_s}{extra}")
-        if len(res.rejected) > 30:
-            print(f"  ... and {len(res.rejected) - 30} more")
+    # Bucket the rejection report: solve-failed (no WCS in a mostly-solved
+    # dir) and metric-only (solved, but a pixel-metric threshold fired)
+    # are different signals — surfacing them mixed-and-truncated buried
+    # the more informative metric bucket on the M51 run.
+    verb = "would reject" if args.dry_run else "rejected"
+    sf_paths = {s.path for s in res.solve_failed}
+    metric_only = [s for s in res.rejected if s.path not in sf_paths]
+    SAMPLE = 15
+
+    def _line(s) -> str:
+        star_s = "?" if s.stars is None else f"{s.stars:.0f}"
+        hfr_s = "?" if s.hfr is None else f"{s.hfr:.2f}"
+        extra = f"  [{s.note}]" if s.note else ""
+        return f"  {s.path.name}: stars={star_s} HFR={hfr_s}{extra}"
+
+    if res.solve_failed:
+        print(f"{verb} — solve-failed ({len(res.solve_failed)}): "
+              "no WCS in a mostly-solved dir")
+        for s in res.solve_failed[:SAMPLE]:
+            print(_line(s))
+        if len(res.solve_failed) > SAMPLE:
+            print(f"  ... and {len(res.solve_failed) - SAMPLE} more")
+        print()
+    if metric_only:
+        print(f"{verb} — metric thresholds ({len(metric_only)}): "
+              "failed stars/HFR/sky/roundness")
+        for s in metric_only[:SAMPLE]:
+            print(_line(s))
+        if len(metric_only) > SAMPLE:
+            print(f"  ... and {len(metric_only) - SAMPLE} more")
     if res.rejected and not args.dry_run:
         print(f"  -> {lights / '_rejected'}")
-    sf = len(res.solve_failed)
-    sf_note = f", {sf} of which were solve-failed" if sf else ""
+    sf_part = f" ({len(res.solve_failed)} solve-failed + {len(metric_only)} metric)" \
+        if res.solve_failed else ""
     print(
         f"\nDONE: {len(res.kept)} kept, {len(res.rejected)} rejected"
-        f"{sf_note}, {len(res.unscored)} unscored (of {res.total})."
+        f"{sf_part}, {len(res.unscored)} unscored (of {res.total})."
     )
 
 

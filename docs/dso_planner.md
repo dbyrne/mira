@@ -93,6 +93,8 @@ different and you'd want to override `--fov` or add a `dso:` section.
 
 ## Command flags
 
+### `mira dso plan`
+
 | Flag | Default | Meaning |
 |---|---|---|
 | `--config` | `config/esprit120_jc.yaml` | YAML config path |
@@ -102,27 +104,103 @@ different and you'd want to override `--fov` or add a `dso:` section.
 | `--strict-moon` | off | Disable narrowband moon-relax — apply VSX-style gate everywhere |
 | `--output-dir` | from config | Override output directory |
 | `--top` | all viable | Limit the ranked report to top N |
+| `--captures-root` | from config (`captures/`) | Where to walk for the integration ledger |
+| `--ignore-ledger` | off | Skip the ledger entirely — pure observability ranking (Phase-1 behavior) |
+
+### `mira dso status`
+
+| Flag / arg | Meaning |
+|---|---|
+| `--config` | YAML config (catalog + captures_root come from here) |
+| `--catalog` | Override catalog YAML path |
+| `--captures-root` | Override captures root |
+| `target` (positional) | Canonical catalog name → per-filter detail. Omit for summary mode. |
+| `--orphans` | List only orphan sessions (target_name not in catalog) |
+
+### `mira dso research`
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--config` | `config/esprit120_jc.yaml` | YAML config path |
+| `--catalog` | from config | Override catalog YAML path |
+| `--out` | `<catalog_dir>/research_notes.md` | Output Markdown path |
 
 ## How the ranking works
 
 The score is intentionally simple: `minutes_above_floor + max_altitude_deg`,
 with a 20% demotion for mosaic candidates (single-frame targets float
-to the top). Phase 2 will fold in the integration ledger so targets with
-the biggest budget deficit rank higher; for now, ranking is observability-
-only.
+to the top). Phase 2 adds **deficit-aware scoring**: when a ledger is
+available, each target's observability score is multiplied by
+`0.5 + deficit_weight × deficit_fraction`, clamped to [0.5, 1.5]. So a
+never-imaged target gets a 1.5× boost, a fully-imaged target gets a 0.5×
+demote (but stays visible — see below), and partial completion scales
+linearly in between. `deficit_weight` lives in the config's `dso:`
+section and defaults to 1.0; set to 0 to disable the weighting.
 
 The "best site" per candidate is the site with the most dark-time above
 the local altitude floor; tiebreaker is peak altitude. For multi-site
 configs you'll also see each site's individual observability in the
 detail section.
 
+## The integration ledger (Phase 2)
+
+`mira dso status` walks `<captures_root>/*/mira_capture.json` and aggregates
+per-(target, filter) integration time across every prior session. The
+sidecar is the database — there's no separate ledger file to keep in sync.
+
+```powershell
+# Summary of every target with at least one session
+mira dso status --config config/esprit120_jc.yaml
+
+# Detail for one target — per-filter captured / budget / deficit
+mira dso status --config config/esprit120_jc.yaml "NGC 6888"
+
+# Just the orphans (captures whose target_name doesn't match the catalog)
+mira dso status --config config/esprit120_jc.yaml --orphans
+```
+
+The `mira dso plan` command auto-loads the ledger by default. Pass
+`--ignore-ledger` for the Phase-1 pure-observability ranking, or set
+`deficit_weight: 0` in the config to keep the ledger metadata on the
+output without affecting ranking order.
+
+### Matching rule: canonical names only
+
+Per design, the ledger matches sidecar `target_name` against the
+catalog's canonical `name` field (case-insensitive but exact otherwise).
+A capture session with `--target Crescent` does *not* match
+`NGC 6888` — it goes into the orphan bucket. The catalog's `common_name`
+field is for human display only; never use it as `--target`.
+
+**The convention to bake in:** when you capture a DSO catalog target,
+copy the canonical name from `mira dso plan`'s output into
+`mira capture --target ...`. Orphans surface in `mira dso status` so
+typos are immediately visible.
+
+### Frame-count fallback
+
+`mira capture` writes the frame count to `result.copied` at shutdown.
+When a session is killed before shutdown (Ctrl-C, machine crash), the
+result block is missing — the ledger falls back to globbing `*.fit*` in
+the session directory and counting those, so an interrupted session
+still books its actual sky time. If both the result and the FITS files
+are gone, the session counts zero and is preserved in the ledger as a
+zero-minute entry (so it shows up in the orphan/recent-session list).
+
+### What the ledger doesn't measure
+
+- **Quality.** Frames moved to `_rejected/` by `mira stack --cull-low-quality`
+  still count — we're tracking *sky time*, not *frames-survived-cull*.
+  A separate metric for stack-quality minutes could come later if it
+  proves useful.
+- **SNR.** Two 600-minute Ha stacks from different transparency or moon
+  conditions give different SNRs; the ledger doesn't model this.
+
 ## What it doesn't do (yet)
 
-This is Phase 1 of a four-phase rollout:
+This is Phase 2 of a four-phase rollout:
 
-- **Phase 2** — integration ledger. Walk every `mira_capture.json`
-  sidecar under `captures/`, aggregate `(target, filter) → total minutes`,
-  expose `mira dso status <target>` for current deficits.
+- ~~**Phase 2** — integration ledger~~ ✓ landed.
 - **Phase 3** — per-night scheduler with filter rotation. Pick tonight's
   target + an Ha/OIII/SII sequence weighted by both deficit and current
   moon phase (Ha when moon is bright, OIII when dark).

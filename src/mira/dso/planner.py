@@ -23,6 +23,7 @@ from ..config import ScoutConfig, SiteConfig
 from ..models import Observability
 from ..observability import evaluate_observability_at_coords
 from .catalog import DsoCatalog, DsoTarget
+from .ledger import Ledger, target_completion_fraction
 
 
 # Default FOV of the Esprit 120 EDX + ASI2600MM Pro: 840mm fl on a 23.5×15.7mm
@@ -38,7 +39,16 @@ class DsoCandidate:
     ``observabilities`` is one Observability per configured site (same
     ordering as ``config.sites``). ``best_observability`` is the one used
     for ranking — the site with the most dark-time above the local floor
-    (with max altitude as the tiebreaker)."""
+    (with max altitude as the tiebreaker).
+
+    Ledger-derived fields (all zero when ledger=None on
+    build_dso_candidates, so downstream display code can render them
+    harmlessly in both modes): ``captured_minutes`` is total integration
+    time already booked, capped per-filter at that filter's budget so
+    over-imaging Ha doesn't mask that OIII/SII are still empty;
+    ``budget_minutes`` is the sum of the target's per-filter budgets;
+    ``completion_fraction`` is captured/budget (may exceed 1 for
+    cap-aware purposes but the planner clamps it to 1 internally)."""
     target: DsoTarget
     observabilities: tuple[Observability, ...]
     best_observability: Observability
@@ -46,10 +56,17 @@ class DsoCandidate:
     fov_deg: tuple[float, float]
     score: float
     reasons: tuple[str, ...]
+    captured_minutes: float = 0.0
+    budget_minutes: float = 0.0
+    completion_fraction: float = 0.0
 
     @property
     def best_site_name(self) -> str:
         return self.best_observability.site_name
+
+    @property
+    def deficit_minutes(self) -> float:
+        return max(0.0, self.budget_minutes - self.captured_minutes)
 
 
 def build_dso_candidates(
@@ -59,8 +76,11 @@ def build_dso_candidates(
     start_date: date | None = None,
     fov_deg: tuple[float, float] = DEFAULT_FOV_DEG,
     relax_moon: bool = True,
+    ledger: Ledger | None = None,
+    deficit_weight: float = 1.0,
 ) -> list[DsoCandidate]:
-    """Rank catalog targets by observability + FOV fit.
+    """Rank catalog targets by observability + FOV fit + (optionally)
+    integration deficit.
 
     Filters out targets with zero observable minutes at every site. Mosaic
     candidates (size > FOV in either axis) are kept but down-weighted by
@@ -69,7 +89,15 @@ def build_dso_candidates(
     ``relax_moon=True`` (default) replaces the moon-altitude / moon-illum /
     moon-separation filters with permissive values for any target whose
     ``budget_minutes`` includes a narrowband filter. Broadband-only targets
-    (REF/galaxies with L+RGB only) still apply the VSX-style moon gate."""
+    (REF/galaxies with L+RGB only) still apply the VSX-style moon gate.
+
+    ``ledger`` (Phase 2): when provided, every candidate's observability
+    score is multiplied by ``0.5 + deficit_weight * deficit_fraction``
+    (clamped to [0.5, 1.5]). A never-imaged target gets the full 1.5×
+    boost; a 100%-complete target gets the 0.5× demotion (visible but
+    deprioritized — per the rule that completed targets stay in the
+    queue). Pass ``ledger=None`` (or ``deficit_weight=0``) for the
+    Phase-1 pure-observability ranking — pinned by test."""
     candidates: list[DsoCandidate] = []
     for target in catalog.targets:
         relax_for_target = relax_moon and target.is_narrowband
@@ -95,8 +123,32 @@ def build_dso_candidates(
             and major_deg <= fov_deg[0]
             and minor_deg <= fov_deg[1]
         )
-        score = _score_candidate(best, fits_fov)
-        reasons = _build_reasons(target, best, fits_fov, fov_deg, relax_for_target)
+
+        # Ledger-derived display fields. The captured_minutes calc caps
+        # each filter at its budget so over-imaging Ha doesn't mask that
+        # OIII/SII are still empty — same cap used by
+        # target_completion_fraction so display and score stay coherent.
+        if ledger is not None:
+            completion = target_completion_fraction(ledger, target)
+            captured = sum(
+                min(float(b), ledger.minutes(target.name, f))
+                for f, b in target.budget_minutes.items()
+            )
+        else:
+            completion = 0.0
+            captured = 0.0
+        budget = float(target.total_budget_minutes)
+
+        observability_score = _score_candidate(best, fits_fov)
+        score = _apply_deficit_weight(
+            observability_score, completion, deficit_weight,
+            ledger_active=ledger is not None,
+        )
+        reasons = _build_reasons(
+            target, best, fits_fov, fov_deg, relax_for_target,
+            ledger=ledger, completion_fraction=completion,
+            captured_minutes=captured, budget_minutes=budget,
+        )
         candidates.append(DsoCandidate(
             target=target,
             observabilities=tuple(observabilities),
@@ -105,6 +157,9 @@ def build_dso_candidates(
             fov_deg=fov_deg,
             score=score,
             reasons=reasons,
+            captured_minutes=captured,
+            budget_minutes=budget,
+            completion_fraction=completion,
         ))
     candidates.sort(
         key=lambda c: (
@@ -115,6 +170,27 @@ def build_dso_candidates(
         )
     )
     return candidates
+
+
+def _apply_deficit_weight(
+    base_score: float,
+    completion_fraction: float,
+    deficit_weight: float,
+    *,
+    ledger_active: bool,
+) -> float:
+    """Multiply the observability score by a deficit-aware factor.
+
+    Factor = 0.5 + deficit_weight * deficit_fraction, clamped to [0.5, 1.5].
+    deficit_fraction = max(0, 1 - completion_fraction). When the ledger
+    is inactive OR deficit_weight is 0, the factor is exactly 1.0 —
+    Phase-1 behavior preserved bit-for-bit."""
+    if not ledger_active or deficit_weight <= 0:
+        return base_score
+    deficit_fraction = max(0.0, 1.0 - completion_fraction)
+    factor = 0.5 + deficit_weight * deficit_fraction
+    factor = max(0.5, min(1.5, factor))
+    return base_score * factor
 
 
 def _maybe_relax_moon(site: SiteConfig) -> SiteConfig:
@@ -146,6 +222,11 @@ def _build_reasons(
     fits_fov: bool,
     fov_deg: tuple[float, float],
     relax_for_target: bool,
+    *,
+    ledger: Ledger | None = None,
+    completion_fraction: float = 0.0,
+    captured_minutes: float = 0.0,
+    budget_minutes: float = 0.0,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if best.best_night_date is not None:
@@ -166,6 +247,12 @@ def _build_reasons(
         )
     if relax_for_target:
         reasons.append("moon-relaxed (narrowband)")
+    if ledger is not None and budget_minutes > 0:
+        pct = completion_fraction * 100.0
+        reasons.append(
+            f"ledger: {captured_minutes:.0f}/{budget_minutes:.0f} min "
+            f"captured ({pct:.0f}% done)"
+        )
     if target.notes:
         reasons.append(target.notes)
     return tuple(reasons)

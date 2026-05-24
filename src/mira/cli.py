@@ -493,6 +493,39 @@ def main() -> None:
         "--top", type=int, default=None,
         help="Limit ranked list to top N candidates in the report (default: all viable).",
     )
+    dso_plan.add_argument(
+        "--captures-root", default=None,
+        help="Override DSO captures root for the integration ledger (default: from config or 'captures').",
+    )
+    dso_plan.add_argument(
+        "--ignore-ledger", action="store_true",
+        help="Skip the integration ledger entirely — pure observability ranking (Phase-1 behavior).",
+    )
+
+    dso_status = dso_sub.add_parser(
+        "status",
+        help="Show the multi-night integration ledger: per-target per-filter captured vs budget.",
+    )
+    dso_status.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (catalog + captures_root are read from it).",
+    )
+    dso_status.add_argument(
+        "--catalog", default=None,
+        help="Override DSO catalog YAML path.",
+    )
+    dso_status.add_argument(
+        "--captures-root", default=None,
+        help="Override DSO captures root (default: from config or 'captures').",
+    )
+    dso_status.add_argument(
+        "target", nargs="?", default=None,
+        help="Show detail for one target (canonical catalog name). Omit for the full ledger summary.",
+    )
+    dso_status.add_argument(
+        "--orphans", action="store_true",
+        help="Only list orphan sessions (captures whose target_name doesn't match any catalog entry).",
+    )
 
     dso_research = dso_sub.add_parser(
         "research",
@@ -1731,11 +1764,13 @@ def doctor(args: argparse.Namespace) -> None:
 
 def dso(args: argparse.Namespace) -> None:
     """DSO / narrowband planner. Loads the curated catalog, ranks by
-    observability + FOV fit against the configured sites, writes a plan
-    to <output_dir>/<dso.output_subdir>/. Future subcommands here will
-    add multi-night status (ledger) and per-night scheduling."""
+    observability + FOV fit (+ optional integration deficit from the
+    ledger), writes a plan to <output_dir>/<dso.output_subdir>/.
+    Phase 3 will add a per-night filter-rotation scheduler; Phase 4 the
+    Aladin Lite viewer."""
     from .config import load_config
     from .dso.catalog import load_dso_catalog
+    from .dso.ledger import aggregate_ledger, walk_sidecars
 
     cfg = load_config(args.config)
     catalog_path = Path(args.catalog) if args.catalog else cfg.dso.catalog_path
@@ -1752,6 +1787,21 @@ def dso(args: argparse.Namespace) -> None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(render_research_notes(catalog), encoding="utf-8")
         print(f"Wrote {out_path}")
+        return
+
+    if args.dso_command == "status":
+        print(f"Loading DSO catalog: {catalog_path}")
+        catalog = load_dso_catalog(catalog_path)
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else cfg.dso.captures_root
+        )
+        print(f"Walking sidecars under {captures_root}/ ...")
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        print(_render_dso_status(
+            ledger, catalog,
+            target_name=args.target, orphans_only=args.orphans,
+        ))
         return
 
     if args.dso_command != "plan":
@@ -1783,17 +1833,40 @@ def dso(args: argparse.Namespace) -> None:
 
     relax_moon = cfg.dso.relax_moon and not args.strict_moon
 
+    # Ledger: load automatically unless --ignore-ledger. With the ledger,
+    # already-imaged targets are demoted in the ranking; without it, the
+    # Phase-1 pure-observability behavior applies.
+    ledger = None
+    if not args.ignore_ledger:
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else cfg.dso.captures_root
+        )
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        if ledger.sessions:
+            print(
+                f"Ledger: {len(ledger.sessions)} session(s) over "
+                f"{len(ledger.by_target)} target(s) from {captures_root}/"
+                + (f" ({len(ledger.orphan_target_names)} orphan)"
+                   if ledger.orphan_target_names else "")
+            )
+        else:
+            print(f"Ledger: no DSO sessions under {captures_root}/ (Phase-1 ranking).")
+
     print(
         f"Ranking against {len(cfg.sites)} site(s) for "
         f"{cfg.sites[0].observing_window.nights} night(s) from {start_date} "
         f"(FOV {fov_deg[0]:.2f}°×{fov_deg[1]:.2f}°, "
-        f"moon {'relaxed' if relax_moon else 'strict'})..."
+        f"moon {'relaxed' if relax_moon else 'strict'}"
+        f"{', ledger-weighted' if ledger is not None else ''})..."
     )
     candidates = build_dso_candidates(
         catalog, cfg,
         start_date=start_date,
         fov_deg=fov_deg,
         relax_moon=relax_moon,
+        ledger=ledger,
+        deficit_weight=cfg.dso.deficit_weight,
     )
     print(f"  {len(candidates)} target(s) viable in the window")
     if args.top is not None:
@@ -1803,6 +1876,7 @@ def dso(args: argparse.Namespace) -> None:
     out_dir = out_root / cfg.dso.output_subdir
     md_path, csv_path = write_dso_plan(
         candidates, out_dir,
+        ledger=ledger,
         config_path=args.config,
         catalog_version=catalog.version,
         start_date=start_date,
@@ -1812,11 +1886,145 @@ def dso(args: argparse.Namespace) -> None:
     print(f"Wrote {csv_path}")
     if candidates:
         top = candidates[0]
+        deficit_note = ""
+        if ledger is not None and top.budget_minutes > 0:
+            pct = top.completion_fraction * 100.0
+            deficit_note = (
+                f" — {top.captured_minutes:.0f}/{top.budget_minutes:.0f}m "
+                f"captured ({pct:.0f}% done)"
+            )
         print(
             f"\nTop pick: {top.target.name} ({top.target.common_name}) "
             f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
             f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
+            f"{deficit_note}"
         )
+
+
+def _render_dso_status(
+    ledger,                # mira.dso.ledger.Ledger
+    catalog,               # mira.dso.catalog.DsoCatalog
+    *,
+    target_name: str | None,
+    orphans_only: bool,
+) -> str:
+    """Plain-text rendering of the integration ledger. Three modes:
+
+    - ``target_name`` given: one target, per-filter detail with deficits.
+    - ``orphans_only=True``: just the orphan sessions table.
+    - Otherwise: summary of every target with at least one session.
+
+    Returns the text; caller prints it. Kept as a pure formatter so the
+    webapp can reuse it later."""
+    lines: list[str] = []
+    if orphans_only:
+        lines.append("Orphan sessions (target_name doesn't match any catalog entry):")
+        if not ledger.orphan_target_names:
+            lines.append("  (none)")
+            return "\n".join(lines)
+        for name in ledger.orphan_target_names:
+            sessions = [s for s in ledger.sessions if s.target_name == name]
+            mins = sum(s.integration_minutes for s in sessions)
+            lines.append(
+                f"  {name:<30} {len(sessions):>3} session(s)   "
+                f"{mins:>6.0f} min total"
+            )
+        return "\n".join(lines)
+
+    if target_name is not None:
+        # Per-target detail. Use catalog lookup so the input can be any
+        # case; the canonical name from the catalog drives the ledger key.
+        target = catalog.by_name(target_name)
+        if target is None:
+            return (
+                f"'{target_name}' is not in the catalog. Pass --orphans to "
+                "list non-catalog target_names that have sidecars."
+            )
+        lines.append(f"{target.name} — {target.common_name}  "
+                     f"({target.object_type} in {target.constellation})")
+        lines.append("")
+        lines.append(
+            f"  {'Filter':<8} {'Captured':>10} {'Budget':>8} "
+            f"{'Deficit':>10} {'% Done':>8} {'Sessions':>10}  Last"
+        )
+        lines.append("  " + "-" * 76)
+        total_cap = 0.0
+        total_bud = 0
+        for filter_name, budget in target.budget_minutes.items():
+            ft = ledger.get(target.name, filter_name)
+            captured = ft.total_minutes if ft else 0.0
+            session_count = ft.session_count if ft else 0
+            last = ft.last_capture if ft else None
+            last_str = last.date().isoformat() if last else "—"
+            deficit = max(0.0, budget - captured)
+            pct = (captured / budget * 100.0) if budget else 0.0
+            done_tag = " ✓" if captured >= budget else ""
+            lines.append(
+                f"  {filter_name:<8} {captured:>8.0f}m  {budget:>6}m "
+                f"{deficit:>8.0f}m  {pct:>6.0f}%{done_tag:<2} "
+                f"{session_count:>10}  {last_str}"
+            )
+            total_cap += min(float(budget), captured)
+            total_bud += budget
+        lines.append("  " + "-" * 76)
+        total_pct = (total_cap / total_bud * 100.0) if total_bud else 0.0
+        total_deficit = max(0.0, total_bud - total_cap)
+        lines.append(
+            f"  {'TOTAL':<8} {total_cap:>8.0f}m  {total_bud:>6}m "
+            f"{total_deficit:>8.0f}m  {total_pct:>6.0f}%"
+        )
+        return "\n".join(lines)
+
+    # Summary mode — every target with at least one session, plus orphans.
+    if not ledger.by_target and not ledger.orphan_target_names:
+        return "No DSO captures found under the configured captures_root."
+
+    lines.append(
+        f"DSO integration ledger — {len(ledger.sessions)} session(s) over "
+        f"{len(ledger.by_target)} catalog target(s)"
+        + (f" + {len(ledger.orphan_target_names)} orphan target(s)"
+           if ledger.orphan_target_names else "")
+    )
+    lines.append("")
+    if ledger.by_target:
+        lines.append(
+            f"  {'Target':<22} {'Filter':<6} {'Captured':>10} "
+            f"{'Budget':>8} {'% Done':>8}  Last"
+        )
+        lines.append("  " + "-" * 70)
+        # Iterate catalog order so missing-from-ledger targets surface predictably.
+        for target in catalog.targets:
+            filters = ledger.by_target.get(target.name)
+            if not filters:
+                continue
+            for filter_name in target.budget_minutes:
+                ft = filters.get(filter_name)
+                if ft is None:
+                    continue
+                captured = ft.total_minutes
+                budget = target.budget_minutes[filter_name]
+                pct = (captured / budget * 100.0) if budget else 0.0
+                done_tag = " ✓" if captured >= budget else ""
+                last_str = (
+                    ft.last_capture.date().isoformat()
+                    if ft.last_capture else "—"
+                )
+                lines.append(
+                    f"  {target.name:<22} {filter_name:<6} "
+                    f"{captured:>8.0f}m  {budget:>6}m "
+                    f"{pct:>6.0f}%{done_tag:<2}  {last_str}"
+                )
+    if ledger.orphan_target_names:
+        lines.append("")
+        lines.append("Orphan target_names (no catalog match):")
+        for name in ledger.orphan_target_names:
+            sessions = [s for s in ledger.sessions if s.target_name == name]
+            mins = sum(s.integration_minutes for s in sessions)
+            lines.append(
+                f"  {name:<22} {len(sessions):>3} session(s)   "
+                f"{mins:>6.0f} min total"
+            )
+    return "\n".join(lines)
 
 
 def tonight(args: argparse.Namespace) -> None:

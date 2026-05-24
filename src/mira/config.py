@@ -137,22 +137,39 @@ class DsoConfig:
     moon gating. ``output_subdir`` is the dir-name appended to
     ``output.directory`` for plan files; full path becomes
     ``output.directory / output_subdir``.
+
+    ``captures_root`` is where ``mira dso status`` and the ledger-aware
+    ``mira dso plan`` walk for ``mira_capture.json`` sidecars. The
+    homebase end of a Syncthing-mirrored rig captures dir is the
+    expected setting on the Esprit. Override with ``--captures-root``.
+
+    ``deficit_weight`` controls how strongly the ledger demotes
+    already-imaged targets in ``mira dso plan``'s ranking. The score
+    multiplier is ``0.5 + deficit_weight * deficit_fraction`` clamped to
+    [0.5, 1.5]; with weight 1.0 (default), a never-imaged target is
+    boosted 1.5× and a 100%-complete target is demoted to 0.5×. Set to
+    0 to disable the ledger entirely (Phase-1 pure-observability behavior).
     """
     enabled: bool
     catalog_path: Path
     fov_deg: tuple[float, float]
     relax_moon: bool
     output_subdir: str
+    captures_root: Path
+    deficit_weight: float
 
 
 # Sensible defaults: the shipped curated catalog, the Esprit 120 rig FOV,
-# narrowband-relaxed moon. A config without a `dso:` section gets these.
+# narrowband-relaxed moon, captures under the repo's `captures/`. A config
+# without a `dso:` section gets these.
 DSO_DEFAULTS = DsoConfig(
     enabled=True,
     catalog_path=Path("data/dso_catalog/sho_targets.yaml"),
     fov_deg=(1.6, 1.07),
     relax_moon=True,
     output_subdir="dso",
+    captures_root=Path("captures"),
+    deficit_weight=1.0,
 )
 
 
@@ -249,6 +266,8 @@ def _parse_dso(raw: Any) -> DsoConfig:
         fov_deg=(float(fov[0]), float(fov[1])),
         relax_moon=bool(raw.get("relax_moon", DSO_DEFAULTS.relax_moon)),
         output_subdir=str(raw.get("output_subdir", DSO_DEFAULTS.output_subdir)),
+        captures_root=Path(raw.get("captures_root", str(DSO_DEFAULTS.captures_root))),
+        deficit_weight=float(raw.get("deficit_weight", DSO_DEFAULTS.deficit_weight)),
     )
 
 

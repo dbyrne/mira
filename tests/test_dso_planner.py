@@ -229,3 +229,160 @@ class DsoConfigDefaultsTests(TestCase):
         self.assertEqual(config.dso.enabled, DSO_DEFAULTS.enabled)
         self.assertEqual(config.dso.fov_deg, DSO_DEFAULTS.fov_deg)
         self.assertTrue(config.dso.relax_moon)
+        # Phase 2 fields default sensibly too.
+        self.assertEqual(config.dso.captures_root, DSO_DEFAULTS.captures_root)
+        self.assertEqual(config.dso.deficit_weight, DSO_DEFAULTS.deficit_weight)
+
+
+class LedgerAwareRankingTests(TestCase):
+    """Phase 2 — when a ledger is provided, deficit weighting kicks in.
+    These tests pin both directions: ledger=None must reproduce Phase 1
+    ranking exactly, and ledger-aware must demote completed targets."""
+
+    def _two_targets(self):
+        # Two narrowband targets that both transit very high from JC in
+        # August — without the ledger they score almost identically;
+        # with the ledger and one of them "done," the order should flip.
+        a = _make_target(name="A", dec_deg=38.0)
+        b = _make_target(name="B", dec_deg=38.5)
+        return a, b
+
+    def test_ledger_none_matches_phase_1_exactly(self) -> None:
+        """build_dso_candidates with ledger=None and deficit_weight at any
+        value must produce identical results to the Phase-1 path. Pinned
+        bit-for-bit on score and order."""
+        config = _make_config(_make_site())
+        a, b = self._two_targets()
+        catalog = DsoCatalog(version="t", defaults={}, targets=(a, b))
+
+        baseline = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15),
+        )
+        with_weight = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15),
+            ledger=None, deficit_weight=99.0,
+        )
+        self.assertEqual(
+            [c.target.name for c in baseline],
+            [c.target.name for c in with_weight],
+        )
+        for c1, c2 in zip(baseline, with_weight):
+            self.assertEqual(c1.score, c2.score)
+            # captured + completion_fraction are zero when ledger=None.
+            # budget_minutes IS populated (it's a property of the target,
+            # not the ledger) — that's intentional, so the display shows
+            # the target's budget regardless of ledger state.
+            self.assertEqual(c1.captured_minutes, 0.0)
+            self.assertEqual(c1.completion_fraction, 0.0)
+
+    def test_completed_target_demoted_but_kept(self) -> None:
+        """Per user rule: completed targets STAY in the queue, just
+        deprioritized. Build a ledger where A is fully imaged and B is
+        untouched; B ranks ahead but A must still appear."""
+        from mira.dso.ledger import SessionRecord, aggregate_ledger
+        config = _make_config(_make_site())
+        a, b = self._two_targets()
+        catalog = DsoCatalog(version="t", defaults={}, targets=(a, b))
+
+        sessions = [
+            SessionRecord(
+                sidecar_path=Path("synth"), target_name=a.name,
+                filter_name=fname, gain=100, exposure_s=60.0,
+                frames_copied=int(mins),
+                started_utc=None, ended_utc=None, stopped_reason="",
+                frame_count_source="result.copied",
+            )
+            for fname, mins in a.budget_minutes.items()
+        ]
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+
+        cands = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15),
+            ledger=ledger, deficit_weight=1.0,
+        )
+        names = [c.target.name for c in cands]
+        self.assertIn("A", names, "completed target must stay in queue")
+        self.assertIn("B", names)
+        self.assertEqual(names[0], "B")
+        a_cand = next(c for c in cands if c.target.name == "A")
+        b_cand = next(c for c in cands if c.target.name == "B")
+        self.assertAlmostEqual(a_cand.completion_fraction, 1.0, places=4)
+        self.assertEqual(b_cand.completion_fraction, 0.0)
+        # B got 1.5x boost, A got 0.5x demote → ratio ~3x on near-twin observability.
+        self.assertGreater(b_cand.score / a_cand.score, 2.5)
+
+    def test_deficit_weight_zero_keeps_ledger_metadata_but_phase1_order(self) -> None:
+        """deficit_weight=0 surfaces ledger metadata on candidates without
+        affecting ranking — escape hatch for "show me the totals but don't
+        re-rank."""
+        from mira.dso.ledger import SessionRecord, aggregate_ledger
+        config = _make_config(_make_site())
+        a, b = self._two_targets()
+        catalog = DsoCatalog(version="t", defaults={}, targets=(a, b))
+        sessions = [SessionRecord(
+            sidecar_path=Path("x"), target_name=a.name,
+            filter_name="Ha", gain=100, exposure_s=60.0,
+            frames_copied=int(a.budget_minutes["Ha"]),
+            started_utc=None, ended_utc=None, stopped_reason="",
+            frame_count_source="result.copied",
+        )]
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+
+        cands_off = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15),
+            ledger=ledger, deficit_weight=0.0,
+        )
+        cands_phase1 = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15), ledger=None,
+        )
+        self.assertEqual(
+            [c.target.name for c in cands_off],
+            [c.target.name for c in cands_phase1],
+        )
+        for c_off, c_phase1 in zip(cands_off, cands_phase1):
+            self.assertEqual(c_off.score, c_phase1.score)
+        # But ledger fields ARE populated on cands_off:
+        a_off = next(c for c in cands_off if c.target.name == "A")
+        self.assertGreater(a_off.captured_minutes, 0.0)
+
+    def test_partial_completion_partial_demote(self) -> None:
+        """Halfway-imaged target should rank between never-imaged and
+        fully-imaged (linear in deficit_fraction)."""
+        from mira.dso.ledger import SessionRecord, aggregate_ledger
+        config = _make_config(_make_site())
+        a, b = self._two_targets()
+        c = _make_target(name="C", dec_deg=38.25)
+        catalog = DsoCatalog(version="t", defaults={}, targets=(a, b, c))
+
+        sessions = []
+        for fname, mins in a.budget_minutes.items():
+            sessions.append(SessionRecord(
+                sidecar_path=Path("a"), target_name=a.name,
+                filter_name=fname, gain=100, exposure_s=60.0,
+                frames_copied=int(mins),
+                started_utc=None, ended_utc=None, stopped_reason="",
+                frame_count_source="result.copied",
+            ))
+        # C at exactly half each filter
+        for fname, mins in c.budget_minutes.items():
+            sessions.append(SessionRecord(
+                sidecar_path=Path("c"), target_name=c.name,
+                filter_name=fname, gain=100, exposure_s=60.0,
+                frames_copied=int(mins // 2),
+                started_utc=None, ended_utc=None, stopped_reason="",
+                frame_count_source="result.copied",
+            ))
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+
+        cands = build_dso_candidates(
+            catalog, config, start_date=date(2026, 8, 15),
+            ledger=ledger, deficit_weight=1.0,
+        )
+        a_cand = next(c for c in cands if c.target.name == "A")
+        c_cand = next(c for c in cands if c.target.name == "C")
+        b_cand = next(c for c in cands if c.target.name == "B")
+        self.assertAlmostEqual(c_cand.completion_fraction, 0.5, places=4)
+        # Score multiplier order: B (1.5x) > C (1.0x) > A (0.5x).
+        self.assertGreater(b_cand.score, c_cand.score)
+        self.assertGreater(c_cand.score, a_cand.score)
+        self.assertEqual([c.target.name for c in cands], ["B", "C", "A"])

@@ -456,6 +456,61 @@ def main() -> None:
         help="Actually delete. Without this, the command reports what it would touch but does nothing.",
     )
 
+    dso_parser = subparsers.add_parser(
+        "dso",
+        help="DSO / narrowband planner: rank curated catalog targets by observability.",
+    )
+    dso_sub = dso_parser.add_subparsers(dest="dso_command", required=True)
+    dso_plan = dso_sub.add_parser(
+        "plan",
+        help="Rank the DSO catalog against tonight/this week's window and write a plan.",
+    )
+    dso_plan.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (must define a `dso:` section or use defaults).",
+    )
+    dso_plan.add_argument(
+        "--catalog", default=None,
+        help="Override DSO catalog YAML path (default: from config or data/dso_catalog/sho_targets.yaml).",
+    )
+    dso_plan.add_argument(
+        "--start-date", default=None,
+        help="Local observing start date YYYY-MM-DD (default: today in the first site's timezone).",
+    )
+    dso_plan.add_argument(
+        "--fov", default=None,
+        help="Override rig FOV as 'major,minor' in degrees (e.g. 1.6,1.07).",
+    )
+    dso_plan.add_argument(
+        "--strict-moon", action="store_true",
+        help="Apply VSX-style moon gate to all DSO targets (default: relaxed for narrowband targets).",
+    )
+    dso_plan.add_argument(
+        "--output-dir", default=None,
+        help="Override output directory (default: <config.output.directory>/<dso.output_subdir>).",
+    )
+    dso_plan.add_argument(
+        "--top", type=int, default=None,
+        help="Limit ranked list to top N candidates in the report (default: all viable).",
+    )
+
+    dso_research = dso_sub.add_parser(
+        "research",
+        help="Render an offline-research Markdown view of the catalog (every target, external links).",
+    )
+    dso_research.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (used to locate the catalog if --catalog is unset).",
+    )
+    dso_research.add_argument(
+        "--catalog", default=None,
+        help="Override DSO catalog YAML path (default: from config).",
+    )
+    dso_research.add_argument(
+        "--out", default=None,
+        help="Output Markdown path (default: <catalog_dir>/research_notes.md).",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -503,6 +558,8 @@ def main() -> None:
         cleanup(args)
     elif args.command == "rehearse":
         rehearse(args)
+    elif args.command == "dso":
+        dso(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -1670,6 +1727,96 @@ def doctor(args: argparse.Namespace) -> None:
     _, code = summarize(checks)
     if code != 0:
         raise SystemExit(code)
+
+
+def dso(args: argparse.Namespace) -> None:
+    """DSO / narrowband planner. Loads the curated catalog, ranks by
+    observability + FOV fit against the configured sites, writes a plan
+    to <output_dir>/<dso.output_subdir>/. Future subcommands here will
+    add multi-night status (ledger) and per-night scheduling."""
+    from .config import load_config
+    from .dso.catalog import load_dso_catalog
+
+    cfg = load_config(args.config)
+    catalog_path = Path(args.catalog) if args.catalog else cfg.dso.catalog_path
+
+    if args.dso_command == "research":
+        from .dso.research import render_research_notes
+        print(f"Loading DSO catalog: {catalog_path}")
+        catalog = load_dso_catalog(catalog_path)
+        print(f"  catalog v{catalog.version}: {len(catalog.targets)} targets")
+        out_path = (
+            Path(args.out) if args.out
+            else catalog_path.parent / "research_notes.md"
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(render_research_notes(catalog), encoding="utf-8")
+        print(f"Wrote {out_path}")
+        return
+
+    if args.dso_command != "plan":
+        raise SystemExit(f"unknown dso subcommand: {args.dso_command}")
+    from datetime import date as _date
+    from zoneinfo import ZoneInfo
+    from .dso.planner import build_dso_candidates
+    from .dso.report import write_dso_plan
+
+    print(f"Loading DSO catalog: {catalog_path}")
+    catalog = load_dso_catalog(catalog_path)
+    print(f"  catalog v{catalog.version}: {len(catalog.targets)} targets")
+
+    # Start-date resolution: explicit > today in the first site's TZ.
+    if args.start_date:
+        start_date = _date.fromisoformat(args.start_date)
+    else:
+        first_tz = ZoneInfo(cfg.sites[0].observer.timezone)
+        start_date = datetime.now(first_tz).date()
+
+    if args.fov:
+        try:
+            major_str, minor_str = args.fov.split(",")
+            fov_deg = (float(major_str), float(minor_str))
+        except ValueError as exc:
+            raise SystemExit(f"--fov must be 'major,minor' degrees (e.g. 1.6,1.07): {exc}")
+    else:
+        fov_deg = cfg.dso.fov_deg
+
+    relax_moon = cfg.dso.relax_moon and not args.strict_moon
+
+    print(
+        f"Ranking against {len(cfg.sites)} site(s) for "
+        f"{cfg.sites[0].observing_window.nights} night(s) from {start_date} "
+        f"(FOV {fov_deg[0]:.2f}°×{fov_deg[1]:.2f}°, "
+        f"moon {'relaxed' if relax_moon else 'strict'})..."
+    )
+    candidates = build_dso_candidates(
+        catalog, cfg,
+        start_date=start_date,
+        fov_deg=fov_deg,
+        relax_moon=relax_moon,
+    )
+    print(f"  {len(candidates)} target(s) viable in the window")
+    if args.top is not None:
+        candidates = candidates[: args.top]
+
+    out_root = Path(args.output_dir) if args.output_dir else cfg.output.directory
+    out_dir = out_root / cfg.dso.output_subdir
+    md_path, csv_path = write_dso_plan(
+        candidates, out_dir,
+        config_path=args.config,
+        catalog_version=catalog.version,
+        start_date=start_date,
+        window_nights=cfg.sites[0].observing_window.nights,
+    )
+    print(f"Wrote {md_path}")
+    print(f"Wrote {csv_path}")
+    if candidates:
+        top = candidates[0]
+        print(
+            f"\nTop pick: {top.target.name} ({top.target.common_name}) "
+            f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
+            f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
+        )
 
 
 def tonight(args: argparse.Namespace) -> None:

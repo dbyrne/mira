@@ -128,6 +128,35 @@ class OutputConfig:
 
 
 @dataclass(frozen=True)
+class DsoConfig:
+    """Optional DSO/narrowband planner settings. Absent in VSX-only configs.
+
+    ``fov_deg`` is (major, minor) of the rig's FOV in degrees — used to
+    flag mosaic candidates. ``relax_moon=True`` is the narrowband default
+    (Ha/SII/OIII tolerate moonlight); set False for strict broadband-style
+    moon gating. ``output_subdir`` is the dir-name appended to
+    ``output.directory`` for plan files; full path becomes
+    ``output.directory / output_subdir``.
+    """
+    enabled: bool
+    catalog_path: Path
+    fov_deg: tuple[float, float]
+    relax_moon: bool
+    output_subdir: str
+
+
+# Sensible defaults: the shipped curated catalog, the Esprit 120 rig FOV,
+# narrowband-relaxed moon. A config without a `dso:` section gets these.
+DSO_DEFAULTS = DsoConfig(
+    enabled=True,
+    catalog_path=Path("data/dso_catalog/sho_targets.yaml"),
+    fov_deg=(1.6, 1.07),
+    relax_moon=True,
+    output_subdir="dso",
+)
+
+
+@dataclass(frozen=True)
 class ScoutConfig:
     sites: tuple[SiteConfig, ...]
     vsx_query: VsxQueryConfig
@@ -137,6 +166,7 @@ class ScoutConfig:
     gaia: GaiaConfig
     ztf: ZtfConfig
     output: OutputConfig
+    dso: DsoConfig = DSO_DEFAULTS
 
 
 def load_config(path: str | Path) -> ScoutConfig:
@@ -192,6 +222,33 @@ def load_config(path: str | Path) -> ScoutConfig:
             directory=Path(raw["output"]["directory"]),
             top_packets=int(raw["output"]["top_packets"]),
         ),
+        dso=_parse_dso(raw.get("dso")),
+    )
+
+
+def _parse_dso(raw: Any) -> DsoConfig:
+    """Parse the optional `dso:` config section. Missing/empty yields the
+    DSO_DEFAULTS so existing VSX-only configs continue to load. A present
+    section overrides field-by-field — partial sections inherit the rest."""
+    if not raw:
+        return DSO_DEFAULTS
+    if not isinstance(raw, dict):
+        raise ValueError("dso: section must be a mapping")
+    fov = raw.get("fov_deg", DSO_DEFAULTS.fov_deg)
+    if not (
+        isinstance(fov, (list, tuple))
+        and len(fov) == 2
+        and all(isinstance(v, (int, float)) and v > 0 for v in fov)
+    ):
+        raise ValueError(
+            f"dso.fov_deg must be [major, minor] positive numbers; got {fov!r}"
+        )
+    return DsoConfig(
+        enabled=bool(raw.get("enabled", DSO_DEFAULTS.enabled)),
+        catalog_path=Path(raw.get("catalog_path", str(DSO_DEFAULTS.catalog_path))),
+        fov_deg=(float(fov[0]), float(fov[1])),
+        relax_moon=bool(raw.get("relax_moon", DSO_DEFAULTS.relax_moon)),
+        output_subdir=str(raw.get("output_subdir", DSO_DEFAULTS.output_subdir)),
     )
 
 

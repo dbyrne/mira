@@ -17,6 +17,24 @@ def evaluate_observability(
     site: SiteConfig,
     start_date: date | None = None,
 ) -> Observability:
+    """Observability of a VSX target. Thin wrapper over the coords-only
+    `evaluate_observability_at_coords` — kept stable for VSX-side callers."""
+    return evaluate_observability_at_coords(
+        target.ra_deg, target.dec_deg, site, start_date=start_date
+    )
+
+
+def evaluate_observability_at_coords(
+    ra_deg: float,
+    dec_deg: float,
+    site: SiteConfig,
+    *,
+    start_date: date | None = None,
+) -> Observability:
+    """Same observability evaluation as VSX-side, but driven by raw RA/Dec.
+    Used by the DSO planner where targets aren't VsxTargets. The
+    `site_name` and other Observability fields are populated identically to
+    the VSX path so downstream sorts/displays don't need to special-case."""
     observer = site.observer
     window = site.observing_window
     if start_date is None:
@@ -50,21 +68,21 @@ def evaluate_observability(
                 # scattering ruins photometry within ~30° of a bright moon).
                 if window.min_moon_separation_deg > 0:
                     separation = moon_separation_deg(
-                        target.ra_deg, target.dec_deg, utc_sample
+                        ra_deg, dec_deg, utc_sample
                     )
                     if separation < window.min_moon_separation_deg:
                         continue
             target_alt = altitude_deg(
-                target.ra_deg,
-                target.dec_deg,
+                ra_deg,
+                dec_deg,
                 utc_sample,
                 observer.latitude_deg,
                 observer.longitude_deg,
             )
             if horizon is not None:
                 target_az = azimuth_deg(
-                    target.ra_deg,
-                    target.dec_deg,
+                    ra_deg,
+                    dec_deg,
                     utc_sample,
                     observer.latitude_deg,
                     observer.longitude_deg,
@@ -93,7 +111,7 @@ def evaluate_observability(
         minutes_above_minimum=best_night_minutes,
         best_local_time=best_local_time,
         best_night_date=best_night_date,
-        galactic_latitude_deg=galactic_latitude_deg(target.ra_deg, target.dec_deg),
+        galactic_latitude_deg=galactic_latitude_deg(ra_deg, dec_deg),
     )
 
 

@@ -1,0 +1,528 @@
+# Curated narrowband-friendly DSO catalog for the Esprit 120 EDX + ASI2600MM Pro
+# rig from Jersey City (~40.7°N). FOV is ~1.6° × 1.07° (840mm focal length on
+# an APS-C 23.5×15.7mm sensor). Targets are chosen to:
+#   - Be observable from JC (dec >= -10°)
+#   - Either fit a single frame, or be flagged as mosaic candidates
+#   - Have meaningful narrowband signal (Ha/OIII/SII emission, or strong
+#     broadband for reflection/dark nebulae included as L+RGB targets)
+#
+# Schema:
+#   name           — canonical catalog identifier (NGC/IC/Sh2/M/Abell/...)
+#   common_name    — human-readable
+#   object_type    — HII | PN | SNR | WR | DARK | REF | OPEN | GLOB
+#   ra_deg, dec_deg — J2000 in decimal degrees
+#   size_arcmin    — [major, minor]
+#   constellation  — IAU 3-letter abbreviation
+#   budget_minutes — per-filter integration target. Keys are NINA wheel labels.
+#                    Standard set: Ha, OIII, SII (narrowband), L, R, G, B (broad).
+#   mosaic         — true if target exceeds the single-frame FOV (1.6°×1.07°)
+#   notes          — anything notable for capture planning
+#
+# Coordinates are J2000 from SIMBAD/NED rounded to ~2 arcmin precision — good
+# enough for plate-solve centering, the actual centering comes from
+# `mira capture --platesolve-center`.
+
+catalog_version: "2026-05-24"
+
+defaults:
+  gain: 100
+  exposure_s: 300       # 5-min subs — standard narrowband with guided EQ
+  filters_narrowband: [Ha, OIII, SII]
+  filters_broadband: [L, R, G, B]
+
+targets:
+  # ================================================================
+  # WINTER (RA 04h-08h) — Orion + Auriga + Gemini + Taurus complex
+  # ================================================================
+  - name: "M1"
+    common_name: "Crab Nebula"
+    object_type: SNR
+    ra_deg: 83.633
+    dec_deg: 22.014
+    size_arcmin: [6, 4]
+    constellation: Tau
+    budget_minutes: {Ha: 480, OIII: 720, SII: 600}
+    mosaic: false
+    notes: "OIII dominant in filaments; SII traces remnant outer shell"
+
+  - name: "M42"
+    common_name: "Orion Nebula"
+    object_type: HII
+    ra_deg: 83.822
+    dec_deg: -5.391
+    size_arcmin: [65, 60]
+    constellation: Ori
+    budget_minutes: {Ha: 240, OIII: 360, SII: 240, L: 60, R: 60, G: 60, B: 60}
+    mosaic: false
+    notes: "Trapezium HDR — bracket short subs (10-30s) into the core or it saturates"
+
+  - name: "NGC 1499"
+    common_name: "California Nebula"
+    object_type: HII
+    ra_deg: 60.000
+    dec_deg: 36.583
+    size_arcmin: [145, 40]
+    constellation: Per
+    budget_minutes: {Ha: 600, OIII: 600, SII: 480}
+    mosaic: true
+    notes: "Two-panel mosaic at 1.6° width; pure Ha can be done single panel cropped"
+
+  - name: "NGC 1977"
+    common_name: "Running Man Nebula"
+    object_type: REF
+    ra_deg: 83.866
+    dec_deg: -4.700
+    size_arcmin: [40, 25]
+    constellation: Ori
+    budget_minutes: {L: 240, R: 180, G: 180, B: 180}
+    mosaic: false
+    notes: "Reflection nebula — narrowband not useful; RGB or L+RGB"
+
+  - name: "NGC 2174"
+    common_name: "Monkey Head Nebula"
+    object_type: HII
+    ra_deg: 91.625
+    dec_deg: 20.500
+    size_arcmin: [40, 30]
+    constellation: Ori
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Good SHO target; strong Ha, moderate OIII"
+
+  - name: "NGC 2237"
+    common_name: "Rosette Nebula"
+    object_type: HII
+    ra_deg: 97.967
+    dec_deg: 4.950
+    size_arcmin: [80, 80]
+    constellation: Mon
+    budget_minutes: {Ha: 600, OIII: 720, SII: 600}
+    mosaic: false
+    notes: "Fits FOV diagonally; OIII reveals oxygen shell structure"
+
+  - name: "NGC 2264"
+    common_name: "Christmas Tree / Cone Nebula"
+    object_type: HII
+    ra_deg: 100.250
+    dec_deg: 9.883
+    size_arcmin: [60, 30]
+    constellation: Mon
+    budget_minutes: {Ha: 540, OIII: 600, SII: 480}
+    mosaic: false
+    notes: "Cone region has interesting SII; combined with cluster"
+
+  - name: "IC 405"
+    common_name: "Flaming Star Nebula"
+    object_type: HII
+    ra_deg: 79.067
+    dec_deg: 34.367
+    size_arcmin: [37, 19]
+    constellation: Aur
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Often paired with IC 410 in wider mosaics; single-frame OK"
+
+  - name: "IC 410"
+    common_name: "Tadpoles Nebula"
+    object_type: HII
+    ra_deg: 80.733
+    dec_deg: 33.500
+    size_arcmin: [40, 30]
+    constellation: Aur
+    budget_minutes: {Ha: 540, OIII: 720, SII: 540}
+    mosaic: false
+    notes: "Tadpole globules are SHO showstoppers"
+
+  - name: "IC 434"
+    common_name: "Horsehead Nebula"
+    object_type: HII
+    ra_deg: 85.250
+    dec_deg: -2.450
+    size_arcmin: [60, 10]
+    constellation: Ori
+    budget_minutes: {Ha: 720, OIII: 480, SII: 480, L: 120, R: 120, G: 120, B: 120}
+    mosaic: false
+    notes: "Pair with Flame (NGC 2024) in same frame; classic Ha target"
+
+  - name: "Abell 21"
+    common_name: "Medusa Nebula"
+    object_type: PN
+    ra_deg: 113.000
+    dec_deg: 13.250
+    size_arcmin: [10, 10]
+    constellation: Gem
+    budget_minutes: {Ha: 540, OIII: 900, SII: 360}
+    mosaic: false
+    notes: "OIII-dominant ancient planetary; long subs needed"
+
+  # ================================================================
+  # SPRING (RA 08h-14h) — galaxy season, narrowband sparse
+  # ================================================================
+  - name: "M97"
+    common_name: "Owl Nebula"
+    object_type: PN
+    ra_deg: 168.700
+    dec_deg: 55.017
+    size_arcmin: [3, 3]
+    constellation: UMa
+    budget_minutes: {Ha: 360, OIII: 720, SII: 240}
+    mosaic: false
+    notes: "Small but bright OIII; useful narrowband target in galaxy season"
+
+  - name: "Abell 31"
+    common_name: "Abell 31 PN"
+    object_type: PN
+    ra_deg: 130.342
+    dec_deg: 8.733
+    size_arcmin: [16, 16]
+    constellation: Cnc
+    budget_minutes: {Ha: 480, OIII: 1200, SII: 360}
+    mosaic: false
+    notes: "Very faint OIII halo; needs dark skies + long integration"
+
+  # ================================================================
+  # SUMMER (RA 14h-20h) — Sagittarius / Cygnus narrowband prime
+  # ================================================================
+  - name: "M8"
+    common_name: "Lagoon Nebula"
+    object_type: HII
+    ra_deg: 270.917
+    dec_deg: -24.383
+    size_arcmin: [90, 40]
+    constellation: Sgr
+    budget_minutes: {Ha: 480, OIII: 540, SII: 480}
+    mosaic: false
+    notes: "Low altitude from JC (~25° max) — atmospheric extinction matters; pair with M20"
+
+  - name: "M16"
+    common_name: "Eagle Nebula / Pillars of Creation"
+    object_type: HII
+    ra_deg: 274.700
+    dec_deg: -13.800
+    size_arcmin: [30, 20]
+    constellation: Ser
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Pillars are tiny but iconic; longer focal lengths benefit"
+
+  - name: "M17"
+    common_name: "Omega / Swan Nebula"
+    object_type: HII
+    ra_deg: 275.200
+    dec_deg: -16.200
+    size_arcmin: [11, 11]
+    constellation: Sgr
+    budget_minutes: {Ha: 420, OIII: 540, SII: 480}
+    mosaic: false
+    notes: "Bright Ha core; SHO produces strong palette"
+
+  - name: "M20"
+    common_name: "Trifid Nebula"
+    object_type: HII
+    ra_deg: 270.633
+    dec_deg: -23.033
+    size_arcmin: [28, 28]
+    constellation: Sgr
+    budget_minutes: {Ha: 540, OIII: 600, SII: 480, L: 60, R: 60, G: 60, B: 60}
+    mosaic: false
+    notes: "Mixed emission+reflection; benefits from both NB and RGB"
+
+  - name: "M27"
+    common_name: "Dumbbell Nebula"
+    object_type: PN
+    ra_deg: 299.901
+    dec_deg: 22.721
+    size_arcmin: [8, 6]
+    constellation: Vul
+    budget_minutes: {Ha: 360, OIII: 540, SII: 240}
+    mosaic: false
+    notes: "Showcase OIII PN; faint outer halo rewards long Ha"
+
+  - name: "M57"
+    common_name: "Ring Nebula"
+    object_type: PN
+    ra_deg: 283.396
+    dec_deg: 33.029
+    size_arcmin: [1.4, 1]
+    constellation: Lyr
+    budget_minutes: {Ha: 240, OIII: 540, SII: 180}
+    mosaic: false
+    notes: "Tiny — undersampled at 840mm; do for the outer Ha halo"
+
+  - name: "NGC 6888"
+    common_name: "Crescent Nebula"
+    object_type: WR
+    ra_deg: 303.025
+    dec_deg: 38.350
+    size_arcmin: [18, 13]
+    constellation: Cyg
+    budget_minutes: {Ha: 600, OIII: 900, SII: 540}
+    mosaic: false
+    notes: "Wolf-Rayet bubble — OIII shell is the headline; needs long subs"
+
+  - name: "NGC 6960"
+    common_name: "Western Veil / Witch's Broom"
+    object_type: SNR
+    ra_deg: 312.749
+    dec_deg: 30.717
+    size_arcmin: [70, 6]
+    constellation: Cyg
+    budget_minutes: {Ha: 480, OIII: 720, SII: 480}
+    mosaic: false
+    notes: "Western strand of Cygnus Loop; OIII spectacular"
+
+  - name: "NGC 6992"
+    common_name: "Eastern Veil"
+    object_type: SNR
+    ra_deg: 313.041
+    dec_deg: 31.717
+    size_arcmin: [60, 8]
+    constellation: Cyg
+    budget_minutes: {Ha: 480, OIII: 720, SII: 480}
+    mosaic: false
+    notes: "Eastern strand; complementary to 6960"
+
+  - name: "NGC 7000"
+    common_name: "North America Nebula"
+    object_type: HII
+    ra_deg: 314.737
+    dec_deg: 44.337
+    size_arcmin: [120, 100]
+    constellation: Cyg
+    budget_minutes: {Ha: 600, OIII: 600, SII: 540}
+    mosaic: true
+    notes: "Two-panel mosaic for full nebula; Cygnus Wall alone (~30') fits single frame"
+
+  - name: "NGC 7023"
+    common_name: "Iris Nebula"
+    object_type: REF
+    ra_deg: 315.379
+    dec_deg: 68.158
+    size_arcmin: [18, 18]
+    constellation: Cep
+    budget_minutes: {L: 360, R: 240, G: 240, B: 240}
+    mosaic: false
+    notes: "Pure reflection — broadband only; embedded in dark dust"
+
+  - name: "IC 1318"
+    common_name: "Butterfly / Sadr Region"
+    object_type: HII
+    ra_deg: 305.500
+    dec_deg: 40.250
+    size_arcmin: [240, 180]
+    constellation: Cyg
+    budget_minutes: {Ha: 540, OIII: 600, SII: 480}
+    mosaic: true
+    notes: "Huge complex around Sadr; pick a panel or do 4-panel mosaic"
+
+  - name: "IC 5070"
+    common_name: "Pelican Nebula"
+    object_type: HII
+    ra_deg: 313.667
+    dec_deg: 44.367
+    size_arcmin: [60, 50]
+    constellation: Cyg
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Across the dust lane from NGC 7000; fits single frame"
+
+  - name: "Sh2-101"
+    common_name: "Tulip Nebula"
+    object_type: HII
+    ra_deg: 300.000
+    dec_deg: 35.300
+    size_arcmin: [17, 12]
+    constellation: Cyg
+    budget_minutes: {Ha: 600, OIII: 720, SII: 540}
+    mosaic: false
+    notes: "Near Cygnus X-1; OIII reveals shock front"
+
+  # ================================================================
+  # FALL (RA 20h-04h) — Cassiopeia / Cepheus / Andromeda narrowband
+  # ================================================================
+  - name: "M31"
+    common_name: "Andromeda Galaxy"
+    object_type: REF
+    ra_deg: 10.685
+    dec_deg: 41.269
+    size_arcmin: [190, 60]
+    constellation: And
+    budget_minutes: {L: 240, R: 180, G: 180, B: 180, Ha: 360}
+    mosaic: true
+    notes: "Mosaic for full disk. Ha exposes HII regions in spiral arms — bonus channel"
+
+  - name: "M33"
+    common_name: "Triangulum Galaxy"
+    object_type: REF
+    ra_deg: 23.462
+    dec_deg: 30.660
+    size_arcmin: [73, 45]
+    constellation: Tri
+    budget_minutes: {L: 360, R: 240, G: 240, B: 240, Ha: 480}
+    mosaic: false
+    notes: "Fits at 1.6°. Ha integration reveals NGC 604 and other HII regions"
+
+  - name: "M52"
+    common_name: "M52 + Bubble region"
+    object_type: HII
+    ra_deg: 351.179
+    dec_deg: 61.591
+    size_arcmin: [60, 30]
+    constellation: Cas
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Frame to include both M52 open cluster and NGC 7635 Bubble"
+
+  - name: "M76"
+    common_name: "Little Dumbbell"
+    object_type: PN
+    ra_deg: 25.583
+    dec_deg: 51.575
+    size_arcmin: [3, 2]
+    constellation: Per
+    budget_minutes: {Ha: 360, OIII: 540, SII: 240}
+    mosaic: false
+    notes: "Small bipolar PN; OIII bright"
+
+  - name: "NGC 281"
+    common_name: "Pacman Nebula"
+    object_type: HII
+    ra_deg: 13.250
+    dec_deg: 56.617
+    size_arcmin: [35, 30]
+    constellation: Cas
+    budget_minutes: {Ha: 540, OIII: 600, SII: 480}
+    mosaic: false
+    notes: "Bok globules visible in Ha; classic SHO target"
+
+  - name: "NGC 7293"
+    common_name: "Helix Nebula"
+    object_type: PN
+    ra_deg: 337.412
+    dec_deg: -20.837
+    size_arcmin: [25, 17]
+    constellation: Aqr
+    budget_minutes: {Ha: 600, OIII: 720, SII: 480}
+    mosaic: false
+    notes: "Low altitude from JC (~25° max) — atmospheric extinction limits OIII"
+
+  - name: "NGC 7380"
+    common_name: "Wizard Nebula"
+    object_type: HII
+    ra_deg: 341.500
+    dec_deg: 58.117
+    size_arcmin: [25, 25]
+    constellation: Cep
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Compact HII region; full SHO palette works"
+
+  - name: "NGC 7635"
+    common_name: "Bubble Nebula"
+    object_type: HII
+    ra_deg: 350.196
+    dec_deg: 61.197
+    size_arcmin: [15, 8]
+    constellation: Cas
+    budget_minutes: {Ha: 600, OIII: 900, SII: 540}
+    mosaic: false
+    notes: "OIII bubble is the highlight; pair with M52 if framing wider"
+
+  - name: "NGC 7662"
+    common_name: "Blue Snowball"
+    object_type: PN
+    ra_deg: 351.221
+    dec_deg: 42.546
+    size_arcmin: [0.5, 0.5]
+    constellation: And
+    budget_minutes: {Ha: 240, OIII: 540, SII: 180}
+    mosaic: false
+    notes: "Tiny PN — undersampled but bright; OIII strong"
+
+  - name: "NGC 7822"
+    common_name: "Cederblad 214 region"
+    object_type: HII
+    ra_deg: 0.083
+    dec_deg: 68.567
+    size_arcmin: [60, 30]
+    constellation: Cep
+    budget_minutes: {Ha: 540, OIII: 600, SII: 540}
+    mosaic: false
+    notes: "Includes Ced 214 + Sh2-171; high in autumn skies from JC"
+
+  - name: "IC 1396"
+    common_name: "Elephant's Trunk Nebula"
+    object_type: HII
+    ra_deg: 324.500
+    dec_deg: 57.500
+    size_arcmin: [170, 140]
+    constellation: Cep
+    budget_minutes: {Ha: 600, OIII: 600, SII: 540}
+    mosaic: true
+    notes: "Mosaic for full nebula; Trunk itself (~20') fits single frame"
+
+  - name: "IC 1805"
+    common_name: "Heart Nebula"
+    object_type: HII
+    ra_deg: 38.583
+    dec_deg: 61.467
+    size_arcmin: [150, 150]
+    constellation: Cas
+    budget_minutes: {Ha: 600, OIII: 600, SII: 540}
+    mosaic: true
+    notes: "Two-panel mosaic; often paired with IC 1848 (Soul) in widefield"
+
+  - name: "IC 1848"
+    common_name: "Soul Nebula"
+    object_type: HII
+    ra_deg: 42.500
+    dec_deg: 60.433
+    size_arcmin: [100, 100]
+    constellation: Cas
+    budget_minutes: {Ha: 600, OIII: 600, SII: 540}
+    mosaic: true
+    notes: "Companion to IC 1805 Heart"
+
+  - name: "Sh2-155"
+    common_name: "Cave Nebula"
+    object_type: HII
+    ra_deg: 343.208
+    dec_deg: 62.617
+    size_arcmin: [50, 30]
+    constellation: Cep
+    budget_minutes: {Ha: 600, OIII: 600, SII: 480}
+    mosaic: false
+    notes: "Strong Ha, modest OIII; fits single frame"
+
+  - name: "Sh2-188"
+    common_name: "Dust Cap PN"
+    object_type: PN
+    ra_deg: 19.183
+    dec_deg: 58.300
+    size_arcmin: [10, 8]
+    constellation: Cas
+    budget_minutes: {Ha: 480, OIII: 900, SII: 360}
+    mosaic: false
+    notes: "Asymmetric PN with bright arc; OIII required"
+
+  - name: "Sh2-240"
+    common_name: "Spaghetti Nebula SNR"
+    object_type: SNR
+    ra_deg: 84.167
+    dec_deg: 28.000
+    size_arcmin: [180, 180]
+    constellation: Tau
+    budget_minutes: {Ha: 900, OIII: 1200, SII: 720}
+    mosaic: true
+    notes: "Huge faint SNR; 4-panel mosaic + dark skies"
+
+  - name: "Abell 78"
+    common_name: "Abell 78"
+    object_type: WR
+    ra_deg: 326.500
+    dec_deg: 31.500
+    size_arcmin: [2, 2]
+    constellation: Cyg
+    budget_minutes: {Ha: 720, OIII: 1200, SII: 360}
+    mosaic: false
+    notes: "Very faint WR planetary nebula; OIII shell prominent with long subs"

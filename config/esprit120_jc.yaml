@@ -147,6 +147,19 @@ output:
   directory: output/esprit120_jc
   top_packets: 20
 
+# DSO / narrowband planner config (consumed by `mira dso plan`). Optional —
+# omit this section to fall back to defaults in config.DSO_DEFAULTS.
+dso:
+  enabled: true
+  catalog_path: data/dso_catalog/sho_targets.yaml
+  # Esprit 120 EDX (840mm fl) + ASI2600MM Pro (23.5×15.7mm sensor) = 1.6°×1.07°.
+  fov_deg: [1.6, 1.07]
+  # Ha/OIII/SII punch through moonlight; relax the VSX moon-altitude/illum/
+  # separation gate for any target with narrowband budget. Broadband targets
+  # (REF/galaxies, L+RGB only) still apply the moon gate.
+  relax_moon: true
+  output_subdir: dso
+
 # Site/rig constants for `mira capture --config config/esprit120_jc.yaml` on
 # the MeLE Quieter 4C (the rig brain). Homebase doesn't run mira capture, so
 # the nina_root path is only meaningful when this config is loaded on the

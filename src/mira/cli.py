@@ -943,10 +943,31 @@ def submit(args: argparse.Namespace) -> None:
             print(msg)
         return
     print(f"WCS pre-flight OK on {fits_files[0].name}.")
-    if any(c.catalog_band == "V" for c in resolution.comps):
+
+    # Resolve the AAVSO band from the capture sidecar. With a real photometric
+    # filter (Antlia V on the Esprit rig) the band becomes Johnson V — the
+    # honest-AAVSO-V-submission path. Without a sidecar (or with an OSC label
+    # like LP/IR), band_override stays None and process_capture's historical
+    # V→TG OSC convention applies.
+    from .photometry import filter_to_aavso_band, read_capture_filter
+    capture_filter = read_capture_filter(captures_dir)
+    band_override = filter_to_aavso_band(capture_filter) if capture_filter else None
+    has_v_comps = any(c.catalog_band == "V" for c in resolution.comps)
+    if band_override == "V":
         print(
-            "Note: V-band comps will be reported as TG band per AAVSO OSC convention "
-            "(green channel ≈ V but counts as a separate band)."
+            f"Filter '{capture_filter}' from {captures_dir.name}/mira_capture.json → "
+            "AAVSO band V. V-band comps will be reported as Johnson V."
+        )
+    elif band_override:
+        print(
+            f"Filter '{capture_filter}' from {captures_dir.name}/mira_capture.json → "
+            f"AAVSO band {band_override}."
+        )
+    elif has_v_comps:
+        print(
+            "Note: no filter recorded in mira_capture.json. V-band comps will be "
+            "reported as TG (OSC green-channel convention). Capture with "
+            "`mira capture --filter V` to emit honest Johnson V observations."
         )
     print(f"Processing {len(fits_files)} FITS files...")
 
@@ -969,6 +990,7 @@ def submit(args: argparse.Namespace) -> None:
         comps=resolution.comps,
         chart_id=resolution.chart_id,
         aperture_arcsec=args.aperture_arcsec,
+        band_override=band_override,
         on_frame=_print_frame,
     )
 
@@ -1379,6 +1401,24 @@ def capture(args: argparse.Namespace) -> None:
     )
     if args.session:
         print(f"(session profile: {args.session})")
+
+    # Siril Live Stacking hint: paste these two paths into Siril's Live
+    # Stacking panel on homebase to get a real-time progress preview as
+    # Syncthing mirrors frames in. The watch dir is the absolute capture
+    # dest; the master flat (if resolvable) gives Siril a calibrated stack.
+    from .flats import find_master_for_filter_gain
+    watch_dir = Path(cfg["dest"]).resolve()
+    flats_root = Path("data/flats").resolve()
+    flat_path, flat_reason = find_master_for_filter_gain(
+        cfg.get("filter"), cfg.get("gain"), flats_root
+    )
+    print("\nSiril Live Stack (homebase):")
+    print(f"  watch folder : {watch_dir}")
+    if flat_path is not None:
+        print(f"  master flat  : {flat_path.resolve()}  ({flat_reason})")
+    else:
+        print(f"  master flat  : (not resolved — {flat_reason})")
+    print()
     res = run_capture(
         client,
         ra_deg=cfg["ra"], dec_deg=cfg["dec"],

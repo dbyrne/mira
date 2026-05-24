@@ -136,11 +136,17 @@ def run_photometry_loop(
     chart_id: str,
     *,
     aperture_arcsec: float = 6.0,
+    band_override: str | None = None,
     on_frame: Callable[[FrameRecord], None] | None = None,
 ) -> PhotometryRunResult:
     """Run process_capture for each FITS, build FrameRecord/Observation
     outputs, flag MAD-based outliers. `on_frame` is called after every
-    FITS, including failures, so callers can stream updates."""
+    FITS, including failures, so callers can stream updates.
+
+    `band_override` forces the AAVSO band on every emitted Observation.
+    Callers should derive this from the capture sidecar's filter (via
+    `photometry.read_capture_filter` + `filter_to_aavso_band`); when None,
+    the OSC default applies (V comps → TG)."""
     result = PhotometryRunResult()
     for path in fits_files:
         skipped: list[str] = []
@@ -157,6 +163,7 @@ def run_photometry_loop(
                 comps,
                 aperture_radius_arcsec=aperture_arcsec,
                 on_comp_skipped=_capture_skip,
+                band_override=band_override,
             )
         except Exception as exc:
             result.failures.append((path.name, str(exc)))

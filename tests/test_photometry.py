@@ -17,7 +17,9 @@ from mira.photometry import (
     aperture_flux_at_radec,
     differential_magnitude,
     ensemble_magnitude,
+    filter_to_aavso_band,
     process_capture,
+    read_capture_filter,
     read_fits_with_wcs,
     write_aavso_extended_file,
 )
@@ -408,6 +410,111 @@ class ProcessCaptureTests(TestCase):
             # Comp star is 1 mag brighter, so target should be ~11.0
             self.assertGreater(obs.magnitude, 10.6)
             self.assertLess(obs.magnitude, 11.4)
+
+
+class FilterToAavsoBandTests(TestCase):
+    """The Antlia LRGB-V's V filter is the only Esprit-rig wheel position
+    that should map to honest Johnson V. Imaging-grade RGB → tri-color;
+    OSC/narrowband → conservative fallback."""
+
+    def test_v_filter_labels_map_to_johnson_v(self) -> None:
+        # The headline case: real V filter → AAVSO V
+        for label in ("V", "v", " V ", "Johnson V", "Antlia V"):
+            self.assertEqual(filter_to_aavso_band(label), "V", f"label={label!r}")
+
+    def test_imaging_rgb_maps_to_tri_color_not_cousins(self) -> None:
+        # Antlia LRGB R/G/B are imaging filters, NOT Johnson/Cousins —
+        # they must map to TR/TG/TB, never to R/B (or I/Cousins R).
+        self.assertEqual(filter_to_aavso_band("R"), "TR")
+        self.assertEqual(filter_to_aavso_band("G"), "TG")
+        self.assertEqual(filter_to_aavso_band("B"), "TB")
+        self.assertEqual(filter_to_aavso_band("Red"), "TR")
+
+    def test_luminance_maps_to_cv(self) -> None:
+        self.assertEqual(filter_to_aavso_band("L"), "CV")
+        self.assertEqual(filter_to_aavso_band("Luminance"), "CV")
+
+    def test_seestar_osc_labels(self) -> None:
+        # S30 Pro heritage — LP/IR are not photometric standards
+        self.assertEqual(filter_to_aavso_band("LP"), "TG")
+        self.assertEqual(filter_to_aavso_band("IR"), "Bn")
+
+    def test_narrowband_falls_back_to_tg(self) -> None:
+        # Narrowband isn't AAVSO standard; should not over-claim.
+        for label in ("Ha", "OIII", "SII", "H-alpha"):
+            self.assertEqual(filter_to_aavso_band(label), "TG", f"label={label!r}")
+
+    def test_none_and_empty(self) -> None:
+        self.assertEqual(filter_to_aavso_band(None), "TG")
+        self.assertEqual(filter_to_aavso_band(""), "TG")
+        self.assertEqual(filter_to_aavso_band("   "), "TG")
+
+
+class ReadCaptureFilterTests(TestCase):
+    def test_missing_sidecar_returns_none(self) -> None:
+        with TemporaryDirectory() as tmp:
+            self.assertIsNone(read_capture_filter(Path(tmp)))
+
+    def test_reads_filter_field(self) -> None:
+        import json
+        with TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "mira_capture.json").write_text(
+                json.dumps({"filter": "V", "gain": 100}), encoding="utf-8"
+            )
+            self.assertEqual(read_capture_filter(d), "V")
+
+    def test_empty_filter_returns_none(self) -> None:
+        import json
+        with TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "mira_capture.json").write_text(
+                json.dumps({"filter": "", "gain": 100}), encoding="utf-8"
+            )
+            self.assertIsNone(read_capture_filter(d))
+
+    def test_unreadable_sidecar_returns_none(self) -> None:
+        # Corrupt JSON must not raise — falls back to None so the caller
+        # uses the conservative TG default.
+        with TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "mira_capture.json").write_text("not json {", encoding="utf-8")
+            self.assertIsNone(read_capture_filter(d))
+
+
+class BandOverrideTests(TestCase):
+    """When band_override is set, the resulting Observation must use it
+    regardless of the comp catalog band — this is the path that turns a
+    real-V-filter capture into an honest AAVSO V row."""
+
+    def test_band_override_forces_v(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v_filter.fits"
+            _make_synthetic_fits(
+                path,
+                target_xy=(128, 128),
+                target_amplitude=1000.0,
+                comp_xy=[(158, 128)],
+                comp_amplitudes=[2512.0],
+                seed=7,
+            )
+            _, wcs, _ = read_fits_with_wcs(path)
+            target_sky = wcs.pixel_to_world(128, 128)
+            comp_sky = wcs.pixel_to_world(158, 128)
+            comps = [CompStar(label="100", ra_deg=comp_sky.ra.deg,
+                              dec_deg=comp_sky.dec.deg, catalog_mag=10.0,
+                              catalog_band="V")]
+            obs_default = process_capture(
+                path, "TEST", target_sky.ra.deg, target_sky.dec.deg, comps,
+            )
+            self.assertIsNotNone(obs_default)
+            self.assertEqual(obs_default.band, "TG", "OSC default V→TG preserved")
+            obs_overridden = process_capture(
+                path, "TEST", target_sky.ra.deg, target_sky.dec.deg, comps,
+                band_override="V",
+            )
+            self.assertIsNotNone(obs_overridden)
+            self.assertEqual(obs_overridden.band, "V")
 
 
 class AavsoFileTests(TestCase):

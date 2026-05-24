@@ -1,0 +1,169 @@
+# Tuned for the Esprit 120 EDX + ASI2600MM Pro + AM5N + Antlia LRGB-V + SHO
+# from Jersey City, NJ. This profile drives the *variable-star photometry*
+# nights — the use case where Mira's queue is relevant.
+#
+# Narrowband / nebula imaging on the same rig (medium-term primary use)
+# runs OUTSIDE Mira's queue: target lists go straight into NINA's Target
+# Scheduler, no mira_run upstream. See docs/rig_workflow.md.
+#
+# Why these values differ from s30_pro_jc.yaml:
+#  - 120mm triplet APO + IMX571 cooled mono + guided EQ + Antlia V reaches
+#    roughly mag 16 from Jersey City (Bortle 8-9) on 5-min subs. prefer_max_mag
+#    is set to 16 — order-of-magnitude deeper than the S30 Pro's 12.
+#  - Real Johnson V via Antlia LRGB-V plus proper sky calibration drops
+#    photometric scatter from ~0.05-0.1 mag (urban OSC) to roughly 0.02-0.03
+#    mag, so min_catalog_amplitude_mag drops to 0.10.
+#  - Short-period eclipsing binaries (EA/EB/EW) and pulsators (RR-family,
+#    DSCT) are back on the menu — the AM5N + ZWO 30mm/220MM guider + NINA
+#    dithering handles sub-30s cadence cleanly. (The S30 excluded these
+#    because the alt-az mount couldn't track + dither precisely enough.)
+#  - ZTF re-enabled. Targets we can now reach (mag 14-16) overlap ZTF's
+#    sensitive range, so the period_disagreement_bonus signal is back in play.
+#
+# Use:
+#   mira run --config config/esprit120_jc.yaml
+#   mira tonight --config config/esprit120_jc.yaml --hours 6
+sites:
+  - name: Jersey City
+    observer:
+      latitude_deg: 40.7178
+      longitude_deg: -74.0431
+      timezone: America/New_York
+    # Local horizon mask (house, trees, balcony rail). Reused from S30 setup —
+    # the pier likely sits in the same yard with the same obstructions. Re-shoot
+    # the silhouette if you move the rig and replace this path.
+    horizon_profile_path: config/horizon_balcony_jc.yaml
+    observing_window:
+      start_hour_local: 20
+      end_hour_local: 2
+      nights: 14
+      sample_minutes: 30
+      # The Esprit + AM5N is fine down to ~25° on a guided mount. Holding 40°
+      # for now because (a) JC's lower-sky atmospheric extinction kills V-band
+      # SNR fast, and (b) photometric stability is best higher up.
+      min_altitude_deg: 40
+      max_sun_altitude_deg: -12
+      max_moon_altitude_deg: 30
+      max_moon_illumination: 0.7
+    filters:
+      min_galactic_latitude_abs_deg: 12
+      min_catalog_amplitude_mag: 0.10
+      prefer_amplitude_mag: 0.25
+      prefer_max_mag: 16.0
+      reject_saturated_brighter_than_mag: 6.0
+
+vsx_query:
+  # Deeper aperture wants a bigger candidate pool. Keep ra_bin_degrees + the
+  # double OID-sorted sampling identical — that contract is documented in
+  # CLAUDE.md and is what gives us GCVS + survey balance.
+  row_limit: 1500
+  ra_bin_degrees: 30
+  oversample_factor: 3
+  min_declination_deg: -10
+  # Must exceed prefer_max_mag + FAINT_TOLERANCE_MAG (1.0). At 16+1 = 17 the
+  # query catches everything the rig can reach; anything fainter gets dropped
+  # by site filters anyway.
+  max_bright_mag: 17.0
+  require_period: false
+  include_types:
+    # Slow red variables — bread-and-butter, still high-value
+    - "SR*"
+    - "L*"
+    - M
+    # Eclipsing binaries — back on the menu with guided EQ + dither
+    - EA
+    - EB
+    - EW
+    # RR Lyrae family — short-period pulsators, V-band gold
+    - "RR*"
+    # Delta Scuti — short-period pulsators
+    - DSCT
+    # Truly unclassified — high novelty signal
+    - "?"
+    # Broad / rotational
+    - VAR
+    - ROT
+
+scoring:
+  uncertain_type_bonus: 20
+  # Mixed defaults; flip via --mode novelty / --mode practice on the CLI.
+  survey_name_bonus: 6
+  classical_name_bonus: 6
+  sparse_aavso_bonus: 15
+  well_observed_aavso_penalty: 18
+  high_amplitude_bonus: 14
+  moderate_amplitude_bonus: 8
+  bright_target_bonus: 10
+  long_period_bonus: 8
+  time_series_bonus: 5
+  clean_field_bonus: 8
+  period_disagreement_bonus: 18
+  period_discovered_bonus: 10
+  gaia_color_anomaly_bonus: 8
+  gaia_crowding_penalty: 6
+
+aavso:
+  enabled: true
+  enrich_top: 200
+  recent_days: 730
+  sparse_recent_threshold: 5
+  timeout_seconds: 20
+  bands:
+    - V
+    - Vis.
+    - CV
+    - TG
+    - B
+    - R
+    - I
+  period_min_peak_power: 0.3
+
+simbad:
+  enabled: true
+  enrich_top: 30
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
+gaia:
+  enabled: true
+  enrich_top: 200
+  search_radius_arcsec: 3
+  timeout_seconds: 30
+
+ztf:
+  # Re-enabled: the Esprit reaches mag 14-16, overlapping ZTF's range. The
+  # period_disagreement_bonus is the strongest single-target anomaly signal
+  # in the pipeline; turning ZTF off here would waste that.
+  enabled: true
+  search_radius_arcsec: 5
+  timeout_seconds: 45
+  bad_catflags_mask: 32768
+  bands:
+    - g
+    - r
+  period_min_peak_power: 0.3
+
+output:
+  directory: output/esprit120_jc
+  top_packets: 20
+
+# Site/rig constants for `mira capture --config config/esprit120_jc.yaml` on
+# the MeLE Quieter 4C (the rig brain). Homebase doesn't run mira capture, so
+# the nina_root path is only meaningful when this config is loaded on the
+# rig PC. See docs/rig_workflow.md for the homebase ↔ MeLE workflow split.
+#
+# IMPORTANT: change nina_root to match the actual NINA Image File Path on
+# the MeLE — defaulting to a Documents-style Windows path. The Syncthing
+# folder on the MeLE should point at this directory (or a subdir) so
+# captures mirror to homebase as they're written.
+capture_defaults:
+  lat: 40.7178
+  lon: -74.0431
+  nina_url: http://localhost:1888
+  nina_root: "C:/Users/<mele-user>/Documents/N.I.N.A"
+  alt_floor: 30.0
+  sun_max: -15.0
+  settle: 2.0
+  # Longer cap because guided subs are longer than S30 stack frames — a
+  # narrowband night could legitimately want 500+ subs.
+  n_max: 2000

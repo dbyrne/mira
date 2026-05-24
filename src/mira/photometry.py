@@ -10,6 +10,7 @@ something legitimate to AAVSO" - tuning comes later.
 """
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -27,6 +28,80 @@ from photutils.aperture import (
 )
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+
+
+# Filename of the capture sidecar; duplicated from flats.py / solve.py to keep
+# this module's import graph small. If you ever rename, grep the codebase.
+CAPTURE_SIDECAR = "mira_capture.json"
+
+
+def filter_to_aavso_band(filter_name: str | None) -> str:
+    """Map a NINA filter-wheel position label to an AAVSO band code.
+
+    Conservative by default: when the label doesn't clearly identify a
+    standard photometric filter, return "TG" (tri-color green) so we never
+    *over-claim* photometric precision. The classic foot-gun is reporting an
+    imaging-grade RGB "R" as Cousins R — Antlia LRGB R/G/B are NOT the
+    Johnson/Cousins photometric set; they're imaging filters with overlapping
+    passbands. They map to TR/TG/TB, not R/G/B.
+
+    The one filter on the Esprit 120 rig that earns an honest photometric
+    code is Antlia LRGB-V's V filter: it's purpose-built to match the Johnson
+    V passband and is AAVSO-acceptable as V. That's the headline mapping.
+
+    Narrowband (Ha, OIII, SII) is not standard AAVSO and defaults to TG —
+    the caller almost certainly should not be submitting narrowband to AAVSO
+    anyway.
+
+    AAVSO band reference: https://www.aavso.org/filterletters
+    """
+    if not filter_name:
+        return "TG"
+    f = filter_name.strip().upper()
+    # Johnson V — the photometric filter, regardless of vendor prefix
+    if f == "V" or f == "JOHNSON V" or f == "ANTLIA V" or f.endswith(" V"):
+        return "V"
+    # Luminance (broadband clear) — AAVSO CV = clear-with-V-zeropoint
+    if f in {"L", "LUM", "LUMINANCE"}:
+        return "CV"
+    # Imaging-grade RGB — tri-color, NOT Johnson/Cousins
+    if f in {"R", "RED"}:
+        return "TR"
+    if f in {"G", "GREEN"}:
+        return "TG"
+    if f in {"B", "BLUE"}:
+        return "TB"
+    # Seestar / OSC-heritage labels
+    if f in {"LP", "LPRO", "L-PRO", "L-EXTREME"}:
+        return "TG"
+    if f in {"IR", "IRCUT", "IR-CUT", "IR CUT"}:
+        return "Bn"
+    # Narrowband — not AAVSO standard; conservative fallback
+    if any(nb in f for nb in ("HA", "H-ALPHA", "H ALPHA", "OIII", "SII", "S-II", "O-III")):
+        return "TG"
+    return "TG"
+
+
+def read_capture_filter(captures_dir: Path) -> str | None:
+    """Return the filter recorded in `mira_capture.json` next to the FITS,
+    or None if no sidecar exists or it doesn't record a filter.
+
+    NINA's API-capture FITS carry GAIN but not FILTER (verified 2026-05-19),
+    so the sidecar — written by `mira capture` — is the only reliable
+    filter↔frame link. Best-effort: any I/O or parse error returns None and
+    the caller falls back to the conservative TG default."""
+    sidecar = Path(captures_dir) / CAPTURE_SIDECAR
+    if not sidecar.exists():
+        return None
+    try:
+        meta = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    val = meta.get("filter")
+    if val is None:
+        return None
+    s = str(val).strip()
+    return s if s else None
 
 
 @dataclass
@@ -200,6 +275,7 @@ def process_capture(
     comp_stars: list[CompStar],
     aperture_radius_arcsec: float = 6.0,
     on_comp_skipped: Callable[[CompStar, str], None] | None = None,
+    band_override: str | None = None,
 ) -> Observation | None:
     """Run photometry on one FITS file.
 
@@ -212,6 +288,12 @@ def process_capture(
     used for this frame (out of bounds, exception, non-positive flux).
     Default is silent; callers should pass a logger so the user knows
     why the ensemble is smaller than they expected.
+
+    `band_override` forces the AAVSO band on the resulting Observation,
+    regardless of the comp-star catalog band. The capture-side filter
+    (resolved from `mira_capture.json` via `filter_to_aavso_band`) is the
+    intended source; without it, the function defaults to the historical
+    V→TG OSC convention (V-band comps reported as tri-color green).
     """
     image, wcs, header = read_fits_with_wcs(fits_path)
     target_flux, target_err = aperture_flux_at_radec(
@@ -259,12 +341,20 @@ def process_capture(
         comp_catalog_mag = primary.catalog_mag
         catalog_band = primary.catalog_band
 
+    if band_override:
+        band = band_override
+    else:
+        # Historical OSC convention: V-band comps shot through no real V filter
+        # report as TG (tri-color green channel ≈ V but a distinct AAVSO band).
+        # Real V-filter rigs should pass band_override="V" via the sidecar.
+        band = catalog_band if catalog_band != "V" else "TG"
+
     return Observation(
         target_name=target_name,
         julian_date=julian_date,
         magnitude=target_mag,
         magnitude_error=target_mag_err,
-        band=catalog_band if catalog_band != "V" else "TG",
+        band=band,
         comp_star_label=comp_label,
         comp_star_mag=comp_catalog_mag,
     )

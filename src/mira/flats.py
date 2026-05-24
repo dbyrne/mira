@@ -358,6 +358,35 @@ def write_capture_sidecar(dest_dir: Path, **fields: Any) -> None:
         pass
 
 
+def find_master_for_filter_gain(
+    filter_name: str | None,
+    gain: Any,
+    flats_root: Path,
+) -> tuple[Path | None, str]:
+    """Look up the newest master flat for (filter, gain) under flats_root.
+    Returns (master_flat.fit path, reason) or (None, why-not). The matcher
+    is the same one used by `resolve_master_for_lights` — exposed
+    standalone so the capture-time live-stack hint can resolve a flat
+    before the sidecar exists."""
+    filt = str(filter_name or "").strip()
+    if not filt:
+        return None, "no filter specified; cannot match a per-filter master."
+    gain_tag = "default" if gain is None else str(gain)
+    root = Path(flats_root)
+    cands = [
+        c for c in root.glob(f"{filt}_g{gain_tag}_*")
+        if (c / "master_flat.fit").exists()
+    ]
+    if not cands:
+        return None, (
+            f"no master flat for filter='{filt}' gain={gain_tag} under {root} "
+            f"(looked for {filt}_g{gain_tag}_*/master_flat.fit — run "
+            "`mira flats` for this filter/gain first)."
+        )
+    chosen = max(cands, key=lambda c: c.name)  # newest trailing YYYYMMDD
+    return chosen / "master_flat.fit", f"matched {chosen.name}"
+
+
 def resolve_master_for_lights(
     lights_dir: Path, flats_root: Path
 ) -> tuple[Path | None, str]:
@@ -384,21 +413,7 @@ def resolve_master_for_lights(
             f"{CAPTURE_SIDECAR} records no filter (captured without --filter); "
             "cannot match a per-filter master."
         )
-    gain = meta.get("gain")
-    gain_tag = "default" if gain is None else str(gain)
-    root = Path(flats_root)
-    cands = [
-        c for c in root.glob(f"{filt}_g{gain_tag}_*")
-        if (c / "master_flat.fit").exists()
-    ]
-    if not cands:
-        return None, (
-            f"no master flat for filter='{filt}' gain={gain_tag} under {root} "
-            f"(looked for {filt}_g{gain_tag}_*/master_flat.fit — run "
-            "`mira flats` for this filter/gain first)."
-        )
-    chosen = max(cands, key=lambda c: c.name)  # newest trailing YYYYMMDD
-    return chosen / "master_flat.fit", f"matched {chosen.name}"
+    return find_master_for_filter_gain(filt, meta.get("gain"), flats_root)
 
 
 def run_flats(

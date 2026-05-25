@@ -9,10 +9,15 @@
   Free-Astro.Siril is stuck at 1.2.6), ASTAP CLI (via SourceForge), optionally
   GraXpert and the D50 star DB, then runs `mira doctor`.
 
-  It deliberately DOES NOT install NINA / ASCOM / the Seestar driver:
+  With -Rig esprit, also installs Syncthing (rig <-> homebase capture sync)
+  and PHD2 (guiding), and runs doctor against config/esprit120_jc.yaml so the
+  Esprit-aware filter-wheel canonical-name check is exercised.
+
+  It deliberately DOES NOT install NINA / ASCOM / vendor drivers:
   those are interactive Windows GUI installs with plugins and pairing,
   and there is no headless/Docker path for them. The script prints the
-  exact NINA checklist; docs/FIELD_GUIDE.md is the full runbook.
+  exact NINA checklist for the chosen rig; docs/FIELD_GUIDE.md and
+  docs/nina_setup{,_esprit}.md are the full runbooks.
 
 .PARAMETER WithFinishing
   Also install `mira[finishing]` (GraXpert). Heavy ML deps; only `mira
@@ -23,15 +28,23 @@
   Also download + install the ASTAP D50 star database (~870 MB). Without
   it ASTAP solves return "No solution". Skip on metered connections.
 
+.PARAMETER Rig
+  Which rig profile this machine drives. 's30' (default): the Seestar S30
+  Pro single-machine setup. 'esprit': the Esprit 120 EDX + ASI2600MM Pro
+  + MeLE rig brain — adds Syncthing + PHD2 + canonical-filter checks.
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -WithFinishing
   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -WithFinishing -WithStarDB
+  powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Rig esprit -WithStarDB
 #>
 [CmdletBinding()]
 param(
     [switch]$WithFinishing,
-    [switch]$WithStarDB
+    [switch]$WithStarDB,
+    [ValidateSet("s30", "esprit")]
+    [string]$Rig = "s30"
 )
 
 $ErrorActionPreference = "Stop"
@@ -194,24 +207,83 @@ if ($astap) {
     Warn "ASTAP not found. Install + a star database (D50/H18) from https://www.hnsky.org/astap.htm ; set MIRA_ASTAP_CLI or add to PATH. Required for WCS on NINA captures (submit)."
 }
 
-# --- 6. NINA / ASCOM (NOT automated - interactive) -----------------------
-Say "NINA / ASCOM / Seestar (manual - no headless/Docker path exists)"
-@(
-  "  These are interactive Windows GUI installs. Do them once, at home:",
-  "   1. ASCOM Platform 7+        https://ascom-standards.org/",
-  "   2. NINA 3.x                 https://nighttime-imaging.eu/",
-  "   3. NINA plugins: 'Advanced API' (port 1888) + 'Target Scheduler'",
-  "   4. Pair Seestar S30 Pro (station-mode WiFi) in NINA via ASCOM Alpaca",
-  "   5. Fix the FocalLength=NaN driver quirk: NINA Options > Equipment >",
-  "      set Focal Length 150 / Ratio 5 so plate-solve scale is sane",
-  "   6. Create the OSC exposure template + Mira project (see runbook)",
-  "  Full step-by-step: docs/FIELD_GUIDE.md and docs/nina_setup.md"
-) | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+# --- 6. Esprit-only: Syncthing + PHD2 (via winget) ----------------------
+# Rig brain on the pier syncs captures + flats back to homebase via
+# Syncthing; guiding runs through PHD2. Both have silent winget installs
+# (the GUI/setup steps still need a human for pairing and calibration).
+if ($Rig -eq "esprit") {
+    Say "Syncthing (rig <-> homebase capture mirroring)"
+    if (Have "syncthing") {
+        Ok "Syncthing already on PATH"
+    } elseif (Test-Path "$env:LOCALAPPDATA\Programs\Syncthing\syncthing.exe") {
+        Ok "Syncthing already installed (LOCALAPPDATA)"
+    } elseif (Have "winget") {
+        Say "installing Syncthing via winget"
+        winget install -e --id Syncthing.Syncthing --silent --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -eq 0) { Ok "Syncthing installed" }
+        else { Warn "winget install Syncthing exited $LASTEXITCODE. Install manually from https://syncthing.net/downloads/" }
+    } else {
+        Warn "winget unavailable; install Syncthing from https://syncthing.net/downloads/"
+    }
 
-# --- 7. mira doctor -------------------------------------------------------
-Say "running 'mira doctor' (preflight)"
+    Say "PHD2 (guiding for the AM5N + ASI220MM Mini)"
+    if (Test-Path "C:\Program Files (x86)\PHDGuiding2\phd2.exe") {
+        Ok "PHD2 already installed"
+    } elseif (Have "winget") {
+        Say "installing PHD2 via winget"
+        winget install -e --id OpenPHDProject.PHDGuiding --silent --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -eq 0) { Ok "PHD2 installed" }
+        else { Warn "winget install PHD2 exited $LASTEXITCODE. Install manually from https://openphdguiding.org/" }
+    } else {
+        Warn "winget unavailable; install PHD2 from https://openphdguiding.org/"
+    }
+}
+
+# --- 7. NINA / ASCOM / vendor drivers (NOT automated - interactive) ----
+if ($Rig -eq "esprit") {
+    Say "NINA / ASCOM / vendor drivers (manual - no headless path)"
+    @(
+      "  These are interactive Windows GUI installs. Do them once, on the MeLE:",
+      "   1. ASCOM Platform 7+        https://ascom-standards.org/",
+      "   2. NINA 3.x                 https://nighttime-imaging.eu/",
+      "   3. NINA plugins: 'Advanced API' (port 1888) + 'Target Scheduler'",
+      "   4. ZWO ASCOM drivers (camera + AM5N mount + EFW filter wheel)",
+      "                            https://astronomy-imaging-camera.com/software-drivers",
+      "   5. Pegasus Unity (FocusCube 3 + PocketPowerbox Gen2)",
+      "                            https://pegasusastro.com/pegasus-unity/",
+      "   6. In NINA Equipment, connect: AM5N mount, ASI2600MM Pro cam,",
+      "      EFW filter wheel, FocusCube 3, ZWO 30/220 mini guider (via PHD2).",
+      "   7. CRITICAL: name each filter-wheel position EXACTLY one of:",
+      "      Ha, OIII, SII, L, R, G, B, V  (case-sensitive).",
+      "      'mira doctor' will FAIL if any label drifts (e.g. 'H-alpha').",
+      "      Rename in NINA -> Equipment -> Filter Wheel -> Filters tab.",
+      "   8. Set ASTAP as the plate solver in NINA -> Options -> Plate Solving.",
+      "   9. Set Image File Path under NINA -> Options -> Imaging to a",
+      "      Syncthing-shared dir (e.g. C:\mira\captures). Mirror folder",
+      "      modes per docs/rig_workflow.md (rig=send-only, home=receive-only).",
+      "  Full step-by-step: docs/nina_setup_esprit.md"
+    ) | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+} else {
+    Say "NINA / ASCOM / Seestar (manual - no headless/Docker path exists)"
+    @(
+      "  These are interactive Windows GUI installs. Do them once, at home:",
+      "   1. ASCOM Platform 7+        https://ascom-standards.org/",
+      "   2. NINA 3.x                 https://nighttime-imaging.eu/",
+      "   3. NINA plugins: 'Advanced API' (port 1888) + 'Target Scheduler'",
+      "   4. Pair Seestar S30 Pro (station-mode WiFi) in NINA via ASCOM Alpaca",
+      "   5. Fix the FocalLength=NaN driver quirk: NINA Options > Equipment >",
+      "      set Focal Length 150 / Ratio 5 so plate-solve scale is sane",
+      "   6. Create the OSC exposure template + Mira project (see runbook)",
+      "  Full step-by-step: docs/FIELD_GUIDE.md and docs/nina_setup.md"
+    ) | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+}
+
+# --- 8. mira doctor -------------------------------------------------------
+$doctorConfig = if ($Rig -eq "esprit") { "config\esprit120_jc.yaml" }
+                else { "config\s30_pro_jc.yaml" }
+Say "running 'mira doctor --config $doctorConfig' (preflight)"
 Write-Host ""
-& $vpy -m mira doctor --config (Join-Path $repo "config\s30_pro_jc.yaml")
+& $vpy -m mira doctor --config (Join-Path $repo $doctorConfig)
 $doctorExit = $LASTEXITCODE
 
 Write-Host ""

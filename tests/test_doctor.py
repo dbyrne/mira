@@ -15,6 +15,7 @@ from mira.doctor import (
     Check,
     check_config,
     check_disk_space,
+    check_filter_wheel,
     check_nina,
     check_python,
     check_writable,
@@ -125,3 +126,110 @@ class TestConfigAndEndToEnd(TestCase):
         verdict, code = summarize(checks)
         self.assertIn(code, (0, 1))
         self.assertTrue(verdict)
+
+
+class FilterWheelCanonicalNameTests(TestCase):
+    """The Esprit-rig hard guarantee: wheel labels must match the canonical
+    set so `mira dso status` never silently buckets captures as orphans.
+
+    Mocks ``NinaClient.available_filters`` via patching the module-level
+    symbol — the check doesn't construct the client lazily, so we patch
+    the import site directly."""
+
+    def _patch_filters(self, filters: list[dict]) -> None:
+        # The check imports inside the function: `from .webapp.nina_client
+        # import NinaClient`. We replace NinaClient.available_filters on
+        # the actual class so any instance returns the mock list.
+        from mira.webapp import nina_client as nc_mod
+        self._orig = nc_mod.NinaClient.available_filters
+        nc_mod.NinaClient.available_filters = lambda self: filters
+        self.addCleanup(
+            setattr, nc_mod.NinaClient, "available_filters", self._orig
+        )
+
+    def test_pass_when_all_canonical_and_enforced(self) -> None:
+        self._patch_filters([
+            {"Name": "Ha"}, {"Name": "OIII"}, {"Name": "SII"},
+            {"Name": "L"}, {"Name": "R"}, {"Name": "G"}, {"Name": "B"},
+            {"Name": "V"},
+        ])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, PASS)
+        self.assertIn("all canonical", c.detail)
+
+    def test_pass_when_subset_canonical(self) -> None:
+        # Not every position needs to be filled — a 5-filter wheel is fine
+        # as long as the names that ARE there match the canonical set.
+        self._patch_filters([
+            {"Name": "Ha"}, {"Name": "OIII"}, {"Name": "L"}, {"Name": "V"},
+        ])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, PASS)
+
+    def test_fail_on_h_alpha_typo(self) -> None:
+        # The classic foot-gun: NINA ships labels as 'H-alpha' from some
+        # vendor configs. This MUST fail before a 10-hour Ha session.
+        self._patch_filters([
+            {"Name": "H-alpha"}, {"Name": "OIII"}, {"Name": "SII"},
+        ])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, FAIL)
+        self.assertIn("H-alpha", c.detail)
+        self.assertIn("rename", c.fix)
+
+    def test_fail_on_antlia_prefix(self) -> None:
+        # Antlia ships filters labeled 'Antlia Ha' / 'Antlia V'. Mira's
+        # ledger keys off exact short names.
+        self._patch_filters([
+            {"Name": "Antlia Ha"}, {"Name": "Antlia OIII"}, {"Name": "V"},
+        ])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, FAIL)
+        self.assertIn("Antlia Ha", c.detail)
+
+    def test_dark_position_tolerated(self) -> None:
+        # An opaque 'Dark' position is allowed alongside canonical filters
+        # — it's the S30 Pro's blocking slot used for bias-equivalent frames.
+        self._patch_filters([
+            {"Name": "Ha"}, {"Name": "OIII"}, {"Name": "Dark"},
+        ])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, PASS)
+
+    def test_case_mismatch_flagged_with_hint(self) -> None:
+        # 'ha' should fail but the fix hint should specifically call out
+        # that 'Ha' is the case-correct form, not just "rename it."
+        self._patch_filters([{"Name": "ha"}, {"Name": "OIII"}])
+        c = check_filter_wheel("http://x", enforce_canonical_names=True)
+        self.assertEqual(c.status, FAIL)
+        self.assertIn("case mismatch", c.detail)
+
+    def test_enforcement_off_accepts_any_name(self) -> None:
+        # S30 Pro path: LP and IR are perfectly fine, no DSO constraint.
+        # When enforce_canonical_names=False the legacy behavior applies.
+        self._patch_filters([{"Name": "LP"}, {"Name": "IR"}])
+        c = check_filter_wheel("http://x", enforce_canonical_names=False)
+        self.assertEqual(c.status, PASS)
+        self.assertIn("LP", c.detail)
+        self.assertIn("IR", c.detail)
+
+    def test_run_doctor_enforces_on_dso_config(self) -> None:
+        # End-to-end: when the loaded config has dso.enabled=True, the
+        # filter-wheel check uses canonical enforcement. We can verify
+        # this with the Esprit config + a mocked filter list.
+        self._patch_filters([{"Name": "wrong-name"}])
+        checks = run_doctor(
+            config_path="config/esprit120_jc.yaml",
+            nina_url="http://localhost:1888",   # may or may not be reachable
+            captures_root="captures",
+            when=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        )
+        # The filter wheel check may be WARN (if NINA is unreachable in
+        # the test env so the working_url is None and we never query
+        # filters) or FAIL (if NINA happens to be running and our mock
+        # got hit). Either way, the check must EXIST and never be PASS
+        # with 'wrong-name' — we look at status:
+        fw = next(c for c in checks if c.name == "Filter wheel")
+        self.assertIn(fw.status, (WARN, FAIL))
+        if fw.status == FAIL:
+            self.assertIn("wrong-name", fw.detail)

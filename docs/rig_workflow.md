@@ -158,8 +158,10 @@ filter/gain resolution still works after a manual copy.
 
 ## See also
 
-- `docs/nina_setup.md` — NINA Advanced API plugin setup (runs on the
-  MeLE).
+- `docs/nina_setup_esprit.md` — Esprit rig NINA configuration on the
+  MeLE: equipment, plate-solver, plugins, filter-wheel canonical names.
+- `docs/nina_setup.md` — Seestar S30 Pro NINA configuration (the
+  single-machine setup).
 - `docs/photometry.md` — `mira submit` end-to-end (runs on homebase).
 - `CLAUDE.md` — the Rigs section near the top, for which profile to use
   for which night.

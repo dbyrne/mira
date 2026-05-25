@@ -35,6 +35,17 @@ PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
 TESTED_SIRIL_VERSION = "1.4.3"
 MIN_FREE_GB_DEFAULT = 25.0  # a deep dithered run is ~19 GB of subs
 
+# Canonical filter wheel labels enforced when a config has a DSO section.
+# These are the labels the DSO ledger keys off (via filter_to_aavso_band
+# and the per-target budget_minutes dicts), so any drift here silently
+# breaks `mira dso status` — a non-canonical "H-alpha" wheel label
+# produces orphan ledger entries no one notices until 10 hours later.
+# Doctor FAILs on any wheel position that doesn't match.
+DSO_CANONICAL_FILTERS = frozenset(("Ha", "OIII", "SII", "L", "R", "G", "B", "V"))
+# These auxiliary positions are tolerated but ignored — opaque/blocking
+# slots used for darks or biases. Case-insensitive match against either.
+DSO_ALLOWED_NON_PHOTOMETRIC = frozenset(("Dark", "Block", "Blocking"))
+
 
 @dataclass
 class Check:
@@ -268,7 +279,20 @@ def check_nina(nina_url: str) -> tuple[Check, str | None]:
                   "equipment; doctor can't verify capture without it"), None)
 
 
-def check_filter_wheel(working_url: str | None) -> Check:
+def check_filter_wheel(
+    working_url: str | None,
+    *,
+    enforce_canonical_names: bool = False,
+) -> Check:
+    """Confirm the filter wheel is reachable + (optionally) using canonical
+    labels.
+
+    ``enforce_canonical_names=True`` is set when the loaded config has a
+    DSO section — any position whose label isn't in
+    ``DSO_CANONICAL_FILTERS`` (plus the tolerated opaque slots) is a hard
+    FAIL. That closes the foot-gun where NINA gets shipped with
+    'H-alpha' / 'Antlia Ha' labels that silently produce orphan ledger
+    entries for hours before anyone notices."""
     if not working_url:
         return Check("Filter wheel", WARN, "skipped (NINA not reachable)")
     try:
@@ -278,10 +302,45 @@ def check_filter_wheel(working_url: str | None) -> Check:
         if not fs:
             return Check("Filter wheel", WARN,
                          "no filter wheel reported",
-                         "connect the S30 Pro filter wheel in NINA if you "
+                         "connect the filter wheel in NINA if you "
                          "want per-filter flats / `--filter`")
-        names = ", ".join(str(f.get("Name")) for f in fs)
-        return Check("Filter wheel", PASS, f"positions: {names}")
+        names = [str(f.get("Name") or "").strip() for f in fs]
+        names_str = ", ".join(names)
+
+        if not enforce_canonical_names:
+            return Check("Filter wheel", PASS, f"positions: {names_str}")
+
+        # DSO mode: every wheel position must match a canonical photometric
+        # filter or be one of the tolerated opaque positions. Case-sensitive
+        # comparison for canonical names (V != v != Vis); case-insensitive
+        # for the auxiliary set since vendors vary.
+        canonical_lower = {n.lower() for n in DSO_CANONICAL_FILTERS}
+        aux_lower = {n.lower() for n in DSO_ALLOWED_NON_PHOTOMETRIC}
+        bad = []
+        for name in names:
+            if name in DSO_CANONICAL_FILTERS:
+                continue
+            if name.lower() in aux_lower:
+                continue
+            # Distinguish "right filter, wrong case" from "totally wrong"
+            # in the hint so the user knows whether to retype or rename.
+            if name.lower() in canonical_lower:
+                bad.append(f"'{name}' (case mismatch — expected exact "
+                           f"'{next(c for c in DSO_CANONICAL_FILTERS if c.lower() == name.lower())}')")
+            else:
+                bad.append(f"'{name}'")
+        if bad:
+            return Check(
+                "Filter wheel", FAIL,
+                f"positions: {names_str}; "
+                f"non-canonical name(s): {', '.join(bad)}",
+                "rename each non-canonical position in NINA "
+                "(Equipment -> Filter Wheel -> Filters tab) to one of "
+                f"{sorted(DSO_CANONICAL_FILTERS)}. The DSO ledger keys off "
+                "exact names; drift produces orphan ledger entries.",
+            )
+        return Check("Filter wheel", PASS,
+                     f"positions: {names_str} (all canonical)")
     except Exception as exc:
         return Check("Filter wheel", WARN, f"query failed: {exc}")
 
@@ -361,7 +420,18 @@ def run_doctor(
     when: datetime | None = None,
 ) -> list[Check]:
     """Assemble all checks. Order: environment first (no rig needed),
-    then rig/NINA, then site/darkness."""
+    then rig/NINA, then site/darkness.
+
+    Enforces canonical filter-wheel names when the loaded config has DSO
+    enabled — the Esprit-rig path. A YAML that can't even be parsed
+    falls through with enforcement off; check_config will catch and
+    report the parse error itself."""
+    try:
+        from .config import load_config
+        dso_enabled = bool(load_config(config_path).dso.enabled)
+    except Exception:
+        dso_enabled = False
+
     checks: list[Check] = [
         _safe(check_python),
         _safe(check_core_imports),
@@ -375,6 +445,8 @@ def run_doctor(
     ]
     nina_check, working_url = check_nina(nina_url)
     checks.append(nina_check)
-    checks.append(_safe(lambda: check_filter_wheel(working_url)))
+    checks.append(_safe(lambda: check_filter_wheel(
+        working_url, enforce_canonical_names=dso_enabled,
+    )))
     checks.append(_safe(lambda: check_darkness(config_path, when)))
     return checks

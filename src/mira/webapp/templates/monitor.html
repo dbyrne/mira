@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Monitor - Mira{% endblock %}
+{% block content %}
+<section class="card monitor-card">
+  <div class="monitor-header">
+    <h2>DSO session monitor</h2>
+    {% if demo %}
+    <span class="monitor-badge monitor-badge-demo">DEMO</span>
+    {% else %}
+    <span class="htmx-indicator" id="monitor-poll-indicator">polling…</span>
+    {% endif %}
+  </div>
+  <p class="meta">
+    {% if demo %}
+    Canned data — not from a live rig. Drop <code>?demo=1</code> to read live NINA at <code>{{ base_url }}</code>.
+    {% else %}
+    Live readout of <code>{{ base_url }}</code>. Add <code>?demo=1</code> to preview with canned data.
+    {% endif %}
+  </p>
+  <div hx-get="{{ url_for('monitor_partial') }}{% if demo %}?demo=1{% endif %}"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML"
+       hx-indicator="#monitor-poll-indicator">
+    <p>Loading…</p>
+  </div>
+  <p class="meta monitor-footer-link">
+    <a href="{{ url_for('monitor_frames') }}{% if demo %}?demo=1{% endif %}">All frames →</a>
+  </p>
+</section>
+{% endblock %}

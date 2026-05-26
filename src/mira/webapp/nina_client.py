@@ -456,6 +456,46 @@ class NinaClient:
         fs = self.filter_wheel_info().get("AvailableFilters")
         return [f for f in fs if isinstance(f, dict)] if isinstance(fs, list) else []
 
+    # -- monitoring console additions (Phase 1) ----------------------------
+    # Three small read-only getters the /monitor console aggregates. Same
+    # try/degrade pattern as the rest of the client — never raise on a
+    # transport / parse / missing-key error; return an empty dict and let
+    # the snapshot builder render "unknown" for whatever's absent.
+
+    def focuser_info(self) -> dict[str, Any]:
+        """Raw /equipment/focuser/info Response (Connected/Position/
+        IsMoving/Temperature), or {} if unreachable/absent."""
+        try:
+            info = self._get("/equipment/focuser/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def last_af(self) -> dict[str, Any]:
+        """Raw /equipment/focuser/last-af Response (InitialHFR /
+        CalculatedHFR / CalculatedPosition / Timestamp), or {} if no AF
+        run has happened this session."""
+        try:
+            info = self._get("/equipment/focuser/last-af")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def guider_info(self) -> dict[str, Any]:
+        """Raw /equipment/guider/info Response (Connected/IsGuiding/
+        RMSError/etc), or {} if no guider configured. Shape varies
+        across NINA plugin versions; the snapshot builder walks common
+        keys (RMSError vs RMS vs TotalRMS) so this getter just returns
+        whatever NINA gave us."""
+        try:
+            info = self._get("/equipment/guider/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
     def current_filter(self) -> dict[str, Any] | None:
         """The SelectedFilter dict ({'Name','Id'}), or None."""
         sel = self.filter_wheel_info().get("SelectedFilter")

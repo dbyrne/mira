@@ -38,6 +38,7 @@ def create_app(
     nina_base_url: str = "http://localhost:1888",
     state_dir: Path | None = None,
     finish_progress_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> Flask:
     here = Path(__file__).parent
     app = Flask(
@@ -68,8 +69,18 @@ def create_app(
     app.config["RUNS"] = runs
     app.config["NINA"] = nina
     app.config["SESSION_STORE"] = session_store
+    # Optional; only the /monitor route reads it. None means /monitor will
+    # render with the demo data path only (no live ledger/observability
+    # without a config to pin the catalog + site to).
+    app.config["CONFIG_PATH"] = (
+        Path(config_path).resolve() if config_path is not None else None
+    )
 
     app.jinja_env.filters["human_time"] = _human_time
+    # min/max as filters so the monitor templates can clamp values inline,
+    # e.g. `{{ pct | min(100) }}` for a progress bar that can't overflow.
+    app.jinja_env.filters["min"] = min
+    app.jinja_env.filters["max"] = max
 
     from .routes import register_routes
     register_routes(app)

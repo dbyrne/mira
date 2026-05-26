@@ -134,6 +134,11 @@ def main() -> None:
         default="http://localhost:1888",
         help="NINA Advanced API base URL (default http://localhost:1888).",
     )
+    webapp_parser.add_argument(
+        "--config",
+        default=None,
+        help="YAML config path (lets the /monitor console resolve the DSO catalog, captures_root, and observability for the active target). Default: not loaded; /monitor still works in ?demo=1 mode.",
+    )
 
     serve_parser = subparsers.add_parser(
         "serve",
@@ -883,6 +888,7 @@ def webapp(args: argparse.Namespace) -> None:
         output_dir=output_dir,
         captures_root=captures_root,
         nina_base_url=args.nina_url,
+        config_path=Path(args.config).resolve() if getattr(args, "config", None) else None,
     )
 
     print("Mira webapp")

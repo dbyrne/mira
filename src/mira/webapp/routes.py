@@ -657,3 +657,131 @@ def register_routes(app: Flask) -> None:
         result = nina.push_schedule(str(csv_path))
         outcome = "ok" if result.get("ok") else "failed"
         return redirect(url_for("nina_dashboard", push_result=outcome))
+
+    # --- Layer 4: DSO monitoring console ---
+    # Read-only; aggregates NINA + DSO ledger + catalog into one
+    # phone-friendly view. See plans/monitoring_console.md for the design.
+
+    @app.route("/monitor")
+    def monitor_dashboard():
+        demo = request.args.get("demo") == "1"
+        nina = current_app.config["NINA"]
+        return render_template(
+            "monitor.html",
+            base_url=nina.base_url,
+            demo=demo,
+        )
+
+    @app.route("/monitor/partial")
+    def monitor_partial():
+        demo = request.args.get("demo") == "1"
+        snapshot = _build_monitor_snapshot(demo=demo)
+        return render_template(
+            "monitor_partial.html",
+            snap=snapshot,
+            sparkline=_sparkline,
+            time_ago=_time_ago,
+        )
+
+    @app.route("/monitor/frames")
+    def monitor_frames():
+        demo = request.args.get("demo") == "1"
+        snapshot = _build_monitor_snapshot(demo=demo)
+        return render_template(
+            "monitor_frames.html",
+            snap=snapshot,
+            time_ago=_time_ago,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Monitor-route helpers. Module-level so /monitor and /monitor/partial share
+# them without re-importing inside the closure.
+# ---------------------------------------------------------------------------
+
+# Eight-step Unicode block ramp used for the inline sparklines. Renders on
+# every modern phone font we tested; if a future device proves to mangle
+# them, the same shape can be swapped for tiny inline SVGs.
+_SPARK_BLOCKS = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(values, *, width: int = 20) -> str:
+    """Render a numeric series as a string of block characters. Returns the
+    empty string for empty/all-None input so templates can do simple
+    `{% if spark %}` checks."""
+    nums = [float(v) for v in values if v is not None]
+    if not nums:
+        return ""
+    nums = nums[-width:]
+    lo = min(nums)
+    hi = max(nums)
+    if hi == lo:
+        return _SPARK_BLOCKS[len(_SPARK_BLOCKS) // 2] * len(nums)
+    out = []
+    for v in nums:
+        norm = (v - lo) / (hi - lo)
+        idx = min(len(_SPARK_BLOCKS) - 1, max(0, int(norm * len(_SPARK_BLOCKS))))
+        out.append(_SPARK_BLOCKS[idx])
+    return "".join(out)
+
+
+def _time_ago(dt) -> str:
+    """Human "12s ago" / "3m ago" / "1h 14m ago" rendering. Returns "—"
+    for None so templates don't need a conditional."""
+    if dt is None:
+        return "—"
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    elapsed = (now - dt).total_seconds()
+    if elapsed < 0:
+        return "in the future"
+    if elapsed < 60:
+        return f"{int(elapsed)}s ago"
+    if elapsed < 3600:
+        return f"{int(elapsed // 60)}m ago"
+    if elapsed < 86400:
+        h = int(elapsed // 3600)
+        m = int((elapsed % 3600) // 60)
+        return f"{h}h {m:02d}m ago"
+    return f"{int(elapsed // 86400)}d ago"
+
+
+def _build_monitor_snapshot(*, demo: bool):
+    """Build a MonitorSnapshot for the current request.
+
+    Three modes, ordered by preference:
+    1. demo=True → canned data from monitor.demo (no NINA call at all).
+    2. CONFIG_PATH set → load catalog+config, hit live NINA, ledger view
+       populated, target-sets-in resolved from observability math.
+    3. CONFIG_PATH unset → hit live NINA only; ledger view is None.
+
+    Anomalies are always attached so the badges render consistently in
+    every mode."""
+    from ..monitor.anomaly import attach_anomalies
+    from ..monitor.snapshot import build_snapshot
+
+    if demo:
+        from ..monitor.demo import demo_snapshot
+        return demo_snapshot()
+
+    nina = current_app.config["NINA"]
+    config_path = current_app.config.get("CONFIG_PATH")
+    captures_root = current_app.config.get("CAPTURES_ROOT")
+    catalog = None
+    cfg = None
+    if config_path is not None:
+        try:
+            from ..config import load_config
+            from ..dso.catalog import load_dso_catalog
+            cfg = load_config(str(config_path))
+            catalog = load_dso_catalog(cfg.dso.catalog_path)
+        except Exception:
+            # Catalog or config failed to load — degrade to nina-only.
+            catalog = None
+            cfg = None
+    snap = build_snapshot(
+        nina, catalog=catalog, config=cfg, captures_root=captures_root,
+    )
+    return attach_anomalies(snap)

@@ -1,0 +1,232 @@
+{# Rendered every 5s by HTMX. Mobile-first single-column layout; each
+   section is its own <div class="monitor-section">. Anomaly badges are
+   placed next to the section header so the user can spot the affected
+   subsystem without reading the whole page. #}
+{% set session = snap.session %}
+{% set cam = snap.camera %}
+{% set mount = snap.mount %}
+{% set wheel = snap.filter_wheel %}
+{% set focuser = snap.focuser %}
+{% set guider = snap.guider %}
+
+{% if not snap.nina_reachable and snap.mode != 'demo' %}
+<div class="monitor-section">
+  <p class="error"><strong>NINA not reachable.</strong></p>
+  <p class="meta">{{ snap.nina_error or 'Could not connect to the Advanced API plugin.' }}</p>
+</div>
+{% else %}
+
+{# --- Top card: target / filter / frame / overall status --- #}
+<div class="monitor-section monitor-top">
+  {% set red_count = snap.anomalies | selectattr('severity', 'equalto', 'red') | list | length %}
+  {% set amber_count = snap.anomalies | selectattr('severity', 'equalto', 'amber') | list | length %}
+  {% if red_count > 0 %}
+  <div class="monitor-status-pill monitor-status-red">CHECK</div>
+  {% elif amber_count > 0 %}
+  <div class="monitor-status-pill monitor-status-amber">WATCH</div>
+  {% else %}
+  <div class="monitor-status-pill monitor-status-green">OK</div>
+  {% endif %}
+  <div class="monitor-title">
+    {% if session.current_target %}
+    <strong>{{ session.current_target }}</strong>
+    {% if session.current_target_common %}<span class="meta"> · {{ session.current_target_common }}</span>{% endif %}
+    {% else %}
+    <em class="meta">between targets</em>
+    {% endif %}
+  </div>
+  <div class="monitor-subtitle">
+    {% if session.current_filter %}
+    filter <strong>{{ session.current_filter }}</strong>
+    {% endif %}
+    {% if session.frame_in_filter %}
+    · frame {{ session.frame_in_filter }}{% if session.frames_planned_in_filter %} / {{ session.frames_planned_in_filter }}{% endif %}
+    {% endif %}
+    · cam {{ cam.state or 'unknown' }}
+  </div>
+</div>
+
+{# --- Anomalies (collapsed by default if none) --- #}
+{% if snap.anomalies %}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Anomalies</h3>
+  </div>
+  <div class="monitor-anomalies">
+    {% for a in snap.anomalies %}
+    <details class="monitor-anomaly monitor-anomaly-{{ a.severity }}">
+      <summary>
+        <span class="monitor-anomaly-section">{{ a.section }}</span>
+        <span class="monitor-anomaly-message">{{ a.message }}</span>
+      </summary>
+      <p class="monitor-anomaly-detail">{{ a.detail }}</p>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# --- Frame quality sparklines --- #}
+{% set spark_hfr = sparkline(snap.recent_frames | map(attribute='hfr') | list | reverse) %}
+{% set spark_stars = sparkline(snap.recent_frames | map(attribute='stars') | list | reverse) %}
+{% set spark_mean = sparkline(snap.recent_frames | map(attribute='mean') | list | reverse) %}
+{% set frame_count = snap.recent_frames | length %}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Frame quality</h3>
+    <span class="meta">last {{ frame_count }} frame{{ '' if frame_count == 1 else 's' }}</span>
+  </div>
+  {% if frame_count == 0 %}
+  <p class="meta">No frames captured yet this session.</p>
+  {% else %}
+  <dl class="monitor-stat-grid">
+    {% set latest = snap.recent_frames[0] %}
+    <dt>HFR</dt>
+    <dd>
+      {% if latest.hfr is not none %}{{ '%.2f'|format(latest.hfr) }}{% else %}—{% endif %}
+      {% if spark_hfr %}<span class="monitor-spark">{{ spark_hfr }}</span>{% endif %}
+    </dd>
+    <dt>Stars</dt>
+    <dd>
+      {% if latest.stars is not none %}{{ latest.stars }}{% else %}—{% endif %}
+      {% if spark_stars %}<span class="monitor-spark">{{ spark_stars }}</span>{% endif %}
+    </dd>
+    <dt>Mean ADU</dt>
+    <dd>
+      {% if latest.mean is not none %}{{ '%.0f'|format(latest.mean) }}{% else %}—{% endif %}
+      {% if spark_mean %}<span class="monitor-spark">{{ spark_mean }}</span>{% endif %}
+    </dd>
+  </dl>
+  {% endif %}
+</div>
+
+{# --- Guiding --- #}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Guiding</h3>
+  </div>
+  {% if not guider.connected %}
+  <p class="meta">PHD2 not connected.</p>
+  {% else %}
+  <dl class="monitor-stat-grid">
+    <dt>RMS total</dt>
+    <dd>{% if guider.rms_total_arcsec is not none %}{{ '%.2f'|format(guider.rms_total_arcsec) }}″{% else %}—{% endif %}</dd>
+    {% if guider.rms_ra_arcsec is not none and guider.rms_dec_arcsec is not none %}
+    <dt>RA / Dec</dt>
+    <dd>{{ '%.2f'|format(guider.rms_ra_arcsec) }}″ / {{ '%.2f'|format(guider.rms_dec_arcsec) }}″</dd>
+    {% endif %}
+    {% if guider.last_dither_utc %}
+    <dt>Last dither</dt>
+    <dd>{{ time_ago(guider.last_dither_utc) }}</dd>
+    {% endif %}
+  </dl>
+  {% endif %}
+</div>
+
+{# --- Camera --- #}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Camera</h3>
+  </div>
+  <dl class="monitor-stat-grid">
+    <dt>Cooler</dt>
+    <dd>
+      {% if cam.temp_c is not none %}{{ '%.1f'|format(cam.temp_c) }}°C{% else %}—{% endif %}
+      {% if cam.setpoint_c is not none %}→ {{ '%.1f'|format(cam.setpoint_c) }}°C{% endif %}
+      {% if cam.cooler_power is not none %} · duty {{ '%.0f'|format(cam.cooler_power * 100) }}%{% endif %}
+    </dd>
+    <dt>Wheel</dt>
+    <dd>
+      {{ wheel.selected_name or '—' }}
+      {% if wheel.available %}
+      <span class="meta">({{ wheel.available | length }} positions)</span>
+      {% endif %}
+    </dd>
+    <dt>Focuser</dt>
+    <dd>
+      {% if focuser.position is not none %}pos {{ focuser.position }}{% else %}—{% endif %}
+      {% if focuser.temperature_c is not none %}· {{ '%.1f'|format(focuser.temperature_c) }}°C{% endif %}
+      {% if focuser.last_af_utc %}· AF {{ time_ago(focuser.last_af_utc) }}{% endif %}
+    </dd>
+  </dl>
+</div>
+
+{# --- Tonight (ledger + observability) --- #}
+{% if snap.ledger_view %}
+{% set lv = snap.ledger_view %}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Tonight</h3>
+    {% if session.target_sets_in_min is not none %}
+    <span class="meta">target sets in {{ session.target_sets_in_min }}m</span>
+    {% endif %}
+  </div>
+  <table class="monitor-ledger">
+    <tbody>
+      {% for filt, captured, budget, pct in lv.per_filter %}
+      <tr>
+        <td><strong>{{ filt }}</strong></td>
+        <td>{{ '%.0f'|format(captured) }} / {{ budget }} min</td>
+        <td>
+          <div class="monitor-progress">
+            <div class="monitor-progress-bar" style="width: {{ pct | min(100) | round(1) }}%;"></div>
+          </div>
+          <span class="meta">{{ pct | round(0) }}%</span>
+        </td>
+      </tr>
+      {% endfor %}
+      <tr class="monitor-ledger-total">
+        <td>Total</td>
+        <td>{{ '%.0f'|format(lv.total_captured) }} / {{ '%.0f'|format(lv.total_budget) }}</td>
+        <td>{{ lv.total_pct | round(0) }}%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# --- Mount / coords --- #}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Mount</h3>
+  </div>
+  <dl class="monitor-stat-grid">
+    <dt>State</dt>
+    <dd>
+      {% if not mount.connected %}<span class="status-failed">disconnected</span>
+      {% elif mount.slewing %}<span class="status-running">slewing</span>
+      {% elif mount.at_park %}<span class="status-queued">parked</span>
+      {% elif mount.tracking %}<span class="status-done">tracking</span>
+      {% else %}<span class="status-queued">idle</span>{% endif %}
+      {% if mount.pier_side %}· {{ mount.pier_side }}{% endif %}
+    </dd>
+    {% if mount.ra_deg is not none and mount.dec_deg is not none %}
+    <dt>RA / Dec</dt>
+    <dd>{{ '%.4f'|format(mount.ra_deg) }}° / {{ '%+.4f'|format(mount.dec_deg) }}°</dd>
+    {% endif %}
+  </dl>
+</div>
+
+{# --- Recent events --- #}
+{% if snap.recent_events %}
+<div class="monitor-section">
+  <div class="monitor-section-header">
+    <h3>Events</h3>
+  </div>
+  <ul class="monitor-events">
+    {% for evt in snap.recent_events %}
+    <li>
+      <span class="monitor-event-time">{{ time_ago(evt.timestamp_utc) }}</span>
+      <span class="monitor-event-kind">{{ evt.kind }}</span>
+      <span>{{ evt.summary }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<p class="meta monitor-footer">
+  snapshot generated {{ time_ago(snap.generated_utc) }} · mode <code>{{ snap.mode }}</code>
+</p>
+
+{% endif %}

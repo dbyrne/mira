@@ -10,15 +10,23 @@
 
 ra: 202.4696
 dec: 47.1952
-# 60s validated 2026-05-19 via `mira tune`: HFR stable at ~2.0 px out to
-# 90s (tracking holds), sky 400x read noise at 30s already (sky-limited),
-# so per-sub SNR on faint galaxy structure scales as sqrt(exposure). 60s
-# wins 1.41x per-sub SNR over 30s with ~140 subs/3hr — plenty for stack
-# rejection.
+# 60s exposure: originally validated 2026-05-19 via `mira tune` at gain
+# 120 (HFR stable at ~2.0 px out to 90s; sky already 400x read noise at
+# 30s — sky-limited). 60s carries over cleanly to gain 80: HCG mode has
+# lower read noise so the sky-limit crossover is even shorter, and
+# post-HCG amplification drops with gain so g80 has MORE well depth than
+# g120 (less saturation risk on bright cores/stars). Re-run `mira tune
+# --filter LP --gain 80` if you want an empirical confirmation.
 exposure: 60
-gain: 120
+# Gain 80: IMX585 HCG sweet spot per Cloudy Nights community guidance.
+# Going above 80 reduces dynamic range without further read-noise benefit.
+# Flats matched: requires data/flats/LP_g80_<date>/master_flat.fit (run
+# `mira flats --gain 80 --filters LP` if missing — mira stack --auto-flats
+# will hard-abort otherwise).
+gain: 80
 filter: LP
 target_name: M51
 platesolve_center: true
-autofocus_every_min: 45
+# autofocus_every_min: omitted — S30 Pro has no motorized focuser, NINA's
+# run_autofocus would just fail-soft and waste a slot every interval.
 dither_arcsec: 30

@@ -208,4 +208,8 @@ class TestShippedM51Profile(TestCase):
             self.assertIsNotNone(cfg[k], f"{k} should be set")
         self.assertEqual(cfg["filter"], "LP")
         self.assertTrue(cfg["platesolve_center"])
-        self.assertEqual(cfg["autofocus_every_min"], 45)
+        # The S30 Pro has no motorized focuser, so the M51 profile omits
+        # autofocus_every_min (changed 2026-05-28 alongside the gain 120→80
+        # move). It resolves to 0 — autofocus disabled — not a positive
+        # interval, which would just fail-soft and waste a slot each tick.
+        self.assertEqual(cfg["autofocus_every_min"], 0)

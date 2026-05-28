@@ -614,6 +614,31 @@ def main() -> None:
         help="Only list orphan sessions (captures whose target_name doesn't match any catalog entry).",
     )
 
+    transients_parser = subparsers.add_parser(
+        "transients",
+        help="Check for bright transients (supernovae/novae) observable + within reach tonight.",
+    )
+    transients_parser.add_argument(
+        "--config", default="config/s30_pro_jc.yaml",
+        help="YAML config path (site + magnitude reach come from it).",
+    )
+    transients_parser.add_argument(
+        "--start-date", default=None,
+        help="Local observing start date YYYY-MM-DD (default: today in the first site's timezone).",
+    )
+    transients_parser.add_argument(
+        "--max-mag", type=float, default=None,
+        help="Reach limit (mag). Default: the deepest configured site's prefer_max_mag. "
+             "Fainter transients are still listed, flagged out-of-reach.",
+    )
+    transients_parser.add_argument(
+        "--output-dir", default=None,
+        help="Override output directory (default: <config.output.directory>/transients).",
+    )
+    transients_parser.add_argument(
+        "--top", type=int, default=None, help="Limit the report to the top N candidates.",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -665,6 +690,8 @@ def main() -> None:
         dso(args)
     elif args.command == "galaxies":
         galaxies(args)
+    elif args.command == "transients":
+        transients(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -2094,6 +2121,73 @@ def galaxies(args: argparse.Namespace) -> None:
             f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
             f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
             f", mag {top.magnitude:.1f}{sb_note}"
+        )
+
+
+def transients(args: argparse.Namespace) -> None:
+    """Bright-transient check. Scrapes Rochester's active-SNe table, filters
+    by observability + the rig's magnitude reach, writes a ranked report to
+    <output_dir>/transients/. Point sources → moon-tolerant + AAVSO-
+    submittable, so this is the go-to science target on a bright-moon night
+    when galaxies/nebulae drown."""
+    from datetime import date as _date
+    from zoneinfo import ZoneInfo
+    from .config import load_config
+    from .transients.catalog import ROCHESTER_URL, fetch_active_supernovae
+    from .transients.planner import build_transient_candidates
+    from .transients.report import write_transient_report
+
+    cfg = load_config(args.config)
+    if args.start_date:
+        start_date = _date.fromisoformat(args.start_date)
+    else:
+        start_date = datetime.now(ZoneInfo(cfg.sites[0].observer.timezone)).date()
+    if args.max_mag is not None:
+        max_mag = args.max_mag
+    else:
+        max_mag = max(s.filters.prefer_max_mag for s in cfg.sites)
+
+    print(f"Fetching bright transients from {ROCHESTER_URL} ...")
+    try:
+        all_transients = fetch_active_supernovae()
+    except Exception as exc:  # network / HTTP / parse — report, don't crash
+        raise SystemExit(f"Could not fetch transient source: {exc}")
+    print(f"  parsed {len(all_transients)} active transients (mag < 17)")
+    if not all_transients:
+        print("  (no parseable rows — Rochester's page layout may have changed)")
+
+    candidates = build_transient_candidates(
+        all_transients, cfg, start_date=start_date, max_mag=max_mag,
+    )
+    reachable = [c for c in candidates if c.within_reach]
+    print(
+        f"  {len(candidates)} observable from your site(s); "
+        f"{len(reachable)} within reach (mag <= {max_mag:.1f})"
+    )
+    if args.top is not None:
+        candidates = candidates[: args.top]
+
+    out_root = Path(args.output_dir) if args.output_dir else cfg.output.directory
+    out_dir = out_root / "transients"
+    md_path, csv_path = write_transient_report(
+        candidates, out_dir,
+        config_path=args.config, start_date=start_date, max_mag=max_mag,
+        fetched_count=len(all_transients), source_url=ROCHESTER_URL,
+    )
+    print(f"Wrote {md_path}")
+    print(f"Wrote {csv_path}")
+    if reachable:
+        top = reachable[0].transient
+        stale = " [STALE — verify]" if top.mag_stale else ""
+        print(
+            f"\nTop pick: {top.name} ({top.sn_type} in {top.host}) "
+            f"mag {top.magnitude:.1f} @ {reachable[0].best_site_name}, "
+            f"peak {reachable[0].best_observability.max_altitude_deg:.0f}°{stale}"
+        )
+    else:
+        print(
+            "\nNo transients within this rig's reach tonight — see the report's "
+            "deeper-rig list, or pass --max-mag to extend."
         )
 
 

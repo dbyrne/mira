@@ -413,6 +413,51 @@ def check_writable(paths: tuple[str, ...] = ("output", "data")) -> Check:
     return Check("Writable dirs", PASS, f"{', '.join(paths)} writable")
 
 
+def check_flat_device(working_url: str | None) -> Check:
+    """Confirm a motorized flat panel (Cover Calibrator) is reachable.
+    This is the Wanderer Cover V4-EC path on the Esprit rig — surfaced as
+    a WARN when the panel is absent (paper-mode still works, so it isn't
+    a FAIL) and a FAIL when the panel reports `Error`/`NotPresent`
+    (driver loaded but hardware not responding — a real foot-gun, since
+    `mira flats` will try to drive it and abort each filter)."""
+    if not working_url:
+        return Check("Flat device (Cover Calibrator)", WARN,
+                     "skipped (NINA not reachable)")
+    try:
+        from .webapp.nina_client import NinaClient
+
+        info = NinaClient(base_url=working_url).flat_device_info()
+        if not info:
+            return Check(
+                "Flat device (Cover Calibrator)", WARN,
+                "no flat device reported (mira flats will fall back to "
+                "taped-paper mode)",
+                "connect the Wanderer Cover V4-EC in NINA -> Equipment -> "
+                "Flat Device if you want unattended flats",
+            )
+        if not info.get("Connected"):
+            return Check(
+                "Flat device (Cover Calibrator)", WARN,
+                "flat device present but disconnected",
+                "click Connect in NINA -> Equipment -> Flat Device",
+            )
+        cover_state = str(info.get("CoverState", ""))
+        if cover_state in ("Error", "NotPresent"):
+            return Check(
+                "Flat device (Cover Calibrator)", FAIL,
+                f"flat device reports CoverState={cover_state}",
+                "the ASCOM driver loaded but the panel isn't responding — "
+                "reseat the USB-C cable, then Disconnect + Connect in NINA's "
+                "Flat Device tab. mira flats --no-panel falls back to paper.",
+            )
+        max_b = info.get("MaxBrightness", "?")
+        return Check("Flat device (Cover Calibrator)", PASS,
+                     f"CoverState={cover_state}, MaxBrightness={max_b}")
+    except Exception as exc:
+        return Check("Flat device (Cover Calibrator)", WARN,
+                     f"check raised: {exc}")
+
+
 def run_doctor(
     *, config_path: str = "config/s30_pro_jc.yaml",
     nina_url: str = "http://localhost:1888",
@@ -448,5 +493,9 @@ def run_doctor(
     checks.append(_safe(lambda: check_filter_wheel(
         working_url, enforce_canonical_names=dso_enabled,
     )))
+    if dso_enabled:
+        # Only the Esprit profile has a motorized panel; the S30 path
+        # would just produce a noisy "no flat device" warning every time.
+        checks.append(_safe(lambda: check_flat_device(working_url)))
     checks.append(_safe(lambda: check_darkness(config_path, when)))
     return checks

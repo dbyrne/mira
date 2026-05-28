@@ -18,9 +18,20 @@ rules learned that night are baked in as core guards, not options:
   illuminates; detected by a still-near-bias median at the longest
   bracket exposure and skipped, not wasted on a 25-frame series.
 
-The flat *source* is manual (paper taped over the aperture) and stays put
-for the whole multi-filter run; the wheel is driven automatically. Pure
-bracket math + an injected client -> unit-tested without NINA.
+Two flat sources are supported:
+
+* **Motorized flat panel** (Wanderer Cover V4-EC on the Esprit). The
+  panel closes over the aperture and shines an EL film down the tube.
+  `run_flats` drives close-cover + light-on at run start and light-off
+  at end via the ASCOM Cover Calibrator interface. The bracket loop is
+  unchanged — only the illumination source moved from manual to motor.
+* **Taped paper** (S30 Pro, or Esprit fallback). The user tapes a sheet
+  over the aperture and lights it evenly; the run starts with no panel
+  calls and the per-filter bracket finds the exposure.
+
+`use_panel=True` (the default when a flat device is connected) prefers the
+panel; `False` forces paper mode. Pure bracket math + an injected client
+-> unit-tested without NINA.
 """
 from __future__ import annotations
 
@@ -57,6 +68,16 @@ class _Client(Protocol):
     def capture(self, *, duration: float, gain: int | None = ..., save: bool = ...,
                 solve: bool = ..., target_name: str = ..., timeout_s: float = ...) -> dict: ...
     def image_history(self, all_images: bool = ...) -> list[dict[str, Any]]: ...
+    # Flat-device methods (optional in practice — a client without a
+    # connected panel returns {}/False from these; run_flats checks the
+    # bool and falls back to paper mode rather than crashing).
+    def flat_device_info(self) -> dict[str, Any]: ...
+    def open_cover(self, *, wait: bool = ..., timeout_s: float = ...) -> bool: ...
+    def close_cover(self, *, wait: bool = ..., timeout_s: float = ...) -> bool: ...
+    def set_calibrator_on(self, on: bool, *, wait: bool = ...,
+                          timeout_s: float = ...) -> bool: ...
+    def set_calibrator_brightness(self, brightness: int, *, wait: bool = ...,
+                                  timeout_s: float = ...) -> bool: ...
 
 
 @dataclass
@@ -76,6 +97,17 @@ class FilterFlatResult:
 class FlatsRunResult:
     results: list[FilterFlatResult] = field(default_factory=list)
     out_root: str = ""
+    panel_driven: bool = False         # True if the run used a motorized flat panel
+    panel_brightness: int | None = None  # brightness commanded (None when paper)
+
+
+# Defensible middle of the panel's dimming range. The bracket loop
+# converges on whatever brightness is set, so this is just a starting
+# point: too-bright -> camera floor, too-dim -> bracket times out.
+# 50% is a fine default for the Wanderer V4-EC + Antlia LRGB-V at gain 100;
+# tune per filter via --panel-brightness if you find you're saturating
+# (drop) or bracket-failing (raise).
+PANEL_BRIGHTNESS_DEFAULT_FRAC = 0.5
 
 
 def solve_exposure(
@@ -416,6 +448,65 @@ def resolve_master_for_lights(
     return find_master_for_filter_gain(filt, meta.get("gain"), flats_root)
 
 
+def _setup_panel(
+    client: _Client, *, use_panel: bool, panel_brightness: int | None,
+    emit: Callable[[str], None],
+) -> tuple[bool, int | None]:
+    """Best-effort: prep a motorized flat panel (close cover, set
+    brightness, light on). Returns (panel_driven, commanded_brightness).
+    `panel_driven=False` falls back to paper mode — the bracket loop
+    doesn't care which is illuminating the aperture."""
+    if not use_panel:
+        emit("flat source: paper (--no-panel)")
+        return False, None
+    info = client.flat_device_info()
+    if not info or not info.get("Connected"):
+        emit("flat source: paper (no flat device reported by NINA)")
+        return False, None
+    cover_state = str(info.get("CoverState", ""))
+    if cover_state in ("Error", "NotPresent"):
+        emit(f"flat source: paper (flat device reports CoverState={cover_state})")
+        return False, None
+    # Pick brightness: explicit override > fraction of MaxBrightness.
+    if panel_brightness is None:
+        try:
+            mx = int(info.get("MaxBrightness", 100))
+        except (TypeError, ValueError):
+            mx = 100
+        commanded = max(1, int(round(mx * PANEL_BRIGHTNESS_DEFAULT_FRAC)))
+    else:
+        commanded = int(panel_brightness)
+    # Close cover (a flat panel illuminates the aperture only when the
+    # lid is shut over the OTA; an open lid points the EL film at the
+    # ceiling, not down the tube).
+    supports_open_close = bool(info.get("SupportsOpenClose", True))
+    if supports_open_close and cover_state != "Closed":
+        emit("flat panel: closing cover...")
+        if not client.close_cover(wait=True, timeout_s=60.0):
+            emit("flat panel: close-cover FAILED -> falling back to paper mode")
+            return False, None
+    emit(f"flat panel: setting brightness {commanded} and light on...")
+    if not client.set_calibrator_brightness(commanded, wait=True):
+        emit("flat panel: set-brightness FAILED -> falling back to paper mode")
+        return False, None
+    if not client.set_calibrator_on(True, wait=True):
+        emit("flat panel: set-light-on FAILED -> falling back to paper mode")
+        return False, None
+    emit(f"flat source: motorized panel (brightness={commanded})")
+    return True, commanded
+
+
+def _teardown_panel(client: _Client, *, emit: Callable[[str], None]) -> None:
+    """Turn the EL panel off at run end. Cover stays closed (the lid is
+    also the OTA dust cover; leaving it closed protects the front
+    element). Best-effort: failure here doesn't invalidate the masters
+    we just built."""
+    if not client.set_calibrator_on(False, wait=True):
+        emit("flat panel: set-light-off did not confirm (check NINA)")
+    else:
+        emit("flat panel: light off, cover left closed")
+
+
 def run_flats(
     client: _Client,
     *,
@@ -427,88 +518,132 @@ def run_flats(
     nina_root: Path,
     min_exp: float = MIN_EXP_DEFAULT,
     max_exp: float = MAX_EXP_DEFAULT,
+    use_panel: bool = True,
+    panel_brightness: int | None = None,
     on_step: Callable[[str], None] | None = None,
     siril_runner: Callable[..., str] | None = None,
 ) -> FlatsRunResult:
     """For each requested filter (default: every wheel position): drive the
     wheel, bracket the exposure, capture a validated series, build the
-    master. Opaque positions are auto-detected and skipped. The flat source
-    (taped paper) is assumed in place for the whole run."""
+    master. Opaque positions are auto-detected and skipped.
+
+    The flat source is selected automatically: if `use_panel` and NINA
+    reports a connected flat device (e.g. Wanderer Cover V4-EC), the
+    panel's cover is closed and its EL light is turned on at run start
+    and off at run end. Otherwise the run assumes taped paper over the
+    aperture (the historical S30 Pro workflow). The bracket loop is
+    identical either way — `target_adu` is reached by tuning *exposure*,
+    not panel brightness. `panel_brightness` overrides the default
+    starting brightness (50% of MaxBrightness); useful when one filter
+    saturates or bracket-fails at the default."""
     def emit(m: str) -> None:
         if on_step is not None:
             on_step(m)
 
     out_root = Path(out_root)
-    run = FlatsRunResult(out_root=str(out_root))
+    panel_driven, commanded_brightness = _setup_panel(
+        client, use_panel=use_panel, panel_brightness=panel_brightness,
+        emit=emit,
+    )
+    run = FlatsRunResult(
+        out_root=str(out_root),
+        panel_driven=panel_driven,
+        panel_brightness=commanded_brightness,
+    )
     wheel = client.available_filters()
     names = [str(f.get("Name")) for f in wheel]
     want = filters if filters is not None else names
     date = datetime.now(timezone.utc).strftime("%Y%m%d")
 
-    for name in want:
-        if name not in names:
-            run.results.append(FilterFlatResult(
-                filter_name=name, status="bracket_failed",
-                note="filter not present on wheel"))
-            emit(f"[{name}] NOT on wheel ({names}); skipped")
-            continue
-        emit(f"[{name}] selecting filter...")
-        if not client.set_filter(name, wait=True):
-            run.results.append(FilterFlatResult(
-                filter_name=name, status="bracket_failed",
-                note="filter wheel did not confirm move"))
-            emit(f"[{name}] wheel move NOT confirmed; skipped")
-            continue
-        emit(f"[{name}] bracketing (target {target_adu:.0f} ADU)...")
-        status, exp, med = bracket_filter(
-            client, gain=gain, target_adu=target_adu, nina_root=nina_root,
-            min_exp=min_exp, max_exp=max_exp, emit=emit)
-        res = FilterFlatResult(filter_name=name, status=status,
-                               exposure_s=exp, median_adu=med)
-        if status != "ok":
-            note = {
-                "skipped_opaque": "opaque position (no illumination) — likely a "
-                                  "dark/blocking filter; not a flat target",
-                "too_bright": "saturated even at the minimum exposure — dim the "
-                              "flat source",
-                "unstable": "illumination not repeatable — re-seat the paper / "
-                            "steady the light",
-                "bracket_failed": "could not converge on a target-ADU exposure",
-            }.get(status, status)
-            res.note = note
+    # try/finally so the panel is *always* torn down (light off) even on
+    # an exception inside the per-filter loop — a long-running flat
+    # session that crashes mid-run shouldn't leave the EL film burning.
+    try:
+        for name in want:
+            if name not in names:
+                run.results.append(FilterFlatResult(
+                    filter_name=name, status="bracket_failed",
+                    note="filter not present on wheel"))
+                emit(f"[{name}] NOT on wheel ({names}); skipped")
+                continue
+            emit(f"[{name}] selecting filter...")
+            if not client.set_filter(name, wait=True):
+                run.results.append(FilterFlatResult(
+                    filter_name=name, status="bracket_failed",
+                    note="filter wheel did not confirm move"))
+                emit(f"[{name}] wheel move NOT confirmed; skipped")
+                continue
+            emit(f"[{name}] bracketing (target {target_adu:.0f} ADU)...")
+            status, exp, med = bracket_filter(
+                client, gain=gain, target_adu=target_adu, nina_root=nina_root,
+                min_exp=min_exp, max_exp=max_exp, emit=emit)
+            res = FilterFlatResult(filter_name=name, status=status,
+                                   exposure_s=exp, median_adu=med)
+            if status != "ok":
+                unstable_note = (
+                    "illumination not repeatable — lower panel brightness / "
+                    "check for stray light"
+                    if panel_driven
+                    else "illumination not repeatable — re-seat the paper / "
+                         "steady the light"
+                )
+                too_bright_note = (
+                    "saturated even at the minimum exposure — lower "
+                    "--panel-brightness"
+                    if panel_driven
+                    else "saturated even at the minimum exposure — dim the "
+                         "flat source"
+                )
+                note = {
+                    "skipped_opaque": "opaque position (no illumination) — "
+                                      "likely a dark/blocking filter; not a "
+                                      "flat target",
+                    "too_bright": too_bright_note,
+                    "unstable": unstable_note,
+                    "bracket_failed": "could not converge on a target-ADU "
+                                      "exposure",
+                }.get(status, status)
+                res.note = note
+                run.results.append(res)
+                emit(f"[{name}] {status}: {note}")
+                continue
+            gain_tag = "default" if gain is None else str(gain)
+            fdir = out_root / f"{name}_g{gain_tag}_{date}"
+            raw = fdir / "raw"
+            emit(f"[{name}] exposure {exp:.4g}s @ ~{med:.0f} ADU; "
+                 f"capturing {frames} frames...")
+            good, rej = capture_series(
+                client, exposure_s=exp, gain=gain, target_adu=target_adu,
+                frames=frames, dest_dir=raw, nina_root=nina_root, emit=emit)
+            res.n_good, res.n_rejected = good, rej
+            if good < 3:
+                res.status, res.note = "no_frames", (
+                    f"only {good} valid frames captured — master not built")
+                run.results.append(res)
+                emit(f"[{name}] too few good frames ({good}); master skipped")
+                continue
+            meta = {
+                "filter": name, "gain": gain, "exposure_s": exp,
+                "target_adu": target_adu, "measured_median_adu": med,
+                "n_frames": good, "n_rejected": rej,
+                "captured_utc": datetime.now(timezone.utc).isoformat(),
+                "flat_source": "panel" if panel_driven else "paper",
+                "panel_brightness": commanded_brightness,
+                "recipe": "siril convert + rej stack -norm=mul",
+                "reusable": (
+                    "reusable for future captures at this filter/gain as long "
+                    "as focus, rotation, and dust pattern have not changed"
+                ),
+            }
+            emit(f"[{name}] building master from {good} frames...")
+            master = build_master(raw, fdir, metadata=meta,
+                                  siril_runner=siril_runner)
+            res.master_path = master
+            res.status = "ok" if master else "no_frames"
+            res.note = "" if master else "Siril produced no master"
             run.results.append(res)
-            emit(f"[{name}] {status}: {note}")
-            continue
-        gain_tag = "default" if gain is None else str(gain)
-        fdir = out_root / f"{name}_g{gain_tag}_{date}"
-        raw = fdir / "raw"
-        emit(f"[{name}] exposure {exp:.4g}s @ ~{med:.0f} ADU; "
-             f"capturing {frames} frames...")
-        good, rej = capture_series(
-            client, exposure_s=exp, gain=gain, target_adu=target_adu,
-            frames=frames, dest_dir=raw, nina_root=nina_root, emit=emit)
-        res.n_good, res.n_rejected = good, rej
-        if good < 3:
-            res.status, res.note = "no_frames", (
-                f"only {good} valid frames captured — master not built")
-            run.results.append(res)
-            emit(f"[{name}] too few good frames ({good}); master skipped")
-            continue
-        meta = {
-            "filter": name, "gain": gain, "exposure_s": exp,
-            "target_adu": target_adu, "measured_median_adu": med,
-            "n_frames": good, "n_rejected": rej,
-            "captured_utc": datetime.now(timezone.utc).isoformat(),
-            "scope": "Seestar S30 Pro", "recipe": "siril convert + rej stack -norm=mul",
-            "reusable": "sealed optical system — valid for future captures at this "
-                        "filter/gain until focus/optics change",
-        }
-        emit(f"[{name}] building master from {good} frames...")
-        master = build_master(raw, fdir, metadata=meta, siril_runner=siril_runner)
-        res.master_path = master
-        res.status = "ok" if master else "no_frames"
-        res.note = "" if master else "Siril produced no master"
-        run.results.append(res)
-        emit(f"[{name}] DONE -> {master or '(master build failed)'}")
-
+            emit(f"[{name}] DONE -> {master or '(master build failed)'}")
+    finally:
+        if panel_driven:
+            _teardown_panel(client, emit=emit)
     return run

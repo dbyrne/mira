@@ -18,7 +18,8 @@ Before opening NINA, you should already have:
 - **Windows-side installers run by hand** (no silent path for these):
   - ASCOM Platform 7+ — <https://ascom-standards.org/>
   - NINA 3.x — <https://nighttime-imaging.eu/>
-  - ZWO ASCOM drivers (camera + AM5N + EFW) — <https://astronomy-imaging-camera.com/software-drivers>
+  - ZWO ASCOM drivers (camera + AM7 + EFW) — <https://astronomy-imaging-camera.com/software-drivers>
+  - WandererAstro ASCOM driver (Cover V4-EC, exposes a Cover Calibrator interface) — <https://www.wandererastro.com/en/col.jsp?id=104>
   - Pegasus Unity (FocusCube 3 + PocketPowerbox Gen2) — <https://pegasusastro.com/pegasus-unity/>
 
 ## NINA Equipment configuration
@@ -27,12 +28,13 @@ Connect each device in NINA's **Equipment** tab. Use the ASCOM driver for
 each unless noted; click "Connect" after selecting the driver. Verify each
 device reports state (cooling, position, current filter, etc.).
 
-### Mount (AM5N)
+### Mount (AM7)
 
-Equipment → Telescope → **ZWO AM5/AM3 ASCOM Driver** → Connect.
+Equipment → Telescope → **ZWO AM5/AM3 ASCOM Driver** → Connect. The AM7
+shares the AM5/AM3 ASCOM driver — ZWO did not ship a separate AM7 driver.
 
 - Set the home position before the first session (NINA → Telescope panel →
-  "Set Park Position"). The AM5N's harmonic drive holds position
+  "Set Park Position"). The AM7's harmonic drive holds position
   off-power, so park is mostly cosmetic for shutdown.
 - For polar alignment, use NINA's **Three Point Polar Alignment (TPPA)**
   plugin (install via Plugins → Available) or PoleMaster if you have one.
@@ -98,7 +100,7 @@ Inside PHD2 itself:
 
 1. Profile → New profile → name it "Esprit guider".
 2. Camera: ASI220MM Mini. Focal length: 150 mm. Pixel size: 4.0 µm.
-3. Mount: ASCOM (point at the same AM5N profile).
+3. Mount: ASCOM (point at the same AM7 profile).
 4. Run the guiding-assistant calibration on a clear night before
    committing to a long DSO session.
 
@@ -106,6 +108,41 @@ In NINA → Options → Imaging → **Guider**, set "Settle pixels" to 1.5 and
 "Settle time" to 10 seconds. After a dither, NINA waits for PHD2 to
 report the guide error within 1.5 px for 10 consecutive seconds before
 exposing again. Less aggressive than the defaults; less rejected frames.
+
+### Flat panel (WandererAstro Cover V4-EC 190mm)
+
+Equipment → Flat Device → **ASCOM Cover Calibrator (WandererAstro)** →
+Connect. The Cover V4-EC presents two surfaces to NINA through one
+ASCOM Cover Calibrator driver:
+
+- **Cover** — the motorized lid (open / closed / moving). Opens for
+  light frames, closes for flats and darks.
+- **Calibrator** — the dimmable EL panel inside the lid (brightness
+  0..`MaxBrightness`). On when shooting flats, off otherwise.
+
+Why we drive it: the panel obsoletes the taped-paper flat source. The
+panel illuminates the *entrance* of the OTA evenly, like the paper did,
+so `mira flats`' bracket + repeatability math doesn't change — only the
+illumination source is now repeatable and unattended. The lid also acts
+as a light-tight cover for darks/bias, which is a side benefit.
+
+- **190mm aperture** matches the Esprit 120's dewshield OD. Make sure
+  the panel is fully seated against the dewshield before opening NINA
+  — a tilted seat asymmetrically vignettes the panel.
+- Cable: USB-C from the panel to the MeLE. The panel is bus-powered, no
+  separate 12 V required.
+- After connecting, confirm in the **Flat Device** tab that
+  `CoverState` reports `Open` or `Closed` (not `Unknown`), and that
+  pushing brightness 0 → 50 → 0 visibly toggles the EL panel. If the
+  state stays `Unknown`, the driver isn't actually talking to the
+  hardware — re-seat the USB cable and reconnect.
+- Leave the panel **closed and off** at session end. The EL film
+  degrades faster when left lit; the lid keeps dew off the front
+  element.
+- `mira flats` opens the lid only if you're shooting a normal flat
+  bracket, then closes it after the last filter. The flag is
+  `--panel/--no-panel` (default `--panel` when the device is connected,
+  `--no-panel` falls back to the historical taped-paper workflow).
 
 ### Plate solver (ASTAP)
 
@@ -155,7 +192,8 @@ target dir; the file path pattern above keeps things consistent.
 Run through these in order:
 
 1. **Polar align** with TPPA (or PoleMaster).
-2. **Connect all equipment** in NINA (mount, cam, wheel, focuser, guider).
+2. **Connect all equipment** in NINA (mount, cam, wheel, focuser, guider,
+   flat panel).
 3. **Set cooling** target; wait for camera to settle.
 4. `mira doctor --config config/esprit120_jc.yaml` from a PowerShell on
    the MeLE. Expect:
@@ -200,3 +238,13 @@ stars), follow up with `mira submit` per [`photometry.md`](photometry.md).
   `--filter <name>` (canonical name from the wheel).
 - **ASTAP returns "No solution"** → missing star DB. Run
   `bootstrap.ps1 -WithStarDB` or grab D50 from <https://www.hnsky.org/astap.htm>.
+- **`mira flats` aborts "flat device unreachable"** → the Cover V4-EC
+  reports a `CalibratorError` / `CoverError` state, or NINA's flat-device
+  endpoint isn't responding. Reconnect in NINA → Equipment → Flat Device,
+  toggle brightness manually to confirm the panel responds, then re-run.
+  Fallback: `mira flats --no-panel` tapes the historical paper workflow
+  back on (still works, just unattended-unfriendly).
+- **Cover stays "Moving" forever** → the lid hit something on the way
+  open/close. Close NINA, manually retract the lid by hand (it back-drives
+  cleanly), reconnect, and clear the obstruction (dewshield cap left on,
+  cable snag) before re-issuing.

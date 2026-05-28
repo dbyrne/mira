@@ -322,12 +322,13 @@ def main() -> None:
 
     flats_parser = subparsers.add_parser(
         "flats",
-        help="Per-filter flat calibration. Tape paper over the aperture "
-        "once; this drives the filter wheel, auto-brackets exposure "
-        "(wide then fine, target ~30k ADU), captures a validated series "
-        "per filter, and builds a Siril master flat each. Auto-skips "
-        "opaque positions (e.g. a Dark filter). Freshness + 0-stars "
-        "guards reject stale/sky frames.",
+        help="Per-filter flat calibration. Drives a motorized flat panel "
+        "(Wanderer Cover V4-EC on the Esprit) when one is connected, or "
+        "falls back to taped paper over the aperture. Auto-brackets "
+        "exposure (wide then fine, target ~30k ADU), captures a "
+        "validated series per filter, builds a Siril master flat each. "
+        "Auto-skips opaque positions (e.g. a Dark filter). Freshness + "
+        "0-stars guards reject stale/sky frames.",
     )
     # Defaults are None so resolve_flats_config can distinguish user-set from
     # not-set. Final fallback values live in FLATS_BUILTIN_DEFAULTS.
@@ -346,6 +347,21 @@ def main() -> None:
     flats_parser.add_argument(
         "--nina-root", default=None,
         help="Where NINA saves FITS (scanned for new frames to copy out).")
+    flats_parser.add_argument(
+        "--panel", dest="use_panel", action="store_true", default=None,
+        help="Drive a motorized flat panel (Wanderer Cover V4-EC) over the "
+        "ASCOM Cover Calibrator interface. Default: ON when NINA reports a "
+        "connected flat device.")
+    flats_parser.add_argument(
+        "--no-panel", dest="use_panel", action="store_false", default=None,
+        help="Force the historical taped-paper workflow even if a flat "
+        "device is connected (the bracket loop is identical).")
+    flats_parser.add_argument(
+        "--panel-brightness", type=int, default=None,
+        help="Panel brightness as an absolute value (0..MaxBrightness, see "
+        "NINA's Flat Device tab). Default: 50%% of MaxBrightness. Lower if "
+        "filters saturate at min exposure; raise if the bracket can't "
+        "converge before max exposure.")
 
     cull_parser = subparsers.add_parser(
         "cull",
@@ -1398,6 +1414,11 @@ FLATS_BUILTIN_DEFAULTS: dict[str, Any] = {
     "nina_url": "http://localhost:1888",
     "nina_root": r"C:\Users\david\OneDrive\Documents\N.I.N.A",
     "filters": None,
+    # use_panel: None = auto-probe via flat_device_info (panel preferred
+    # when connected, paper otherwise). True/False from --panel/--no-panel
+    # forces the choice. panel_brightness: None = 50% of MaxBrightness.
+    "use_panel": None,
+    "panel_brightness": None,
 }
 
 
@@ -1557,8 +1578,9 @@ def capture(args: argparse.Namespace) -> None:
 
 def flats(args: argparse.Namespace) -> None:
     """Per-filter flat calibration: drive the wheel, auto-bracket, capture
-    a validated series, build a Siril master per filter. Paper stays taped
-    over the aperture for the whole run."""
+    a validated series, build a Siril master per filter. The flat source
+    is a motorized panel (Wanderer Cover V4-EC) when one is connected,
+    or taped paper otherwise — `_setup_panel` in flats.py auto-probes."""
     from .flats import run_flats
     from .webapp.nina_client import NinaClient
 
@@ -1574,11 +1596,16 @@ def flats(args: argparse.Namespace) -> None:
         print("No filter wheel reported by NINA at "
               f"{cfg['nina_url']}. Is it connected? Aborting.")
         return
+    # None means "auto-probe" (default when --panel/--no-panel isn't passed
+    # and no site config sets it); _setup_panel falls back to paper if
+    # there's no flat device on the bus, so True here is the right default.
+    use_panel = True if cfg["use_panel"] is None else bool(cfg["use_panel"])
+    source_hint = "auto (panel preferred, paper fallback)" if use_panel else "paper (forced)"
     print(
         f"Filter wheel: {discovered}. Flats for "
         f"{filters or 'ALL (opaque auto-skipped)'} @ gain {cfg['gain']}, "
         f"target {cfg['target_adu']:.0f} ADU, {cfg['frames']} frames each.\n"
-        "Paper must stay taped over the aperture for the whole run."
+        f"Flat source: {source_hint}."
     )
     if args.config:
         print(f"(site config: {args.config})")
@@ -1588,6 +1615,7 @@ def flats(args: argparse.Namespace) -> None:
         frames=cfg["frames"], out_root=Path(cfg["out"]),
         nina_root=Path(cfg["nina_root"]),
         min_exp=cfg["min_exp"], max_exp=cfg["max_exp"],
+        use_panel=use_panel, panel_brightness=cfg["panel_brightness"],
         on_step=lambda m: print(m),
     )
     print("\n=== flats summary ===")

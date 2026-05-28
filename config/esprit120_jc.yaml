@@ -1,4 +1,4 @@
-# Tuned for the Esprit 120 EDX + ASI2600MM Pro + AM5N + Antlia LRGB-V + SHO
+# Tuned for the Esprit 120 EDX + ASI2600MM Pro + AM7 + Antlia LRGB-V + SHO
 # from Jersey City, NJ. This profile drives the *variable-star photometry*
 # nights — the use case where Mira's queue is relevant.
 #
@@ -14,7 +14,7 @@
 #    photometric scatter from ~0.05-0.1 mag (urban OSC) to roughly 0.02-0.03
 #    mag, so min_catalog_amplitude_mag drops to 0.10.
 #  - Short-period eclipsing binaries (EA/EB/EW) and pulsators (RR-family,
-#    DSCT) are back on the menu — the AM5N + ZWO 30mm/220MM guider + NINA
+#    DSCT) are back on the menu — the AM7 + ZWO 30mm/220MM guider + NINA
 #    dithering handles sub-30s cadence cleanly. (The S30 excluded these
 #    because the alt-az mount couldn't track + dither precisely enough.)
 #  - ZTF re-enabled. Targets we can now reach (mag 14-16) overlap ZTF's
@@ -38,7 +38,7 @@ sites:
       end_hour_local: 2
       nights: 14
       sample_minutes: 30
-      # The Esprit + AM5N is fine down to ~25° on a guided mount. Holding 40°
+      # The Esprit + AM7 is fine down to ~25° on a guided mount. Holding 40°
       # for now because (a) JC's lower-sky atmospheric extinction kills V-band
       # SNR fast, and (b) photometric stability is best higher up.
       min_altitude_deg: 40

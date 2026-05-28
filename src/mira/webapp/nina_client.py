@@ -456,6 +456,46 @@ class NinaClient:
         fs = self.filter_wheel_info().get("AvailableFilters")
         return [f for f in fs if isinstance(f, dict)] if isinstance(fs, list) else []
 
+    # -- monitoring console additions (Phase 1) ----------------------------
+    # Three small read-only getters the /monitor console aggregates. Same
+    # try/degrade pattern as the rest of the client — never raise on a
+    # transport / parse / missing-key error; return an empty dict and let
+    # the snapshot builder render "unknown" for whatever's absent.
+
+    def focuser_info(self) -> dict[str, Any]:
+        """Raw /equipment/focuser/info Response (Connected/Position/
+        IsMoving/Temperature), or {} if unreachable/absent."""
+        try:
+            info = self._get("/equipment/focuser/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def last_af(self) -> dict[str, Any]:
+        """Raw /equipment/focuser/last-af Response (InitialHFR /
+        CalculatedHFR / CalculatedPosition / Timestamp), or {} if no AF
+        run has happened this session."""
+        try:
+            info = self._get("/equipment/focuser/last-af")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def guider_info(self) -> dict[str, Any]:
+        """Raw /equipment/guider/info Response (Connected/IsGuiding/
+        RMSError/etc), or {} if no guider configured. Shape varies
+        across NINA plugin versions; the snapshot builder walks common
+        keys (RMSError vs RMS vs TotalRMS) so this getter just returns
+        whatever NINA gave us."""
+        try:
+            info = self._get("/equipment/guider/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
     def current_filter(self) -> dict[str, Any] | None:
         """The SelectedFilter dict ({'Name','Id'}), or None."""
         sel = self.filter_wheel_info().get("SelectedFilter")
@@ -499,3 +539,140 @@ class NinaClient:
             time.sleep(0.5)
         sel = (self.filter_wheel_info().get("SelectedFilter") or {})
         return str(sel.get("Id")) == str(fid)
+
+    # -- flat device (Wanderer Cover V4-EC, ASCOM Cover Calibrator) -------
+    # Endpoint shapes per ninaAPI v2 (christian-photo/ninaAPI) FlatDevice.cs.
+    # The plugin exposes one device with two surfaces: the motorized lid
+    # (CoverState/open-cover/close-cover) and the EL panel (LightOn /
+    # Brightness / set-light / set-brightness). The same try/degrade
+    # pattern as the rest of the client: never raise on a transport or
+    # parse error; let the caller decide whether to fall back to a
+    # manual workflow.
+
+    def flat_device_info(self) -> dict[str, Any]:
+        """Raw /equipment/flatdevice/info Response (Connected, CoverState,
+        LightOn, Brightness, MaxBrightness, MinBrightness, SupportsOpenClose,
+        SupportsOnOff), or {} if unreachable/absent. CoverState is the
+        string enum 'Open'|'Closed'|'Moving'|'NotPresent'|'Unknown'|'Error'."""
+        try:
+            info = self._get("/equipment/flatdevice/info")
+            resp = info.get("Response", {}) if isinstance(info, dict) else {}
+            return resp if isinstance(resp, dict) else {}
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
+    def _flat_cover_state(self) -> str:
+        return str(self.flat_device_info().get("CoverState", ""))
+
+    def open_cover(self, *, wait: bool = True, timeout_s: float = 60.0) -> bool:
+        """Open the Cover V4-EC lid. If `wait`, polls CoverState until it
+        reports 'Open' or the timeout elapses. Returns True only on
+        confirmed-open read-back. Never raises — an unattended flat run
+        must not crash on a transport hiccup; the caller checks the bool
+        and falls back to paper mode."""
+        import time
+
+        info = self.flat_device_info()
+        if not info:
+            return False
+        if not info.get("SupportsOpenClose", True):
+            return self._flat_cover_state() == "Open"
+        try:
+            self._get("/equipment/flatdevice/open-cover", timeout=timeout_s)
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+        if not wait:
+            return True
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            state = self._flat_cover_state()
+            if state == "Open":
+                return True
+            if state in ("Error", "NotPresent"):
+                return False
+            time.sleep(0.5)
+        return self._flat_cover_state() == "Open"
+
+    def close_cover(self, *, wait: bool = True, timeout_s: float = 60.0) -> bool:
+        """Close the Cover V4-EC lid. Same contract as `open_cover`."""
+        import time
+
+        info = self.flat_device_info()
+        if not info:
+            return False
+        if not info.get("SupportsOpenClose", True):
+            return self._flat_cover_state() == "Closed"
+        try:
+            self._get("/equipment/flatdevice/close-cover", timeout=timeout_s)
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+        if not wait:
+            return True
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            state = self._flat_cover_state()
+            if state == "Closed":
+                return True
+            if state in ("Error", "NotPresent"):
+                return False
+            time.sleep(0.5)
+        return self._flat_cover_state() == "Closed"
+
+    def set_calibrator_brightness(
+        self, brightness: int, *, wait: bool = True, timeout_s: float = 10.0
+    ) -> bool:
+        """Set the EL panel brightness (0..MaxBrightness from
+        flat_device_info). The bracket loop in `mira flats` works on
+        *exposure*, not brightness, so this is normally a one-shot set at
+        the start of a filter run. Returns True if the post-call read-back
+        matches; never raises."""
+        import time
+
+        try:
+            self._get(
+                "/equipment/flatdevice/set-brightness",
+                params={"value": int(brightness)},
+                timeout=timeout_s,
+            )
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+        if not wait:
+            return True
+        # The plugin applies the new value synchronously, but the ASCOM
+        # driver behind it can lag a beat on the read-back; a short poll
+        # absorbs that without forcing every caller to sleep.
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            try:
+                actual = int(self.flat_device_info().get("Brightness", -1))
+            except (TypeError, ValueError):
+                actual = -1
+            if actual == int(brightness):
+                return True
+            time.sleep(0.2)
+        return False
+
+    def set_calibrator_on(
+        self, on: bool, *, wait: bool = True, timeout_s: float = 10.0
+    ) -> bool:
+        """Turn the EL panel on or off. Read-back checks `LightOn`. Never
+        raises."""
+        import time
+
+        try:
+            self._get(
+                "/equipment/flatdevice/set-light",
+                params={"value": str(bool(on)).lower()},
+                timeout=timeout_s,
+            )
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+        if not wait:
+            return True
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            actual = bool(self.flat_device_info().get("LightOn", False))
+            if actual == bool(on):
+                return True
+            time.sleep(0.2)
+        return False

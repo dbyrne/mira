@@ -364,3 +364,133 @@ img.lightcurve {
 .phase-list li.skipped .name { color: var(--fg-dim); font-style: italic; }
 .finish-run-row { display: flex; gap: 0.75rem; align-items: baseline; }
 .finish-run-row .grow { flex: 1; }
+
+/* Monitoring console (DSO session view at /monitor) */
+.monitor-card { padding-bottom: 0.4rem; }
+.monitor-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.monitor-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 0.25rem;
+  background: var(--button-bg);
+  color: var(--button-fg);
+}
+.monitor-badge-demo { background: rgba(255, 170, 68, 0.18); color: var(--status-running); }
+
+.monitor-section {
+  margin: 0.9rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+.monitor-section-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.75rem; margin-bottom: 0.5rem;
+}
+.monitor-section-header h3 { margin: 0; font-size: 0.95rem; color: var(--accent); }
+
+/* Top card — biggest, sits above everything else */
+.monitor-top { padding: 0.9rem 1rem; }
+.monitor-status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 0.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.monitor-status-green { background: rgba(102, 204, 119, 0.14); color: var(--status-done); }
+.monitor-status-amber { background: rgba(255, 170, 68, 0.18); color: var(--status-running); }
+.monitor-status-red   { background: rgba(255, 68, 68, 0.16); color: var(--status-failed); }
+.monitor-title { font-size: 1.3rem; line-height: 1.2; }
+.monitor-subtitle { color: var(--fg-dim); font-size: 0.9rem; margin-top: 0.3rem; }
+
+/* Stat grid — two columns on phone (label / value) */
+.monitor-stat-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 0.85rem;
+  margin: 0;
+}
+.monitor-stat-grid dt { color: var(--fg-dim); font-weight: 600; }
+.monitor-stat-grid dd { margin: 0; word-break: break-word; }
+
+/* Inline sparkline — Unicode block chars */
+.monitor-spark {
+  display: inline-block;
+  margin-left: 0.5rem;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+
+/* Anomalies */
+.monitor-anomalies { display: flex; flex-direction: column; gap: 0.4rem; }
+.monitor-anomaly {
+  border-left: 3px solid var(--status-queued);
+  padding: 0.35rem 0.6rem;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 0 0.3rem 0.3rem 0;
+}
+.monitor-anomaly summary { cursor: pointer; list-style: none; display: flex; gap: 0.6rem; align-items: baseline; }
+.monitor-anomaly summary::-webkit-details-marker { display: none; }
+.monitor-anomaly-section {
+  font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--fg-dim);
+  min-width: 4rem;
+}
+.monitor-anomaly-message { font-weight: 600; }
+.monitor-anomaly-detail { margin: 0.4rem 0 0.1rem; font-size: 0.9rem; color: var(--fg-dim); }
+.monitor-anomaly-amber { border-left-color: var(--status-running); }
+.monitor-anomaly-amber .monitor-anomaly-message { color: var(--status-running); }
+.monitor-anomaly-red   { border-left-color: var(--status-failed); }
+.monitor-anomaly-red   .monitor-anomaly-message { color: var(--status-failed); }
+
+/* Ledger table — used in the Tonight section */
+.monitor-ledger { width: 100%; border-collapse: collapse; }
+.monitor-ledger td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+.monitor-ledger td:nth-child(1) { width: 4rem; }
+.monitor-ledger td:nth-child(2) { width: 9rem; color: var(--fg-dim); }
+.monitor-ledger-total { font-weight: 700; }
+.monitor-ledger-total td { border-bottom: none; padding-top: 0.55rem; }
+.monitor-progress {
+  display: inline-block;
+  width: 6rem;
+  height: 0.5rem;
+  vertical-align: middle;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin-right: 0.4rem;
+}
+.monitor-progress-bar {
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Events list */
+.monitor-events { list-style: none; padding: 0; margin: 0; }
+.monitor-events li {
+  display: flex; gap: 0.6rem; align-items: baseline;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+.monitor-event-time { color: var(--fg-dim); min-width: 5rem; font-variant-numeric: tabular-nums; }
+.monitor-event-kind {
+  color: var(--accent); font-size: 0.7rem;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  min-width: 5rem;
+}
+
+.monitor-footer { font-size: 0.75rem; margin-top: 0.6rem; }
+.monitor-footer-link { margin-top: 0.4rem; }

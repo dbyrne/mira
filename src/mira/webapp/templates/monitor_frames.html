@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Monitor frames - Mira{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Recent frames</h2>
+  <p class="meta">
+    {{ snap.recent_frames | length }} frames {% if snap.mode == 'demo' %}(DEMO){% endif %}.
+    <a href="{{ url_for('monitor_dashboard') }}{% if snap.mode == 'demo' %}?demo=1{% endif %}">← back to monitor</a>
+  </p>
+  {% if not snap.recent_frames %}
+  <p class="meta">No frames in NINA's image-history buffer yet.</p>
+  {% else %}
+  <table class="data">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Time</th>
+        <th>Filter</th>
+        <th>Exposure</th>
+        <th>HFR</th>
+        <th>Stars</th>
+        <th>Mean</th>
+        <th>Filename</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in snap.recent_frames %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ time_ago(f.timestamp_utc) }}</td>
+        <td>{{ f.filter_name }}</td>
+        <td>{{ '%.0f'|format(f.exposure_s) }}s</td>
+        <td>{% if f.hfr is not none %}{{ '%.2f'|format(f.hfr) }}{% else %}—{% endif %}</td>
+        <td>{% if f.stars is not none %}{{ f.stars }}{% else %}—{% endif %}</td>
+        <td>{% if f.mean is not none %}{{ '%.0f'|format(f.mean) }}{% else %}—{% endif %}</td>
+        <td><code>{{ f.filename }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endblock %}

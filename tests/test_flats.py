@@ -26,9 +26,11 @@ from mira.flats import (
 class FakeClient:
     """Filters map name -> response(exp, call_n) -> median ADU. `mode`
     tweaks pathologies: 'stale' never advances history, 'sky' reports
-    stars."""
+    stars. `flat_device` (None | dict) simulates a Cover Calibrator —
+    None means no panel (paper-mode default)."""
 
-    def __init__(self, nina_root: Path, responses: dict, mode: str = ""):
+    def __init__(self, nina_root: Path, responses: dict, mode: str = "",
+                 flat_device: dict | None = None):
         self.nina_root = Path(nina_root)
         self.responses = responses
         self.mode = mode
@@ -36,6 +38,9 @@ class FakeClient:
         self._n = 0
         self.hist: list[dict] = []
         self.set_calls: list[str] = []
+        # Flat-device state. The dict keys mirror what NinaClient returns.
+        self._flat = dict(flat_device) if flat_device is not None else None
+        self.panel_calls: list[tuple[str, object]] = []
 
     # filter wheel
     def available_filters(self):
@@ -75,6 +80,39 @@ class FakeClient:
 
     def image_history(self, all_images=True):
         return list(self.hist)
+
+    # flat device (Cover Calibrator). When _flat is None, every method
+    # returns the "no panel" answer — that's the S30 / paper-mode path.
+    def flat_device_info(self):
+        return dict(self._flat) if self._flat is not None else {}
+
+    def open_cover(self, *, wait=True, timeout_s=60.0):
+        self.panel_calls.append(("open_cover", None))
+        if self._flat is None:
+            return False
+        self._flat["CoverState"] = "Open"
+        return True
+
+    def close_cover(self, *, wait=True, timeout_s=60.0):
+        self.panel_calls.append(("close_cover", None))
+        if self._flat is None:
+            return False
+        self._flat["CoverState"] = "Closed"
+        return True
+
+    def set_calibrator_on(self, on, *, wait=True, timeout_s=10.0):
+        self.panel_calls.append(("set_calibrator_on", bool(on)))
+        if self._flat is None:
+            return False
+        self._flat["LightOn"] = bool(on)
+        return True
+
+    def set_calibrator_brightness(self, brightness, *, wait=True, timeout_s=10.0):
+        self.panel_calls.append(("set_calibrator_brightness", int(brightness)))
+        if self._flat is None:
+            return False
+        self._flat["Brightness"] = int(brightness)
+        return True
 
 
 def linear(k, bias=300.0):
@@ -225,6 +263,180 @@ class TestRunFlatsEndToEnd(TestCase):
         self.assertEqual([r.filter_name for r in res.results], ["LP"])
         self.assertEqual(c.set_calls, ["LP"])
         self.assertEqual(res.results[0].status, "ok")
+
+
+class TestRunFlatsPanel(TestCase):
+    """Cover-Calibrator (Wanderer V4-EC) integration into run_flats."""
+
+    def _siril_stub(self):
+        return lambda *a, **k: (
+            (Path(k["work_dir"]) / "master_flat.tif").write_text("M") or "ok"
+        )
+
+    def test_no_panel_means_paper_mode_no_panel_calls(self):
+        """Default S30 / no-panel path: flat_device_info returns {} so the
+        run never touches close_cover / set_calibrator_*; bracket loop is
+        unchanged."""
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(root, {"IR": IR}, flat_device=None)
+            res = run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+        self.assertFalse(res.panel_driven)
+        self.assertIsNone(res.panel_brightness)
+        self.assertEqual(c.panel_calls, [])
+        self.assertEqual(res.results[0].status, "ok")
+
+    def test_panel_drives_close_cover_and_light(self):
+        """When a Cover Calibrator is connected, run_flats closes the
+        cover, sets brightness, and turns the EL panel on at start; at
+        the end the light goes off (cover stays closed as a dust cap)."""
+        import json
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(
+                root, {"IR": IR},
+                flat_device={
+                    "Connected": True, "CoverState": "Open",
+                    "MaxBrightness": 200, "Brightness": 0, "LightOn": False,
+                    "SupportsOpenClose": True,
+                },
+            )
+            res = run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+            self.assertTrue(res.panel_driven)
+            # 50% of MaxBrightness=200 -> 100
+            self.assertEqual(res.panel_brightness, 100)
+            actions = [p[0] for p in c.panel_calls]
+            self.assertIn("close_cover", actions)
+            self.assertIn("set_calibrator_brightness", actions)
+            # light on before light off
+            on_idx = next(i for i, p in enumerate(c.panel_calls)
+                          if p == ("set_calibrator_on", True))
+            off_idx = next(i for i, p in enumerate(c.panel_calls)
+                           if p == ("set_calibrator_on", False))
+            self.assertLess(on_idx, off_idx)
+            # final cover state stays Closed (dust cap)
+            self.assertEqual(c.flat_device_info().get("CoverState"), "Closed")
+            self.assertFalse(c.flat_device_info().get("LightOn"))
+            # per-filter sidecar metadata records the source — assertion
+            # MUST run inside the `with` block; the tempdir is cleaned up
+            # on exit and rglob would silently return an empty list.
+            meta_files = list((Path(d) / "f").rglob("metadata.json"))
+            self.assertEqual(len(meta_files), 1)
+            meta = json.loads(meta_files[0].read_text(encoding="utf-8"))
+            self.assertEqual(meta["flat_source"], "panel")
+            self.assertEqual(meta["panel_brightness"], 100)
+
+    def test_explicit_brightness_override(self):
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(
+                root, {"IR": IR},
+                flat_device={
+                    "Connected": True, "CoverState": "Closed",
+                    "MaxBrightness": 100, "Brightness": 0, "LightOn": False,
+                    "SupportsOpenClose": True,
+                },
+            )
+            res = run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                use_panel=True, panel_brightness=37,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+        self.assertEqual(res.panel_brightness, 37)
+        # cover already Closed -> we skip the close_cover call
+        actions = [c[0] for c in c.panel_calls]
+        self.assertNotIn("close_cover", actions)
+        self.assertIn(("set_calibrator_brightness", 37), c.panel_calls)
+
+    def test_no_panel_flag_skips_device_even_when_present(self):
+        """--no-panel: even with a working Cover Calibrator on the bus,
+        the run uses paper mode and never calls any flat-device method."""
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(
+                root, {"IR": IR},
+                flat_device={
+                    "Connected": True, "CoverState": "Open",
+                    "MaxBrightness": 200, "Brightness": 0, "LightOn": False,
+                    "SupportsOpenClose": True,
+                },
+            )
+            res = run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                use_panel=False,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+        self.assertFalse(res.panel_driven)
+        self.assertEqual(c.panel_calls, [])
+
+    def test_panel_in_error_state_falls_back_to_paper(self):
+        """If the panel reports CoverState=Error (driver loaded but
+        hardware not responding), run_flats falls back to paper mode
+        rather than aborting — the bracket loop still works on whatever
+        ambient light makes it down the tube."""
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(
+                root, {"IR": IR},
+                flat_device={
+                    "Connected": True, "CoverState": "Error",
+                    "MaxBrightness": 100, "Brightness": 0, "LightOn": False,
+                    "SupportsOpenClose": True,
+                },
+            )
+            res = run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+        self.assertFalse(res.panel_driven)
+        # No cover-close / light-on attempts after the Error read.
+        self.assertEqual(c.panel_calls, [])
+
+    def test_panel_teardown_runs_even_when_filter_loop_raises(self):
+        """try/finally guarantee: a crash during the per-filter loop
+        still kills the EL light. (Open lid is OK at teardown — the
+        whole point is not leaving the panel burning.)"""
+        with TemporaryDirectory() as d:
+            root = Path(d) / "nina"
+            c = FakeClient(
+                root, {"IR": IR},
+                flat_device={
+                    "Connected": True, "CoverState": "Closed",
+                    "MaxBrightness": 100, "Brightness": 0, "LightOn": False,
+                    "SupportsOpenClose": True,
+                },
+            )
+
+            def crashing_siril(*a, **k):
+                raise RuntimeError("siril blew up mid-run")
+
+            with self.assertRaises(RuntimeError):
+                run_flats(
+                    c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                    out_root=Path(d) / "f", nina_root=root,
+                    min_exp=0.005, max_exp=30.0,
+                    on_step=lambda m: None, siril_runner=crashing_siril,
+                )
+            # Light was turned on at setup; the final action must be off.
+            self.assertEqual(
+                c.panel_calls[-1], ("set_calibrator_on", False)
+            )
 
 
 class TestBuildMaster(TestCase):

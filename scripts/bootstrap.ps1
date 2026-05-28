@@ -226,7 +226,7 @@ if ($Rig -eq "esprit") {
         Warn "winget unavailable; install Syncthing from https://syncthing.net/downloads/"
     }
 
-    Say "PHD2 (guiding for the AM5N + ASI220MM Mini)"
+    Say "PHD2 (guiding for the AM7 + ASI220MM Mini)"
     if (Test-Path "C:\Program Files (x86)\PHDGuiding2\phd2.exe") {
         Ok "PHD2 already installed"
     } elseif (Have "winget") {
@@ -247,18 +247,23 @@ if ($Rig -eq "esprit") {
       "   1. ASCOM Platform 7+        https://ascom-standards.org/",
       "   2. NINA 3.x                 https://nighttime-imaging.eu/",
       "   3. NINA plugins: 'Advanced API' (port 1888) + 'Target Scheduler'",
-      "   4. ZWO ASCOM drivers (camera + AM5N mount + EFW filter wheel)",
+      "   4. ZWO ASCOM drivers (camera + AM7 mount + EFW filter wheel)",
       "                            https://astronomy-imaging-camera.com/software-drivers",
+      "      (AM7 uses the same ASCOM driver as the AM5/AM3.)",
       "   5. Pegasus Unity (FocusCube 3 + PocketPowerbox Gen2)",
       "                            https://pegasusastro.com/pegasus-unity/",
-      "   6. In NINA Equipment, connect: AM5N mount, ASI2600MM Pro cam,",
-      "      EFW filter wheel, FocusCube 3, ZWO 30/220 mini guider (via PHD2).",
-      "   7. CRITICAL: name each filter-wheel position EXACTLY one of:",
+      "   6. WandererAstro ASCOM driver for the Cover V4-EC 190mm flat panel",
+      "                            https://www.wandererastro.com/en/col.jsp?id=104",
+      "      Connects as a NINA 'Flat Device' / ASCOM Cover Calibrator.",
+      "   7. In NINA Equipment, connect: AM7 mount, ASI2600MM Pro cam,",
+      "      EFW filter wheel, FocusCube 3, ZWO 30/220 mini guider (via PHD2),",
+      "      Wanderer Cover V4-EC flat panel.",
+      "   8. CRITICAL: name each filter-wheel position EXACTLY one of:",
       "      Ha, OIII, SII, L, R, G, B, V  (case-sensitive).",
       "      'mira doctor' will FAIL if any label drifts (e.g. 'H-alpha').",
       "      Rename in NINA -> Equipment -> Filter Wheel -> Filters tab.",
-      "   8. Set ASTAP as the plate solver in NINA -> Options -> Plate Solving.",
-      "   9. Set Image File Path under NINA -> Options -> Imaging to a",
+      "   9. Set ASTAP as the plate solver in NINA -> Options -> Plate Solving.",
+      "  10. Set Image File Path under NINA -> Options -> Imaging to a",
       "      Syncthing-shared dir (e.g. C:\mira\captures). Mirror folder",
       "      modes per docs/rig_workflow.md (rig=send-only, home=receive-only).",
       "  Full step-by-step: docs/nina_setup_esprit.md"

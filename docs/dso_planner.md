@@ -218,9 +218,58 @@ This is Phase 2 of a four-phase rollout:
 - **Re-running is cheap.** No remote queries; the planner is pure-Python
   over a small YAML file. Re-run as you tweak the catalog.
 
+## Bright-galaxy path (`mira galaxies`)
+
+A third target-finding concern, distinct from both the VSX variable-star
+queue and the narrowband catalog above: **bright showpiece galaxies for
+the S30 Pro's wide-field nights** (M51, the Leo Triplet, Markarian's
+Chain, the edge-ons). It shares this planner's engine — same observability
+math, same integration ledger — so it isn't a separate silo; the
+distinctness is in the catalog, the ranking emphasis, and the command.
+
+```powershell
+mira galaxies plan --config config/s30_pro_jc.yaml --start-date 2026-05-28 --top 12
+mira galaxies status --config config/s30_pro_jc.yaml
+```
+
+Writes `output/s30_pro_jc/galaxies/galaxy_plan.md` + `.csv`.
+
+**Why a separate path?** For galaxies on a small OSC scope from a
+light-polluted city, *integrated magnitude lies*. A mag-9 face-on spiral
+(M101, M74) spreads its light thin and drowns in skyglow; a mag-10 edge-on
+(NGC 891, NGC 4565) concentrates it and pops. So the catalog carries an
+integrated `magnitude`, and the planner ranks on the **derived mean
+surface brightness** (`SB = m + 2.5·log₁₀(ellipse area)`), not the mag:
+
+`score = (observability + altitude) × brightness_factor(SB) × size_factor × ledger_factor`
+
+- `brightness_factor` rewards high surface brightness.
+- `size_factor` is **penalty-only** — it sinks galaxies too small to be
+  more than a dot on the ~4° field, but never *bonuses* big ones (that
+  would float low-SB face-on traps up the list).
+- **Both are no-ops for narrowband targets** (no magnitude), so this
+  cannot perturb the narrowband ranking above.
+
+Flags in the plan:
+- 🌑 **dark-site only** — mean SB fainter than `galaxies.sb_limit_mag_arcsec2`
+  (default 22.5). Kept in the queue (targets shouldn't disappear), demoted.
+- 🔬 **small** — major axis below FOV/40; a postage stamp on the S30,
+  better shot on the longer-FL Esprit.
+
+**Moon-strict by default** — the opposite of the narrowband `dso:`
+default, because broadband galaxy imaging from the city *is* moon-sensitive.
+Override with `--relax-moon` on a moonless night.
+
+The catalog (`data/dso_catalog/galaxies.yaml`, ~50 targets) is curated by
+hand like the narrowband one. Southern showpieces (M104, NGC 253) are
+listed for completeness but self-filter from a JC plan — they never clear
+the 45° altitude floor at +40.7° latitude.
+
 ## See also
 
 - `docs/rig_workflow.md` — homebase↔MeLE workflow for the Esprit rig
 - `config/esprit120_jc.yaml` — the example config with a `dso:` section
+- `config/s30_pro_jc.yaml` — has the `galaxies:` section (S30 Pro FOV + SB floor)
 - `tests/test_dso_catalog.py`, `tests/test_dso_planner.py` — what the
   schema validation guarantees + what the ranking guarantees
+- `tests/test_galaxies.py` — the galaxy catalog/scoring/config guarantees

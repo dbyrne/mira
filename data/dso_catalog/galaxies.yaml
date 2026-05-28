@@ -1,0 +1,622 @@
+# Curated bright-galaxy catalog for the ZWO Seestar S30 Pro (30mm f/5,
+# 150mm fl, IMX585 → ~4.2° × 2.4° FOV) from Jersey City (~40.7°N, Bortle 8-9).
+# Consumed by `mira galaxies plan`. Distinct from sho_targets.yaml (narrowband
+# emission targets, Esprit rig) and from the VSX variable-star queue.
+#
+# Selection philosophy — this is the whole point of the galaxy path:
+#   Integrated magnitude tells you almost nothing about whether a galaxy is
+#   imageable from a light-polluted backyard. SURFACE BRIGHTNESS does. A
+#   mag-9 face-on spiral (M74, M101) spreads its light thin and drowns in
+#   urban skyglow; a mag-10 edge-on (NGC 891, NGC 4565) concentrates it and
+#   pops. So `magnitude` + `size_arcmin` here feed a derived mean surface
+#   brightness (SB = m + 2.5·log₁₀(ellipse area in arcsec²)), and the
+#   planner ranks on SB, not mag. Low-SB targets aren't removed — per the
+#   "targets shouldn't disappear" rule they stay in the queue, flagged
+#   "dark-site only" and demoted.
+#
+# Schema (shared loader with sho_targets.yaml):
+#   name           — canonical identifier (M / NGC / IC)
+#   common_name    — human-readable
+#   object_type    — GALAXY (always, for this catalog)
+#   ra_deg, dec_deg — J2000 decimal degrees
+#   size_arcmin    — [major, minor] of the D25 isophote
+#   magnitude      — integrated visual magnitude (the galaxy-specific field)
+#   constellation  — IAU 3-letter
+#   budget_minutes — {LP: minutes}. LP = the S30's light-pollution filter,
+#                    the broadband-from-city workhorse. Keeping it broadband
+#                    (no Ha/OIII/SII) means the planner applies the strict
+#                    moon gate, which is correct for galaxies. Budgets scale
+#                    with surface brightness: bright/high-SB ~120-180,
+#                    medium ~240, faint low-SB ~300-360.
+#   notes          — morphology + a capture tip
+#
+# Coordinates are J2000 from SIMBAD/NED, ~arcmin precision (plate-solve does
+# the real centering). Sizes/mags are catalog-typical; tune to taste.
+#
+# Dec note: from JC the alt floor is 45°, which needs dec ≳ -4° to clear.
+# A few famous southern showpieces (M104, NGC 253) are listed for catalog
+# completeness / a future travel site; the planner drops them from a JC plan
+# automatically (zero minutes above the floor) — they won't clutter output.
+
+catalog_version: "2026-05-28"
+
+defaults:
+  gain: 80            # S30 Pro IMX585 HCG point (see memory: s30-pro-imx585-gain)
+  exposure_s: 30      # 30s OSC subs in EQ mode — galaxies want depth + dither
+  filter: LP          # broadband-from-city; the only sensible galaxy filter on the S30
+
+targets:
+  # ================================================================
+  # SPRING (RA 09h-15h) — galaxy season: UMa / CVn / Leo / Coma / Virgo
+  # ================================================================
+  - name: "M81"
+    common_name: "Bode's Galaxy"
+    object_type: GALAXY
+    ra_deg: 148.888
+    dec_deg: 69.065
+    size_arcmin: [26.9, 14.1]
+    magnitude: 6.9
+    constellation: UMa
+    budget_minutes: {LP: 150}
+    notes: "Grand-design spiral, bright core. Circumpolar from JC — usable most of the year. Frames with M82."
+
+  - name: "M82"
+    common_name: "Cigar Galaxy"
+    object_type: GALAXY
+    ra_deg: 148.969
+    dec_deg: 69.680
+    size_arcmin: [11.2, 4.3]
+    magnitude: 8.4
+    constellation: UMa
+    budget_minutes: {LP: 150}
+    notes: "Edge-on starburst, very high SB — excellent from the city. Red Ha plume shows even in OSC LP."
+
+  - name: "M106"
+    common_name: "M106"
+    object_type: GALAXY
+    ra_deg: 184.740
+    dec_deg: 47.304
+    size_arcmin: [18.6, 7.2]
+    magnitude: 8.4
+    constellation: CVn
+    budget_minutes: {LP: 180}
+    notes: "Bright Seyfert spiral with anomalous arms. Bright core, easy from JC."
+
+  - name: "M94"
+    common_name: "Croc's Eye Galaxy"
+    object_type: GALAXY
+    ra_deg: 192.722
+    dec_deg: 41.120
+    size_arcmin: [11.2, 9.1]
+    magnitude: 8.2
+    constellation: CVn
+    budget_minutes: {LP: 180}
+    notes: "Compact bright core + faint outer ring. High inner SB — core is easy, outer ring needs depth."
+
+  - name: "M63"
+    common_name: "Sunflower Galaxy"
+    object_type: GALAXY
+    ra_deg: 198.955
+    dec_deg: 42.030
+    size_arcmin: [12.6, 7.2]
+    magnitude: 8.6
+    constellation: CVn
+    budget_minutes: {LP: 240}
+    notes: "Flocculent spiral, mottled arms. Rewards integration time."
+
+  - name: "M51"
+    common_name: "Whirlpool Galaxy"
+    object_type: GALAXY
+    ra_deg: 202.470
+    dec_deg: 47.195
+    size_arcmin: [11.2, 6.9]
+    magnitude: 8.4
+    constellation: CVn
+    budget_minutes: {LP: 240}
+    notes: "Face-on grand-design + NGC 5195 companion. The showpiece. High SB core, fainter arms — the more subs the better the bridge."
+
+  - name: "M101"
+    common_name: "Pinwheel Galaxy"
+    object_type: GALAXY
+    ra_deg: 210.802
+    dec_deg: 54.349
+    size_arcmin: [28.8, 26.9]
+    magnitude: 7.9
+    constellation: UMa
+    budget_minutes: {LP: 360}
+    notes: "Big, beautiful, LOW surface brightness face-on. Bright mag is deceptive — hard from the city, wants a dark site."
+
+  - name: "M102"
+    common_name: "Spindle Galaxy (NGC 5866)"
+    object_type: GALAXY
+    ra_deg: 226.623
+    dec_deg: 55.763
+    size_arcmin: [4.7, 1.9]
+    magnitude: 9.9
+    constellation: Dra
+    budget_minutes: {LP: 240}
+    notes: "Edge-on lenticular with sharp dust lane. Small but high SB — tiny on the S30's wide field."
+
+  - name: "M108"
+    common_name: "Surfboard Galaxy"
+    object_type: GALAXY
+    ra_deg: 167.879
+    dec_deg: 55.674
+    size_arcmin: [8.7, 2.2]
+    magnitude: 10.0
+    constellation: UMa
+    budget_minutes: {LP: 240}
+    notes: "Edge-on with mottled dust. Pairs in-frame with the Owl Nebula (M97) on a wide field."
+
+  - name: "M109"
+    common_name: "M109"
+    object_type: GALAXY
+    ra_deg: 179.400
+    dec_deg: 53.375
+    size_arcmin: [7.6, 4.7]
+    magnitude: 9.8
+    constellation: UMa
+    budget_minutes: {LP: 240}
+    notes: "Barred spiral just off Phecda (γ UMa) — watch the bright star's glare."
+
+  - name: "NGC2841"
+    common_name: "Tiger's Eye Galaxy"
+    object_type: GALAXY
+    ra_deg: 140.511
+    dec_deg: 50.976
+    size_arcmin: [8.1, 3.5]
+    magnitude: 9.2
+    constellation: UMa
+    budget_minutes: {LP: 240}
+    notes: "Tight flocculent spiral, bright nucleus. High SB inner disk."
+
+  - name: "NGC2903"
+    common_name: "NGC 2903"
+    object_type: GALAXY
+    ra_deg: 143.042
+    dec_deg: 21.501
+    size_arcmin: [12.6, 6.0]
+    magnitude: 9.0
+    constellation: Leo
+    budget_minutes: {LP: 180}
+    notes: "Big barred spiral off Leo's nose — a Messier-grade object Messier missed. Easy."
+
+  - name: "M65"
+    common_name: "M65 (Leo Triplet)"
+    object_type: GALAXY
+    ra_deg: 169.733
+    dec_deg: 13.092
+    size_arcmin: [8.7, 2.2]
+    magnitude: 9.3
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Leo Triplet member. All three (M65/M66/NGC 3628) fit one S30 frame — center between them."
+
+  - name: "M66"
+    common_name: "M66 (Leo Triplet)"
+    object_type: GALAXY
+    ra_deg: 170.062
+    dec_deg: 12.991
+    size_arcmin: [9.1, 4.2]
+    magnitude: 8.9
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Brightest of the Leo Triplet, asymmetric arms. Frame all three together."
+
+  - name: "NGC3628"
+    common_name: "Hamburger Galaxy (Leo Triplet)"
+    object_type: GALAXY
+    ra_deg: 170.071
+    dec_deg: 13.589
+    size_arcmin: [14.8, 3.0]
+    magnitude: 9.5
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Edge-on with thick dust lane + faint tidal tail. The Triplet's edge-on; tail needs depth."
+
+  - name: "M95"
+    common_name: "M95"
+    object_type: GALAXY
+    ra_deg: 161.157
+    dec_deg: 11.703
+    size_arcmin: [7.4, 5.0]
+    magnitude: 9.7
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Barred ring spiral. Frames with M96/M105 (Leo I group) on a wide field."
+
+  - name: "M96"
+    common_name: "M96"
+    object_type: GALAXY
+    ra_deg: 161.691
+    dec_deg: 11.820
+    size_arcmin: [7.6, 5.2]
+    magnitude: 9.2
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Brightest of the Leo I group. Asymmetric dusty arms."
+
+  - name: "M105"
+    common_name: "M105"
+    object_type: GALAXY
+    ra_deg: 161.957
+    dec_deg: 12.582
+    size_arcmin: [5.4, 4.8]
+    magnitude: 9.3
+    constellation: Leo
+    budget_minutes: {LP: 240}
+    notes: "Elliptical; trio with NGC 3384/3389. Small and featureless on the S30 — a wide-field group shot."
+
+  - name: "M64"
+    common_name: "Black Eye Galaxy"
+    object_type: GALAXY
+    ra_deg: 194.182
+    dec_deg: 21.683
+    size_arcmin: [10.0, 5.4]
+    magnitude: 8.5
+    constellation: Com
+    budget_minutes: {LP: 180}
+    notes: "Bright spiral with a dramatic dark dust cap over the core. High SB — the dust lane shows quickly."
+
+  - name: "M85"
+    common_name: "M85"
+    object_type: GALAXY
+    ra_deg: 186.350
+    dec_deg: 18.191
+    size_arcmin: [7.1, 5.5]
+    magnitude: 9.1
+    constellation: Com
+    budget_minutes: {LP: 240}
+    notes: "Lenticular at the north end of the Virgo Cluster. Bright, smooth."
+
+  - name: "M88"
+    common_name: "M88"
+    object_type: GALAXY
+    ra_deg: 187.997
+    dec_deg: 14.420
+    size_arcmin: [6.9, 3.7]
+    magnitude: 9.6
+    constellation: Com
+    budget_minutes: {LP: 240}
+    notes: "Multi-arm spiral, one of the brighter Virgo Cluster members."
+
+  - name: "M98"
+    common_name: "M98"
+    object_type: GALAXY
+    ra_deg: 183.451
+    dec_deg: 14.900
+    size_arcmin: [9.8, 2.8]
+    magnitude: 10.1
+    constellation: Com
+    budget_minutes: {LP: 300}
+    notes: "Near-edge-on spiral, blueshifted (approaching). Lowish SB."
+
+  - name: "M99"
+    common_name: "Coma Pinwheel"
+    object_type: GALAXY
+    ra_deg: 184.707
+    dec_deg: 14.416
+    size_arcmin: [5.4, 4.8]
+    magnitude: 9.9
+    constellation: Com
+    budget_minutes: {LP: 240}
+    notes: "Face-on one-armed spiral. Small on the S30."
+
+  - name: "M100"
+    common_name: "M100"
+    object_type: GALAXY
+    ra_deg: 185.729
+    dec_deg: 15.822
+    size_arcmin: [7.4, 6.3]
+    magnitude: 9.3
+    constellation: Com
+    budget_minutes: {LP: 240}
+    notes: "Grand-design face-on, one of the largest Virgo Cluster spirals."
+
+  - name: "M87"
+    common_name: "Virgo A"
+    object_type: GALAXY
+    ra_deg: 187.706
+    dec_deg: 12.391
+    size_arcmin: [8.3, 6.6]
+    magnitude: 8.6
+    constellation: Vir
+    budget_minutes: {LP: 180}
+    notes: "Giant elliptical, the Virgo Cluster's heart. Bright; the famous jet needs aperture, but it anchors a Markarian's Chain wide field."
+
+  - name: "M84"
+    common_name: "M84 (Markarian's Chain)"
+    object_type: GALAXY
+    ra_deg: 186.266
+    dec_deg: 12.887
+    size_arcmin: [6.5, 5.6]
+    magnitude: 9.1
+    constellation: Vir
+    budget_minutes: {LP: 240}
+    notes: "West end of Markarian's Chain. The S30's wide field can frame the whole Chain (M84/M86/NGC 4438...) — a signature OSC-scout shot."
+
+  - name: "M86"
+    common_name: "M86 (Markarian's Chain)"
+    object_type: GALAXY
+    ra_deg: 186.549
+    dec_deg: 12.946
+    size_arcmin: [8.9, 5.8]
+    magnitude: 8.9
+    constellation: Vir
+    budget_minutes: {LP: 240}
+    notes: "Lenticular, Markarian's Chain. Center the Chain, not the single galaxy."
+
+  - name: "M90"
+    common_name: "M90"
+    object_type: GALAXY
+    ra_deg: 189.208
+    dec_deg: 13.163
+    size_arcmin: [9.5, 4.4]
+    magnitude: 9.5
+    constellation: Vir
+    budget_minutes: {LP: 240}
+    notes: "Large Virgo spiral, blueshifted. Dust detail with depth."
+
+  - name: "M49"
+    common_name: "M49"
+    object_type: GALAXY
+    ra_deg: 187.445
+    dec_deg: 8.000
+    size_arcmin: [9.8, 8.2]
+    magnitude: 8.4
+    constellation: Vir
+    budget_minutes: {LP: 180}
+    notes: "Brightest Virgo Cluster galaxy (giant elliptical). Bright but smooth."
+
+  - name: "M60"
+    common_name: "M60"
+    object_type: GALAXY
+    ra_deg: 190.917
+    dec_deg: 11.553
+    size_arcmin: [7.6, 6.2]
+    magnitude: 8.8
+    constellation: Vir
+    budget_minutes: {LP: 240}
+    notes: "Elliptical; pairs with spiral NGC 4647 in-frame."
+
+  - name: "M61"
+    common_name: "M61"
+    object_type: GALAXY
+    ra_deg: 185.479
+    dec_deg: 4.474
+    size_arcmin: [6.5, 5.8]
+    magnitude: 9.7
+    constellation: Vir
+    budget_minutes: {LP: 240}
+    notes: "Face-on barred starburst spiral, southern Virgo Cluster. Low from JC — grab near transit."
+
+  - name: "NGC4565"
+    common_name: "Needle Galaxy"
+    object_type: GALAXY
+    ra_deg: 189.087
+    dec_deg: 25.988
+    size_arcmin: [15.8, 2.1]
+    magnitude: 9.6
+    constellation: Com
+    budget_minutes: {LP: 180}
+    notes: "The definitive edge-on: knife-thin disk, central bulge, dust lane. High SB — superb from the city."
+
+  - name: "NGC4631"
+    common_name: "Whale Galaxy"
+    object_type: GALAXY
+    ra_deg: 190.533
+    dec_deg: 32.541
+    size_arcmin: [15.5, 2.7]
+    magnitude: 9.2
+    constellation: CVn
+    budget_minutes: {LP: 180}
+    notes: "Warped edge-on 'whale' + dwarf companion NGC 4627. Frames with the Hockey Stick (NGC 4656)."
+
+  - name: "NGC4656"
+    common_name: "Hockey Stick Galaxy"
+    object_type: GALAXY
+    ra_deg: 191.010
+    dec_deg: 32.168
+    size_arcmin: [13.5, 2.8]
+    magnitude: 10.5
+    constellation: CVn
+    budget_minutes: {LP: 300}
+    notes: "Hooked, tidally distorted edge-on. Lowish SB; pairs with the Whale in one wide frame."
+
+  - name: "NGC4490"
+    common_name: "Cocoon Galaxy"
+    object_type: GALAXY
+    ra_deg: 187.651
+    dec_deg: 41.644
+    size_arcmin: [6.3, 3.1]
+    magnitude: 9.8
+    constellation: CVn
+    budget_minutes: {LP: 240}
+    notes: "Interacting starburst with companion NGC 4485. Distorted, blue."
+
+  - name: "NGC2683"
+    common_name: "UFO Galaxy"
+    object_type: GALAXY
+    ra_deg: 133.175
+    dec_deg: 33.420
+    size_arcmin: [9.3, 2.2]
+    magnitude: 9.8
+    constellation: Lyn
+    budget_minutes: {LP: 240}
+    notes: "Near-edge-on with a saucer profile and patchy dust. Good high-SB edge-on."
+
+  # ================================================================
+  # AUTUMN / WINTER (RA 22h-04h) — Andromeda, Triangulum, Pegasus, Perseus
+  # ================================================================
+  - name: "M31"
+    common_name: "Andromeda Galaxy"
+    object_type: GALAXY
+    ra_deg: 10.685
+    dec_deg: 41.269
+    size_arcmin: [178, 63]
+    magnitude: 3.4
+    constellation: And
+    budget_minutes: {LP: 180}
+    notes: "Enormous — 3° long. The S30's wide field fits the whole disk + M32 + M110 in one frame (a mosaic on the Esprit). Bright core needs short subs to avoid clipping."
+
+  - name: "M32"
+    common_name: "M32"
+    object_type: GALAXY
+    ra_deg: 10.674
+    dec_deg: 40.866
+    size_arcmin: [8.7, 6.5]
+    magnitude: 8.1
+    constellation: And
+    budget_minutes: {LP: 180}
+    notes: "Compact elliptical companion of M31. Captured for free in any M31 frame."
+
+  - name: "M110"
+    common_name: "M110"
+    object_type: GALAXY
+    ra_deg: 10.092
+    dec_deg: 41.685
+    size_arcmin: [21.9, 11.0]
+    magnitude: 8.5
+    constellation: And
+    budget_minutes: {LP: 180}
+    notes: "Dwarf elliptical companion of M31. Also free in the M31 frame."
+
+  - name: "M33"
+    common_name: "Triangulum Galaxy"
+    object_type: GALAXY
+    ra_deg: 23.462
+    dec_deg: 30.660
+    size_arcmin: [70.8, 41.7]
+    magnitude: 5.7
+    constellation: Tri
+    budget_minutes: {LP: 360}
+    notes: "Big face-on — and notoriously LOW surface brightness. Bright integrated mag lies; very hard from the city, wants a dark site. HII regions (NGC 604) pop with depth."
+
+  - name: "M74"
+    common_name: "Phantom Galaxy"
+    object_type: GALAXY
+    ra_deg: 24.174
+    dec_deg: 15.784
+    size_arcmin: [10.2, 9.5]
+    magnitude: 9.4
+    constellation: Psc
+    budget_minutes: {LP: 360}
+    notes: "Perfect face-on grand-design — and one of the lowest-SB Messiers. 'Phantom' is a warning: dark-site target."
+
+  - name: "NGC891"
+    common_name: "Silver Sliver Galaxy"
+    object_type: GALAXY
+    ra_deg: 35.639
+    dec_deg: 42.349
+    size_arcmin: [13.5, 2.5]
+    magnitude: 9.9
+    constellation: And
+    budget_minutes: {LP: 240}
+    notes: "Textbook edge-on with a bold central dust lane. High SB — a city-friendly faint-mag target (SB beats mag)."
+
+  - name: "NGC1023"
+    common_name: "NGC 1023"
+    object_type: GALAXY
+    ra_deg: 40.100
+    dec_deg: 39.063
+    size_arcmin: [8.7, 3.0]
+    magnitude: 9.4
+    constellation: Per
+    budget_minutes: {LP: 240}
+    notes: "Bright barred lenticular, brightest of its group. High SB."
+
+  - name: "NGC7331"
+    common_name: "Deer Lick Galaxy"
+    object_type: GALAXY
+    ra_deg: 339.267
+    dec_deg: 34.416
+    size_arcmin: [10.5, 3.7]
+    magnitude: 9.5
+    constellation: Peg
+    budget_minutes: {LP: 240}
+    notes: "Milky-Way-like spiral with a fan of faint background galaxies ('the fleas'). Stephan's Quintet is ~0.5° away — both in one S30 frame."
+
+  - name: "NGC7814"
+    common_name: "Little Sombrero"
+    object_type: GALAXY
+    ra_deg: 0.812
+    dec_deg: 16.145
+    size_arcmin: [6.3, 2.6]
+    magnitude: 10.6
+    constellation: Peg
+    budget_minutes: {LP: 300}
+    notes: "Edge-on with a thin dust lane — a miniature Sombrero. Small; faint-but-high-SB."
+
+  - name: "M77"
+    common_name: "M77"
+    object_type: GALAXY
+    ra_deg: 40.670
+    dec_deg: -0.013
+    size_arcmin: [7.1, 6.0]
+    magnitude: 8.9
+    constellation: Cet
+    budget_minutes: {LP: 240}
+    notes: "Brightest Seyfert galaxy, intense compact core. At dec ~0 it barely clears the JC floor — grab at transit only."
+
+  # ================================================================
+  # SUMMER (RA 15h-22h) — galaxy-sparse (Milky Way), but a few gems
+  # ================================================================
+  - name: "NGC5907"
+    common_name: "Splinter Galaxy"
+    object_type: GALAXY
+    ra_deg: 228.974
+    dec_deg: 56.329
+    size_arcmin: [12.7, 1.4]
+    magnitude: 10.4
+    constellation: Dra
+    budget_minutes: {LP: 300}
+    notes: "Ultra-thin edge-on, faint stellar tidal stream loops around it (needs a dark site). Disk itself is high-SB."
+
+  - name: "NGC6503"
+    common_name: "Lost-in-Space Galaxy"
+    object_type: GALAXY
+    ra_deg: 267.360
+    dec_deg: 70.144
+    size_arcmin: [7.1, 2.4]
+    magnitude: 10.2
+    constellation: Dra
+    budget_minutes: {LP: 300}
+    notes: "Isolated near-edge-on at the edge of the Local Void. High dec — well placed in summer."
+
+  - name: "NGC6946"
+    common_name: "Fireworks Galaxy"
+    object_type: GALAXY
+    ra_deg: 308.718
+    dec_deg: 60.154
+    size_arcmin: [11.5, 9.8]
+    magnitude: 8.9
+    constellation: Cep
+    budget_minutes: {LP: 300}
+    notes: "Face-on, prolific supernova factory. Low SB face-on + sits in the Milky Way (star-dense) — better from a dark site, but high all summer."
+
+  # ================================================================
+  # SOUTHERN SHOWPIECES — listed for completeness / a future travel site.
+  # The planner auto-drops these from a JC plan (they never clear the 45°
+  # floor at lat +40.7), so they don't clutter output.
+  # ================================================================
+  - name: "M104"
+    common_name: "Sombrero Galaxy"
+    object_type: GALAXY
+    ra_deg: 189.998
+    dec_deg: -11.623
+    size_arcmin: [8.7, 3.5]
+    magnitude: 8.0
+    constellation: Vir
+    budget_minutes: {LP: 180}
+    notes: "Iconic edge-on with the bulge + dust-lane brim. Very high SB. Peaks only ~38° from JC — never clears the 45° floor; here for a southern/travel session."
+
+  - name: "NGC253"
+    common_name: "Sculptor Galaxy"
+    object_type: GALAXY
+    ra_deg: 11.888
+    dec_deg: -25.288
+    size_arcmin: [27.5, 6.8]
+    magnitude: 7.1
+    constellation: Scl
+    budget_minutes: {LP: 180}
+    notes: "Huge bright edge-on starburst, dust-mottled. Spectacular — but dec -25° is far below the JC horizon. Travel/southern target."

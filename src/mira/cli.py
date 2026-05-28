@@ -544,6 +544,76 @@ def main() -> None:
         help="Output Markdown path (default: <catalog_dir>/research_notes.md).",
     )
 
+    galaxies_parser = subparsers.add_parser(
+        "galaxies",
+        help="Bright-galaxy planner: rank a curated galaxy catalog by observability × surface brightness.",
+    )
+    gx_sub = galaxies_parser.add_subparsers(dest="galaxies_command", required=True)
+    gx_plan = gx_sub.add_parser(
+        "plan",
+        help="Rank the galaxy catalog against tonight/this week's window and write a plan.",
+    )
+    gx_plan.add_argument(
+        "--config", default="config/s30_pro_jc.yaml",
+        help="YAML config path (uses its `galaxies:` section or defaults).",
+    )
+    gx_plan.add_argument(
+        "--catalog", default=None,
+        help="Override galaxy catalog YAML path (default: from config or data/dso_catalog/galaxies.yaml).",
+    )
+    gx_plan.add_argument(
+        "--start-date", default=None,
+        help="Local observing start date YYYY-MM-DD (default: today in the first site's timezone).",
+    )
+    gx_plan.add_argument(
+        "--fov", default=None,
+        help="Override rig FOV as 'major,minor' in degrees (e.g. 4.2,2.4).",
+    )
+    gx_plan.add_argument(
+        "--relax-moon", action="store_true",
+        help="Relax the moon gate (default: strict — broadband galaxies are moon-sensitive).",
+    )
+    gx_plan.add_argument(
+        "--output-dir", default=None,
+        help="Override output directory (default: <config.output.directory>/<galaxies.output_subdir>).",
+    )
+    gx_plan.add_argument(
+        "--top", type=int, default=None,
+        help="Limit ranked list to top N candidates in the report (default: all viable).",
+    )
+    gx_plan.add_argument(
+        "--captures-root", default=None,
+        help="Override captures root for the integration ledger (default: from config or 'captures').",
+    )
+    gx_plan.add_argument(
+        "--ignore-ledger", action="store_true",
+        help="Skip the integration ledger entirely — pure observability × SB ranking.",
+    )
+
+    gx_status = gx_sub.add_parser(
+        "status",
+        help="Show the integration ledger for galaxy targets: per-target per-filter captured vs budget.",
+    )
+    gx_status.add_argument(
+        "--config", default="config/s30_pro_jc.yaml",
+        help="YAML config path (catalog + captures_root read from its `galaxies:` section).",
+    )
+    gx_status.add_argument(
+        "--catalog", default=None, help="Override galaxy catalog YAML path.",
+    )
+    gx_status.add_argument(
+        "--captures-root", default=None,
+        help="Override captures root (default: from config or 'captures').",
+    )
+    gx_status.add_argument(
+        "target", nargs="?", default=None,
+        help="Show detail for one galaxy (canonical catalog name). Omit for the full summary.",
+    )
+    gx_status.add_argument(
+        "--orphans", action="store_true",
+        help="Only list orphan sessions (captures whose target_name doesn't match any catalog entry).",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -593,6 +663,8 @@ def main() -> None:
         rehearse(args)
     elif args.command == "dso":
         dso(args)
+    elif args.command == "galaxies":
+        galaxies(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -1898,6 +1970,130 @@ def dso(args: argparse.Namespace) -> None:
             f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
             f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
             f"{deficit_note}"
+        )
+
+
+def galaxies(args: argparse.Namespace) -> None:
+    """Bright-galaxy planner. Shares the DSO engine but ranks by
+    observability × surface brightness (moon-strict by default — broadband
+    galaxies are moon-sensitive) and writes a galaxy-flavored plan to
+    <output_dir>/<galaxies.output_subdir>/. Distinct from `mira dso plan`
+    (narrowband emission targets) and `mira run` (VSX variable stars)."""
+    from .config import load_config
+    from .dso.catalog import load_dso_catalog
+    from .dso.ledger import aggregate_ledger, walk_sidecars
+
+    cfg = load_config(args.config)
+    gx_cfg = cfg.galaxies
+    catalog_path = Path(args.catalog) if args.catalog else gx_cfg.catalog_path
+
+    if args.galaxies_command == "status":
+        print(f"Loading galaxy catalog: {catalog_path}")
+        catalog = load_dso_catalog(catalog_path)
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else gx_cfg.captures_root
+        )
+        print(f"Walking sidecars under {captures_root}/ ...")
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        print(_render_dso_status(
+            ledger, catalog,
+            target_name=args.target, orphans_only=args.orphans,
+        ))
+        return
+
+    if args.galaxies_command != "plan":
+        raise SystemExit(f"unknown galaxies subcommand: {args.galaxies_command}")
+    from datetime import date as _date
+    from zoneinfo import ZoneInfo
+    from .dso.planner import build_dso_candidates
+    from .dso.galaxy_report import write_galaxy_plan
+
+    print(f"Loading galaxy catalog: {catalog_path}")
+    catalog = load_dso_catalog(catalog_path)
+    n_gx = sum(1 for t in catalog.targets if t.is_galaxy)
+    print(f"  catalog v{catalog.version}: {len(catalog.targets)} targets ({n_gx} galaxies)")
+
+    if args.start_date:
+        start_date = _date.fromisoformat(args.start_date)
+    else:
+        first_tz = ZoneInfo(cfg.sites[0].observer.timezone)
+        start_date = datetime.now(first_tz).date()
+
+    if args.fov:
+        try:
+            major_str, minor_str = args.fov.split(",")
+            fov_deg = (float(major_str), float(minor_str))
+        except ValueError as exc:
+            raise SystemExit(f"--fov must be 'major,minor' degrees (e.g. 4.2,2.4): {exc}")
+    else:
+        fov_deg = gx_cfg.fov_deg
+
+    # Galaxies are moon-strict by default (broadband from the city). The
+    # config can pre-relax, and --relax-moon forces it on.
+    relax_moon = gx_cfg.relax_moon or args.relax_moon
+
+    ledger = None
+    if not args.ignore_ledger:
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else gx_cfg.captures_root
+        )
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        if ledger.sessions:
+            print(
+                f"Ledger: {len(ledger.sessions)} session(s) over "
+                f"{len(ledger.by_target)} target(s) from {captures_root}/"
+                + (f" ({len(ledger.orphan_target_names)} orphan)"
+                   if ledger.orphan_target_names else "")
+            )
+        else:
+            print(f"Ledger: no sessions under {captures_root}/ (pure observability × SB ranking).")
+
+    print(
+        f"Ranking against {len(cfg.sites)} site(s) for "
+        f"{cfg.sites[0].observing_window.nights} night(s) from {start_date} "
+        f"(FOV {fov_deg[0]:.2f}°×{fov_deg[1]:.2f}°, "
+        f"moon {'relaxed' if relax_moon else 'strict'}, SB-weighted"
+        f"{', ledger-weighted' if ledger is not None else ''})..."
+    )
+    candidates = build_dso_candidates(
+        catalog, cfg,
+        start_date=start_date,
+        fov_deg=fov_deg,
+        relax_moon=relax_moon,
+        ledger=ledger,
+        deficit_weight=gx_cfg.deficit_weight,
+        sb_limit_mag_arcsec2=gx_cfg.sb_limit_mag_arcsec2,
+    )
+    print(f"  {len(candidates)} target(s) viable in the window")
+    if args.top is not None:
+        candidates = candidates[: args.top]
+
+    out_root = Path(args.output_dir) if args.output_dir else cfg.output.directory
+    out_dir = out_root / gx_cfg.output_subdir
+    md_path, csv_path = write_galaxy_plan(
+        candidates, out_dir,
+        ledger=ledger,
+        config_path=args.config,
+        catalog_version=catalog.version,
+        start_date=start_date,
+        window_nights=cfg.sites[0].observing_window.nights,
+        sb_limit_mag_arcsec2=gx_cfg.sb_limit_mag_arcsec2,
+    )
+    print(f"Wrote {md_path}")
+    print(f"Wrote {csv_path}")
+    if candidates:
+        top = candidates[0]
+        sb_note = (
+            f", SB {top.surface_brightness:.1f}"
+            if top.surface_brightness is not None else ""
+        )
+        print(
+            f"\nTop pick: {top.target.name} ({top.target.common_name}) "
+            f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
+            f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
+            f", mag {top.magnitude:.1f}{sb_note}"
         )
 
 

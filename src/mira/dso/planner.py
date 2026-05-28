@@ -31,6 +31,31 @@ from .ledger import Ledger, target_completion_fraction
 # planner's fov_deg kwarg.
 DEFAULT_FOV_DEG = (1.6, 1.07)
 
+# Surface-brightness scoring (galaxies only — targets with an integrated
+# magnitude). Brighter mean SB (a *smaller* mag/arcsec²) scores higher,
+# because SB — not integrated mag — is what survives urban light pollution
+# on a small OSC scope. Linear map centered on SB_REFERENCE, clamped so a
+# single axis can't dominate observability+altitude.
+SB_REFERENCE_MAG_ARCSEC2 = 21.0   # ~M51's mean SB — a solid city galaxy
+SB_SCALE_MAG = 3.0                # mag/arcsec² per unit of factor swing
+SB_FACTOR_MIN = 0.4
+SB_FACTOR_MAX = 1.4
+
+# Angular-size scoring (galaxies only). Size only *penalizes* the too-small:
+# a galaxy below SIZE_REFERENCE_ARCMIN is a dot on a wide field and gets
+# demoted toward SIZE_FACTOR_MIN; at/above the reference the factor saturates
+# at 1.0 (no bonus). Bonusing large targets would float low-SB face-on traps
+# (M101, M33) up the list — exactly the mistake we want to avoid. Surface
+# brightness, not size, is the headline ranker; size just sinks the dots.
+SIZE_REFERENCE_ARCMIN = 12.0
+SIZE_FACTOR_MIN = 0.5
+
+# Separately (and only for labeling — no extra score multiplier; the size
+# factor above already handles scoring), a galaxy whose major axis is below
+# FOV_major / UNDERSAMPLE_DIVISOR earns the actionable "better on the Esprit"
+# flag. On the S30's ~4.2° FOV this lands at ~6'; on the Esprit's 1.6°, ~2.4'.
+UNDERSAMPLE_DIVISOR = 40.0
+
 
 @dataclass(frozen=True)
 class DsoCandidate:
@@ -59,6 +84,14 @@ class DsoCandidate:
     captured_minutes: float = 0.0
     budget_minutes: float = 0.0
     completion_fraction: float = 0.0
+    # Galaxy fields (the `mira galaxies` path). All default to the
+    # narrowband-harmless value so DSO-side code renders them without
+    # special-casing: magnitude/SB are None for emission targets, and the
+    # two flags stay False.
+    magnitude: float | None = None
+    surface_brightness: float | None = None
+    dark_site_only: bool = False
+    under_sampled: bool = False
 
     @property
     def best_site_name(self) -> str:
@@ -78,6 +111,7 @@ def build_dso_candidates(
     relax_moon: bool = True,
     ledger: Ledger | None = None,
     deficit_weight: float = 1.0,
+    sb_limit_mag_arcsec2: float | None = None,
 ) -> list[DsoCandidate]:
     """Rank catalog targets by observability + FOV fit + (optionally)
     integration deficit.
@@ -97,7 +131,15 @@ def build_dso_candidates(
     boost; a 100%-complete target gets the 0.5× demotion (visible but
     deprioritized — per the rule that completed targets stay in the
     queue). Pass ``ledger=None`` (or ``deficit_weight=0``) for the
-    Phase-1 pure-observability ranking — pinned by test."""
+    Phase-1 pure-observability ranking — pinned by test.
+
+    ``sb_limit_mag_arcsec2`` (the ``mira galaxies`` path): galaxies whose
+    mean surface brightness is fainter than this are flagged
+    ``dark_site_only`` (kept in the queue, per "targets shouldn't
+    disappear", but the SB factor already sinks them). Targets without an
+    integrated magnitude — every narrowband entry — are unaffected by the
+    surface-brightness and undersample factors, so DSO-side ranking is
+    preserved bit-for-bit."""
     candidates: list[DsoCandidate] = []
     for target in catalog.targets:
         relax_for_target = relax_moon and target.is_narrowband
@@ -139,7 +181,19 @@ def build_dso_candidates(
             captured = 0.0
         budget = float(target.total_budget_minutes)
 
+        # Galaxy surface-brightness fields. All no-ops for narrowband
+        # targets (magnitude is None → sb is None → factors are 1.0).
+        sb = target.surface_brightness
+        dark_site_only = (
+            sb is not None
+            and sb_limit_mag_arcsec2 is not None
+            and sb > sb_limit_mag_arcsec2
+        )
+        under_sampled = _is_undersampled(target, fov_deg)
+
         observability_score = _score_candidate(best, fits_fov)
+        observability_score *= _brightness_factor(sb)
+        observability_score *= _size_factor(target)
         score = _apply_deficit_weight(
             observability_score, completion, deficit_weight,
             ledger_active=ledger is not None,
@@ -148,6 +202,8 @@ def build_dso_candidates(
             target, best, fits_fov, fov_deg, relax_for_target,
             ledger=ledger, completion_fraction=completion,
             captured_minutes=captured, budget_minutes=budget,
+            surface_brightness=sb, dark_site_only=dark_site_only,
+            under_sampled=under_sampled,
         )
         candidates.append(DsoCandidate(
             target=target,
@@ -160,6 +216,10 @@ def build_dso_candidates(
             captured_minutes=captured,
             budget_minutes=budget,
             completion_fraction=completion,
+            magnitude=target.magnitude,
+            surface_brightness=sb,
+            dark_site_only=dark_site_only,
+            under_sampled=under_sampled,
         ))
     candidates.sort(
         key=lambda c: (
@@ -216,6 +276,42 @@ def _score_candidate(best: Observability, fits_fov: bool) -> float:
     return raw * (1.0 if fits_fov else 0.8)
 
 
+def _brightness_factor(surface_brightness: float | None) -> float:
+    """Surface-brightness score multiplier. 1.0 (no-op) when SB is None —
+    i.e. for every narrowband target, which has no integrated magnitude.
+
+    Brighter mean SB (smaller mag/arcsec²) → larger factor, so a high-SB
+    edge-on outranks a low-SB face-on of the same integrated magnitude —
+    which is exactly the urban-OSC reality the integrated mag hides."""
+    if surface_brightness is None:
+        return 1.0
+    factor = 1.0 + (SB_REFERENCE_MAG_ARCSEC2 - surface_brightness) / SB_SCALE_MAG
+    return max(SB_FACTOR_MIN, min(SB_FACTOR_MAX, factor))
+
+
+def _size_factor(target: DsoTarget) -> float:
+    """Angular-size score multiplier. 1.0 (no-op) for narrowband targets
+    (no magnitude). For galaxies, linearly demotes the small toward
+    SIZE_FACTOR_MIN and saturates at 1.0 — a penalty-only curve, never a
+    bonus, so a magnificent-but-large low-SB galaxy can't ride its size past
+    a compact high-SB showpiece."""
+    if target.magnitude is None:
+        return 1.0
+    ratio = target.size_arcmin[0] / SIZE_REFERENCE_ARCMIN
+    return max(SIZE_FACTOR_MIN, min(1.0, ratio))
+
+
+def _is_undersampled(target: DsoTarget, fov_deg: tuple[float, float]) -> bool:
+    """True if the galaxy is too small for the rig's image scale. Narrowband
+    targets (no magnitude) are never flagged — the concept only applies to
+    the galaxy path, and the threshold scales with FOV so it auto-adjusts
+    between the wide S30 and the longer-FL Esprit."""
+    if target.magnitude is None:
+        return False
+    min_useful_arcmin = (fov_deg[0] * 60.0) / UNDERSAMPLE_DIVISOR
+    return target.size_arcmin[0] < min_useful_arcmin
+
+
 def _build_reasons(
     target: DsoTarget,
     best: Observability,
@@ -227,6 +323,9 @@ def _build_reasons(
     completion_fraction: float = 0.0,
     captured_minutes: float = 0.0,
     budget_minutes: float = 0.0,
+    surface_brightness: float | None = None,
+    dark_site_only: bool = False,
+    under_sampled: bool = False,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if best.best_night_date is not None:
@@ -239,6 +338,17 @@ def _build_reasons(
         reasons.append(
             f"{best.minutes_above_minimum} dark min above floor @ {best.site_name}, "
             f"peak alt {best.max_altitude_deg:.1f}°"
+        )
+    if target.magnitude is not None and surface_brightness is not None:
+        reasons.append(
+            f"mag {target.magnitude:.1f}, mean SB {surface_brightness:.1f} mag/arcsec²"
+        )
+    if dark_site_only:
+        reasons.append("low surface brightness — dark-site only")
+    if under_sampled:
+        reasons.append(
+            f"small for rig: {target.size_arcmin[0]:.0f}' in "
+            f"{fov_deg[0]:.1f}° FOV — better on the Esprit"
         )
     if not fits_fov:
         reasons.append(

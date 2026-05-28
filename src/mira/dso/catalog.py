@@ -8,6 +8,7 @@ is intentionally out of scope for now.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ KNOWN_OBJECT_TYPES = frozenset({
     "REF",      # Reflection nebula
     "OPEN",     # Open cluster (rarely a narrowband target)
     "GLOB",     # Globular cluster (rarely a narrowband target)
+    "GALAXY",   # Galaxy — the `mira galaxies` broadband-showpiece path
 })
 
 
@@ -40,7 +42,15 @@ class DsoTarget:
 
     ``size_arcmin`` is (major, minor). Used to flag mosaic candidates
     against the rig's FOV (configured separately, since FOV depends on
-    OTA + sensor — not on the target catalog)."""
+    OTA + sensor — not on the target catalog).
+
+    ``magnitude`` is the target's *integrated* visual magnitude. Optional —
+    narrowband emission targets don't carry one (it's meaningless for an
+    HII region whose brightness is line-flux, not a point-source mag), so
+    it stays ``None`` for them. Galaxies (the ``mira galaxies`` path) set
+    it: combined with ``size_arcmin`` it yields the mean surface brightness,
+    which — not integrated mag — is what decides whether a galaxy is
+    recoverable from a light-polluted urban sky on a small OSC scope."""
     name: str
     common_name: str
     object_type: str
@@ -51,6 +61,7 @@ class DsoTarget:
     budget_minutes: dict[str, int]
     mosaic: bool = False
     notes: str = ""
+    magnitude: float | None = None
 
     @property
     def total_budget_minutes(self) -> int:
@@ -64,6 +75,28 @@ class DsoTarget:
             f in self.budget_minutes and self.budget_minutes[f] > 0
             for f in ("Ha", "OIII", "SII")
         )
+
+    @property
+    def is_galaxy(self) -> bool:
+        return self.object_type == "GALAXY"
+
+    @property
+    def surface_brightness(self) -> float | None:
+        """Mean surface brightness over the D25 ellipse, in mag/arcsec².
+        ``None`` when no integrated magnitude is set.
+
+        SB = m + 2.5·log₁₀(area), area = π·(a/2)·(b/2) in arcsec². This is
+        the *average* across the whole isophotal ellipse — a galaxy's core
+        is brighter and its outskirts fainter, so treat it as a
+        conservative "will the whole thing show" figure, not a peak."""
+        if self.magnitude is None:
+            return None
+        major_arcsec = self.size_arcmin[0] * 60.0
+        minor_arcsec = self.size_arcmin[1] * 60.0
+        area = math.pi * (major_arcsec / 2.0) * (minor_arcsec / 2.0)
+        if area <= 0:
+            return None
+        return self.magnitude + 2.5 * math.log10(area)
 
 
 @dataclass(frozen=True)
@@ -153,6 +186,7 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
     budget = {str(k): int(v) for k, v in budget_raw.items()}
     if any(v < 0 for v in budget.values()):
         raise ValueError("budget_minutes values must be non-negative")
+    magnitude = _parse_magnitude(item.get("magnitude"))
     return DsoTarget(
         name=name,
         common_name=str(item.get("common_name", name)),
@@ -164,4 +198,20 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
         budget_minutes=budget,
         mosaic=bool(item.get("mosaic", False)),
         notes=str(item.get("notes", "")).strip(),
+        magnitude=magnitude,
     )
+
+
+def _parse_magnitude(raw: Any) -> float | None:
+    """Optional integrated magnitude. Absent → None (narrowband targets).
+    Range-checked loosely: brighter than M31 (mag 3.4) or fainter than ~16
+    is almost certainly a typo for a curated showpiece catalog."""
+    if raw is None:
+        return None
+    try:
+        mag = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"magnitude must be a number; got {raw!r}") from exc
+    if not -5.0 <= mag <= 20.0:
+        raise ValueError(f"magnitude out of plausible range: {mag}")
+    return mag

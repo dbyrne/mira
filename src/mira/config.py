@@ -149,6 +149,11 @@ class DsoConfig:
     [0.5, 1.5]; with weight 1.0 (default), a never-imaged target is
     boosted 1.5× and a 100%-complete target is demoted to 0.5×. Set to
     0 to disable the ledger entirely (Phase-1 pure-observability behavior).
+
+    ``sb_limit_mag_arcsec2`` is the ``mira galaxies`` surface-brightness
+    floor: galaxies with a mean SB fainter than this are flagged
+    "dark-site only". ``None`` (the narrowband default) disables the flag —
+    emission targets have no integrated magnitude, so SB is undefined.
     """
     enabled: bool
     catalog_path: Path
@@ -157,6 +162,7 @@ class DsoConfig:
     output_subdir: str
     captures_root: Path
     deficit_weight: float
+    sb_limit_mag_arcsec2: float | None = None
 
 
 # Sensible defaults: the shipped curated catalog, the Esprit 120 rig FOV,
@@ -173,6 +179,24 @@ DSO_DEFAULTS = DsoConfig(
 )
 
 
+# Defaults for the `galaxies:` section — the broadband-galaxy showpiece
+# path (`mira galaxies`). Differs from the narrowband DSO defaults in three
+# load-bearing ways: a galaxy catalog, moon-STRICT gating (broadband from
+# the city is moon-sensitive — the opposite of narrowband), and a
+# surface-brightness floor for the dark-site-only flag. FOV defaults to the
+# wide S30 Pro field since that's the rig this path was built for.
+GALAXY_DEFAULTS = DsoConfig(
+    enabled=True,
+    catalog_path=Path("data/dso_catalog/galaxies.yaml"),
+    fov_deg=(4.2, 2.4),
+    relax_moon=False,
+    output_subdir="galaxies",
+    captures_root=Path("captures"),
+    deficit_weight=1.0,
+    sb_limit_mag_arcsec2=22.5,
+)
+
+
 @dataclass(frozen=True)
 class ScoutConfig:
     sites: tuple[SiteConfig, ...]
@@ -184,6 +208,7 @@ class ScoutConfig:
     ztf: ZtfConfig
     output: OutputConfig
     dso: DsoConfig = DSO_DEFAULTS
+    galaxies: DsoConfig = GALAXY_DEFAULTS
 
 
 def load_config(path: str | Path) -> ScoutConfig:
@@ -240,34 +265,46 @@ def load_config(path: str | Path) -> ScoutConfig:
             top_packets=int(raw["output"]["top_packets"]),
         ),
         dso=_parse_dso(raw.get("dso")),
+        galaxies=_parse_dso(
+            raw.get("galaxies"), defaults=GALAXY_DEFAULTS, section="galaxies",
+        ),
     )
 
 
-def _parse_dso(raw: Any) -> DsoConfig:
-    """Parse the optional `dso:` config section. Missing/empty yields the
-    DSO_DEFAULTS so existing VSX-only configs continue to load. A present
-    section overrides field-by-field — partial sections inherit the rest."""
+def _parse_dso(
+    raw: Any,
+    *,
+    defaults: DsoConfig = DSO_DEFAULTS,
+    section: str = "dso",
+) -> DsoConfig:
+    """Parse an optional planner section (``dso:`` or ``galaxies:``).
+    Missing/empty yields ``defaults`` so existing configs keep loading. A
+    present section overrides field-by-field — partial sections inherit the
+    rest. ``section`` only tweaks the error-message prefix."""
     if not raw:
-        return DSO_DEFAULTS
+        return defaults
     if not isinstance(raw, dict):
-        raise ValueError("dso: section must be a mapping")
-    fov = raw.get("fov_deg", DSO_DEFAULTS.fov_deg)
+        raise ValueError(f"{section}: section must be a mapping")
+    fov = raw.get("fov_deg", defaults.fov_deg)
     if not (
         isinstance(fov, (list, tuple))
         and len(fov) == 2
         and all(isinstance(v, (int, float)) and v > 0 for v in fov)
     ):
         raise ValueError(
-            f"dso.fov_deg must be [major, minor] positive numbers; got {fov!r}"
+            f"{section}.fov_deg must be [major, minor] positive numbers; got {fov!r}"
         )
+    sb_raw = raw.get("sb_limit_mag_arcsec2", defaults.sb_limit_mag_arcsec2)
+    sb_limit = float(sb_raw) if sb_raw is not None else None
     return DsoConfig(
-        enabled=bool(raw.get("enabled", DSO_DEFAULTS.enabled)),
-        catalog_path=Path(raw.get("catalog_path", str(DSO_DEFAULTS.catalog_path))),
+        enabled=bool(raw.get("enabled", defaults.enabled)),
+        catalog_path=Path(raw.get("catalog_path", str(defaults.catalog_path))),
         fov_deg=(float(fov[0]), float(fov[1])),
-        relax_moon=bool(raw.get("relax_moon", DSO_DEFAULTS.relax_moon)),
-        output_subdir=str(raw.get("output_subdir", DSO_DEFAULTS.output_subdir)),
-        captures_root=Path(raw.get("captures_root", str(DSO_DEFAULTS.captures_root))),
-        deficit_weight=float(raw.get("deficit_weight", DSO_DEFAULTS.deficit_weight)),
+        relax_moon=bool(raw.get("relax_moon", defaults.relax_moon)),
+        output_subdir=str(raw.get("output_subdir", defaults.output_subdir)),
+        captures_root=Path(raw.get("captures_root", str(defaults.captures_root))),
+        deficit_weight=float(raw.get("deficit_weight", defaults.deficit_weight)),
+        sb_limit_mag_arcsec2=sb_limit,
     )
 
 

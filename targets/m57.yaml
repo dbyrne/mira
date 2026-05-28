@@ -1,0 +1,42 @@
+# M57 Ring Nebula — session profile for `mira capture --session`.
+#
+# Why M57 on a near-full-moon night: it's a compact, very-high-surface-
+# brightness planetary nebula (mean SB ~18 mag/arcsec², ~40x brighter per
+# arcsec² than M51's disk), so it punches through moonlight where faint
+# galaxies/reflection nebulae drown. The one broadband S30 target that
+# genuinely beats the galaxy queue under a 95% moon (see the galaxy-finder
+# surface-brightness logic). Use with:
+#   mira capture --session targets/m57.yaml --dest captures/m57_<UTC>
+#
+# Any CLI flag overrides the value here. --no-platesolve-center skips the
+# solve on a cloudy night when you just want subs.
+#
+# TIMING (JC, 2026-05-28): M57 (Lyra, RA 18h53m) is a late-riser — below
+# the 45 deg floor until ~midnight, peaks ~81 deg around 03:00, and the
+# 95%-illuminated moon sets ~04:00. Prime window is 02:00-04:10 EDT (M57
+# high, moon low/down). Shoot something moon-proof and well-placed early
+# (M13 is ~85 deg overhead all evening) and swing to M57 after midnight.
+
+ra: 283.3962
+dec: 33.0292
+# 30s exposure: M57 is sky-limited at 30s on the S30 at f/5 (sky >> read
+# noise, same as the M51 profile's measurement), so per-sub depth on the
+# faint outer halo is set by sky, not exposure — and a SHORTER sub than
+# M51's 60s protects the bright inner ring from clipping. The structure
+# you want (ring + faint outer halo) builds from stacking many 30s subs.
+# If the ring's brightest arc still clips, drop to 15s; for the very faint
+# outer halo, a separate longer-sub stack is an advanced add-on.
+exposure: 30
+# Gain 80: IMX585 HCG sweet spot (per the S30 gain note + the M51 profile).
+# HCG's deeper effective well is a bonus here — M57's bright ring is the
+# most clip-prone subject in the catalog, so the extra headroom helps.
+# Flats matched: requires data/flats/LP_g80_<date>/master_flat.fit. Only
+# LP_g120 exists on disk right now, so run `mira flats --gain 80 --filters
+# LP` BEFORE the session — `mira stack --auto-flats` hard-aborts on a
+# gain mismatch.
+gain: 80
+filter: LP
+target_name: M57
+platesolve_center: true
+# autofocus_every_min: omitted — S30 Pro has no motorized focuser.
+dither_arcsec: 30

@@ -43,6 +43,7 @@ class _Client(Protocol):
                     timeout_s: float = ...) -> bool: ...
     def run_autofocus(self, *, timeout_s: float = ...,
                        poll_s: float = ...) -> dict: ...
+    def park(self, timeout: float = ...) -> dict: ...
 
 
 @dataclass
@@ -448,3 +449,45 @@ def run_capture(
         res.stopped_reason = f"reached n_max={n_max}"
     _persist_sidecar()
     return res
+
+
+def safe_park(
+    client: _Client,
+    *,
+    shield_filter: str | None = "Dark",
+    emit: Callable[[str], None] | None = None,
+) -> dict[str, bool]:
+    """End-of-session safing: shield the sensor (rotate the wheel to an opaque
+    position) and park the mount (stops tracking + slews home). BOTH steps are
+    fail-soft — safing must never raise or mask the run result. Mirrors the
+    flats panel teardown; call it from a try/finally around the capture so it
+    fires on a normal guard-stop AND on a crash/Ctrl-C. Returns
+    {'shielded', 'parked'} for logging/tests.
+
+    The S30 has no mechanical shutter (HasShutter=false), so the only way to
+    keep daylight off the sensor is the opaque wheel position ('Dark'); park
+    also points the OTA away from the risen sun and halts tracking so the
+    mount can't drive into a limit after dawn.
+    """
+    def _e(m: str) -> None:
+        if emit is not None:
+            emit(m)
+
+    out = {"shielded": False, "parked": False}
+    if shield_filter:
+        try:
+            if client.set_filter(shield_filter, wait=True):
+                out["shielded"] = True
+                _e(f"  safing: sensor shielded ('{shield_filter}' filter)")
+            else:
+                _e(f"  safing: '{shield_filter}' filter not confirmed — sensor "
+                   "shield skipped (no opaque position on this wheel?)")
+        except Exception as exc:  # noqa: BLE001 — fail-soft
+            _e(f"  safing: sensor shield failed (continuing): {exc}")
+    try:
+        client.park()
+        out["parked"] = True
+        _e("  safing: mount parked (tracking stopped)")
+    except Exception as exc:  # noqa: BLE001 — fail-soft
+        _e(f"  safing: mount park failed (continuing): {exc}")
+    return out

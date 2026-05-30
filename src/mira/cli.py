@@ -319,6 +319,7 @@ def main() -> None:
     capture_parser.add_argument("--verify-pointing-deg", type=float, default=None, help="After platesolve-center, take one test sub and ASTAP-solve it to verify the mount is actually on target. Abort if solved center is more than this many degrees from nominal. 0 disables. Catches mount-sync drift where NINA reports a wrong position (2026-05-19 M51 disaster).")
     capture_parser.add_argument("--autofocus-every-min", type=int, default=None, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
     capture_parser.add_argument("--autofocus-timeout-s", type=float, default=None, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
+    capture_parser.add_argument("--park-at-end", action=argparse.BooleanOptionalAction, default=True, help="At end of run (incl. crash / Ctrl-C), park the mount (stops tracking, slews home) and rotate the wheel to the opaque 'Dark' position to shield the sensor — so the rig safes itself at dawn unattended. Default on; --no-park-at-end leaves it tracking (e.g. to hand off to another tool). Both steps fail-soft.")
 
     flats_parser = subparsers.add_parser(
         "flats",
@@ -1587,7 +1588,7 @@ def capture(args: argparse.Namespace) -> None:
     """Deep-capture loop with dithering + re-centering. Dithers relative to
     the fixed nominal coords (breaks walking noise AND prevents drift);
     blind reposition slews (no Center loop). Stops at twilight / low alt."""
-    from .capture import altitude_sun_guard, run_capture
+    from .capture import altitude_sun_guard, run_capture, safe_park
     from .webapp.nina_client import NinaClient
 
     cfg = resolve_capture_config(
@@ -1635,44 +1636,52 @@ def capture(args: argparse.Namespace) -> None:
     else:
         print(f"  master flat  : (not resolved — {flat_reason})")
     print()
-    res = run_capture(
-        client,
-        ra_deg=cfg["ra"], dec_deg=cfg["dec"],
-        exposure_s=cfg["exposure"], gain=cfg["gain"],
-        dest_dir=Path(cfg["dest"]), nina_root=Path(cfg["nina_root"]),
-        n_max=cfg["n_max"],
-        dither_arcsec=cfg["dither_arcsec"], dither_every=cfg["dither_every"],
-        recenter_every=cfg["recenter_every"], settle_s=cfg["settle"],
-        target_name=cfg["target_name"],
-        filter_name=cfg["filter"],
-        platesolve_center=cfg["platesolve_center"],
-        verify_pointing_deg=cfg["verify_pointing_deg"],
-        autofocus_every_min=cfg["autofocus_every_min"],
-        autofocus_timeout_s=cfg["autofocus_timeout_s"],
-        # Fields the loop itself doesn't see (they're baked into the
-        # altitude_sun_guard closure or the NinaClient base_url) — pipe them
-        # into the sidecar's audit block so the run is fully reproducible.
-        sidecar_audit={
-            "alt_floor_deg": cfg["alt_floor"],
-            "sun_max_deg": cfg["sun_max"],
-            "lat_deg": cfg["lat"],
-            "lon_deg": cfg["lon"],
-            "nina_url": cfg["nina_url"],
-            "session_profile": args.session,
-            "site_config": args.config,
-            "dest_dir": str(Path(cfg["dest"]).resolve()),
-        },
-        should_continue=guard,
-        on_step=lambda m: print(m),
-    )
-    print(
-        f"\nDONE: {res.captured} captured, {res.copied} copied to {res.dest_dir}, "
-        f"{res.dithers} dithers, {res.recenters} re-centers, "
-        f"{res.autofocus_runs} AF runs"
-        f"{', plate-solve-centered' if res.platesolve_centered else ''}"
-        f"{', filter=' + res.filter_name if res.filter_name else ''}. "
-        f"Stopped: {res.stopped_reason}"
-    )
+    try:
+        res = run_capture(
+            client,
+            ra_deg=cfg["ra"], dec_deg=cfg["dec"],
+            exposure_s=cfg["exposure"], gain=cfg["gain"],
+            dest_dir=Path(cfg["dest"]), nina_root=Path(cfg["nina_root"]),
+            n_max=cfg["n_max"],
+            dither_arcsec=cfg["dither_arcsec"], dither_every=cfg["dither_every"],
+            recenter_every=cfg["recenter_every"], settle_s=cfg["settle"],
+            target_name=cfg["target_name"],
+            filter_name=cfg["filter"],
+            platesolve_center=cfg["platesolve_center"],
+            verify_pointing_deg=cfg["verify_pointing_deg"],
+            autofocus_every_min=cfg["autofocus_every_min"],
+            autofocus_timeout_s=cfg["autofocus_timeout_s"],
+            # Fields the loop itself doesn't see (they're baked into the
+            # altitude_sun_guard closure or the NinaClient base_url) — pipe them
+            # into the sidecar's audit block so the run is fully reproducible.
+            sidecar_audit={
+                "alt_floor_deg": cfg["alt_floor"],
+                "sun_max_deg": cfg["sun_max"],
+                "lat_deg": cfg["lat"],
+                "lon_deg": cfg["lon"],
+                "nina_url": cfg["nina_url"],
+                "session_profile": args.session,
+                "site_config": args.config,
+                "dest_dir": str(Path(cfg["dest"]).resolve()),
+            },
+            should_continue=guard,
+            on_step=lambda m: print(m),
+        )
+        print(
+            f"\nDONE: {res.captured} captured, {res.copied} copied to {res.dest_dir}, "
+            f"{res.dithers} dithers, {res.recenters} re-centers, "
+            f"{res.autofocus_runs} AF runs"
+            f"{', plate-solve-centered' if res.platesolve_centered else ''}"
+            f"{', filter=' + res.filter_name if res.filter_name else ''}. "
+            f"Stopped: {res.stopped_reason}"
+        )
+    finally:
+        # End-of-session safing — fires on a normal guard-stop AND on a
+        # crash / Ctrl-C (the 2026-05-30 "left the sensor open into morning
+        # light" gap). Parks the mount + shields the sensor; both fail-soft.
+        if args.park_at_end:
+            print("\nsafing rig (mount park + sensor shield)...")
+            safe_park(client, emit=lambda m: print(m))
 
 
 def flats(args: argparse.Namespace) -> None:

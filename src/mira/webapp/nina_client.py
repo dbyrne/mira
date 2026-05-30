@@ -214,6 +214,12 @@ class NinaClient:
     def unpark(self, timeout: float = 30.0) -> dict[str, Any]:
         return self._get("/equipment/mount/unpark", timeout=timeout)
 
+    def park(self, timeout: float = 60.0) -> dict[str, Any]:
+        """Park the mount: stops tracking and slews to the home/park
+        position. Pairs with unpark; used by capture's end-of-session
+        safing."""
+        return self._get("/equipment/mount/park", timeout=timeout)
+
     def set_tracking(self, mode: int = TRACKING_SIDEREAL) -> dict[str, Any]:
         return self._get("/equipment/mount/tracking", params={"mode": mode})
 

@@ -17,11 +17,13 @@ from mira.capture import (
     altitude_sun_guard,
     random_dither_deg,
     run_capture,
+    safe_park,
 )
 
 
 class FakeClient:
-    def __init__(self, fail_slew_on=(), fail_filter=False, fail_autofocus=False):
+    def __init__(self, fail_slew_on=(), fail_filter=False, fail_autofocus=False,
+                 fail_park=False):
         self.slews: list[tuple] = []  # (ra,dec,center)
         self.captures: list[dict] = []
         self.filters: list[str] = []
@@ -29,6 +31,8 @@ class FakeClient:
         self._fail = set(fail_slew_on)
         self._fail_filter = fail_filter
         self._fail_autofocus = fail_autofocus
+        self._fail_park = fail_park
+        self.parked = False
         self._n = 0
         self.nina_root: Path | None = None
         self.exp_tag = ""
@@ -63,6 +67,12 @@ class FakeClient:
         if self._fail_autofocus:
             raise RuntimeError("AF boom")
         return {"Response": {"HFR": 2.4}}
+
+    def park(self, timeout=60.0):
+        if self._fail_park:
+            raise RuntimeError("park boom")
+        self.parked = True
+        return {"Response": "Parked"}
 
 
 class TestDitherMath(TestCase):
@@ -351,6 +361,39 @@ class TestVerifyPointing(TestCase):
             self.assertFalse(meta["result"]["pointing_verified"])
             self.assertEqual(meta["result"]["pointing_offset_deg"], 5.0)
             self.assertIn("FAILED", meta["result"]["stopped_reason"])
+
+
+class TestSafePark(TestCase):
+    """End-of-session safing (mira capture --park-at-end). Both steps
+    fail-soft so safing can never mask the run result or raise."""
+
+    def test_shields_sensor_and_parks(self) -> None:
+        c = FakeClient()
+        out = safe_park(c)
+        self.assertEqual(c.filters, ["Dark"])      # rotated to opaque position
+        self.assertTrue(c.parked)                  # mount parked
+        self.assertEqual(out, {"shielded": True, "parked": True})
+
+    def test_filter_shield_failure_is_soft_still_parks(self) -> None:
+        c = FakeClient(fail_filter=True)           # wheel can't confirm 'Dark'
+        out = safe_park(c)                          # must not raise
+        self.assertFalse(out["shielded"])
+        self.assertTrue(out["parked"])             # park still happens
+        self.assertTrue(c.parked)
+
+    def test_park_failure_is_soft(self) -> None:
+        c = FakeClient(fail_park=True)
+        out = safe_park(c)                          # must not raise
+        self.assertTrue(out["shielded"])           # shield still happened
+        self.assertFalse(out["parked"])
+        self.assertFalse(c.parked)
+
+    def test_no_shield_filter_skips_wheel(self) -> None:
+        c = FakeClient()
+        out = safe_park(c, shield_filter=None)
+        self.assertEqual(c.filters, [])            # wheel untouched
+        self.assertTrue(c.parked)
+        self.assertFalse(out["shielded"])
 
 
 class TestGuard(TestCase):

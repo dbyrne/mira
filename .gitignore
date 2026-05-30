@@ -12,3 +12,22 @@ data/flats/*/raw/
 data/flats/*/_siril_work/
 logs/
 *.egg-info/
+
+# --- Heavy / regenerable astro data — never in git (deliverables are PNG/TIFF) ---
+# Raw capture sessions (FITS subs + sidecars). Already-tracked _rehearsal
+# fixtures are unaffected (gitignore doesn't untrack).
+/captures/
+# FITS under output/ — linear stacks + GraXpert/PCC masters: large and
+# regenerable from the raw subs.
+output/**/*.fit
+output/**/*.fits
+# Reduction working subdirs — keep only the finished images + PROCESSING_LOG
+# at each *_work/ root.
+output/**/masters/
+output/**/combined_lights/
+output/**/cand/
+output/**/_rejected/
+output/**/tmp/
+# Scratch
+/.fltmp/
+output/_webapp.log

@@ -123,6 +123,16 @@ output:
   directory: output/s30_pro_jc
   top_packets: 15
 
+# Narrowband DSO planner (`mira dso`) — DISABLED on the S30. This is a
+# broadband OSC scope (LP/IR wheel, not SHO); narrowband `mira dso` is the
+# Esprit's job. Must be set explicitly: a config that OMITS `dso:` inherits
+# DSO_DEFAULTS (enabled=true). Leaving it on made `mira doctor` demand
+# canonical narrowband filter names (Ha/OIII/SII) of the LP/IR wheel and warn
+# about a flat panel the S30 doesn't have. The S30's real DSO path is the
+# broadband `galaxies:` planner below.
+dso:
+  enabled: false
+
 # Bright-galaxy planner (`mira galaxies plan`). Separate path from the VSX
 # variable-star queue above and from the Esprit's narrowband `dso:` catalog.
 # The galaxy catalog ranks by surface brightness, not integrated magnitude —
@@ -148,14 +158,17 @@ galaxies:
 # Site/rig constants consumed by `mira capture --config config/s30_pro_jc.yaml`
 # (lowest-priority tier; CLI flags + session profiles still win). Lets session
 # YAMLs and CLI invocations stay terse — the things that don't change per run
-# live here. nina_root is the literal path NINA saves into on this laptop
-# (verified 2026-05-19 — NOT the OneDrive\Documents default in cli.py's
-# CAPTURE_BUILTIN_DEFAULTS, which is the wrong-host fallback).
+# live here. nina_root is the literal path NINA saves into on this laptop.
+# As of 2026-05-28 the Documents folder is OneDrive-redirected (Known Folder
+# Move), so the real save path is under OneDrive\Documents — which matches
+# cli.py's CAPTURE_BUILTIN_DEFAULTS. (The pre-OneDrive plain-Documents path
+# "verified 2026-05-19" no longer exists; capture silently copied 0 frames
+# until this was corrected mid-session on 2026-05-28.)
 capture_defaults:
   lat: 40.7178
   lon: -74.0431
   nina_url: http://localhost:1888
-  nina_root: "C:/Users/david/Documents/N.I.N.A"
+  nina_root: "C:/Users/david/OneDrive/Documents/N.I.N.A"
   alt_floor: 30.0
   sun_max: -15.0
   settle: 2.0

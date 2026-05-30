@@ -162,8 +162,22 @@ class TestShippedSiteConfig(TestCase):
         for k in ("lat", "lon", "nina_url", "nina_root",
                   "alt_floor", "sun_max", "settle"):
             self.assertIn(k, site, f"capture_defaults missing {k}")
-        # The on-this-laptop nina_root must NOT be the OneDrive default.
-        self.assertNotIn("OneDrive", site["nina_root"])
+        # nina_root must be NINA's REAL save path: Documents is OneDrive-
+        # redirected here (Known Folder Move), so OneDrive\Documents is
+        # correct — verified 2026-05-30 (plain Documents copied 0 frames).
+        self.assertIn("OneDrive", site["nina_root"])
+
+    def test_s30_is_broadband_not_narrowband_dso(self) -> None:
+        """The S30 is a broadband OSC rig: `galaxies` planner ON, narrowband
+        `dso` OFF. Must be EXPLICIT — a config that omits `dso:` inherits
+        DSO_DEFAULTS (enabled=True), which made `mira doctor` demand canonical
+        SHO filter names (Ha/OIII/SII) of the LP/IR wheel and warn about a
+        flat panel it lacks. Regression guard for that fix (2026-05-30)."""
+        from mira.config import load_config
+        path = Path(__file__).parent.parent / "config" / "s30_pro_jc.yaml"
+        cfg = load_config(str(path))
+        self.assertFalse(cfg.dso.enabled)        # narrowband dso disabled
+        self.assertTrue(cfg.galaxies.enabled)    # broadband galaxies enabled
 
 
 class TestResolveFlatsConfig(TestCase):
@@ -190,7 +204,7 @@ class TestResolveFlatsConfig(TestCase):
         path = Path(__file__).parent.parent / "config" / "s30_pro_jc.yaml"
         site = _load_site_capture_defaults(str(path))
         cfg = resolve_flats_config(self._flats_ns(), site=site)
-        self.assertNotIn("OneDrive", cfg["nina_root"])   # was the long-standing bug
+        self.assertIn("OneDrive", cfg["nina_root"])      # OneDrive\Documents is the real path (KFM); plain Documents was the bug
         self.assertEqual(cfg["nina_url"], "http://localhost:1888")
 
 

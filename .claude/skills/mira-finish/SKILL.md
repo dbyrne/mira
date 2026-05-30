@@ -64,6 +64,26 @@ stack → GraXpert → stretch → crop.** Validated on the 2026-05-28/29 M51
   night only. Dark-sky frames help the *faint end* disproportionately even
   if shorter — combining is usually worth it once color is handled.
 
+## Hα blending (the dual-band LP trick — LP + no-LP)
+The Seestar LP filter is **dual-band (Hα+OIII)**, so an LP stack's **red
+channel ≈ continuum-suppressed Hα** — the HII / star-forming regions. Pair it
+with a **no-LP broadband** stack to blend the HII into a galaxy (pink
+star-forming knots down the arms). Tool: **`ha_blend.py`** (bundled here) —
+reprojects the LP-Hα onto the broadband base via the plate solutions,
+thresholds to real HII, and boosts red; `K` sets strength.
+- **Threshold the Hα** (a few σ over its own sky) before boosting, or you
+  amplify background noise into a red flood. And scale **modestly** — matching
+  Hα to the base's bright 99.5th-percentile catastrophically over-boosts (the
+  whole frame goes red — learned the hard way). Add a controlled fraction of a
+  mid-bright reference instead.
+- **K ≈ 0.4** balances pink HII + blue young stars (the true galaxy look);
+  ≈ 0.6 goes mostly-pink.
+- **A moony LP night gives a soft HII *tint*, not crisp knots** — a *dark*-night
+  LP pass is what makes this sing. (M51 2026-05-30: kept as a variant, but the
+  broadband-natural stayed primary — the 91%-moon Hα was only a modest lift.)
+- Deps: `pip install reproject`; both stacks need a WCS — use
+  `WCS(header, naxis=2)` for the 3-layer RGB FITS, and the LP stack must be solved.
+
 ## Manual stretch tool (`stretch.py`, bundled in this skill dir)
 `python stretch.py --in <bg-flat linear FITS> --out x.png [opts]`. Run it on
 the **GraXpert-processed** FITS (the per-channel black point needs a flat

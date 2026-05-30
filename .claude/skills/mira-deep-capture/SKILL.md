@@ -90,4 +90,8 @@ down-weighted in the stack anyway. Pick EMISSION targets: planetaries
 (M27/M57/M97) and Hα/OIII nebulae punch through with the LP filter; globular
 clusters (M13/M92) are essentially moon-immune (resolved point sources, like
 transients). Save galaxies for a dark night — that's when extra integration
-actually deepens them.
+actually deepens them. And **a dark-night LP pass on a galaxy doubles as an Hα
+layer**: the dual-band LP isolates the HII, which blends into a no-LP broadband
+base to pop the star-forming regions (see `mira-finish` → Hα blending). Moony
+LP works but the HII comes out soft — worth a *dark*-night LP grab on galaxies
+with active arms (M51, M101, …).

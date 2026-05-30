@@ -1,0 +1,43 @@
+# M27 Dumbbell Nebula — session profile for `mira capture --session`.
+#
+# Why M27 on a near-full-moon night: it's a bright (mag ~7.4), high-surface-
+# brightness OIII/Ha planetary nebula, so like M57 it punches through
+# moonlight where faint broadband galaxies (M51) drown. But unlike M57 it is
+# the RIGHT SIZE for the wide S30 field — 8'x6' ~= 130 px at 3.66"/px frames
+# as a real, detailed dumbbell, where M57's 1.4' (~23 px) is just a tiny
+# donut. On a 99%-moon night M27 is the one target here that's both
+# moon-resistant AND well-composed on this scope. Use with:
+#   mira capture --session targets/m27.yaml --dest captures/m27_<UTC>
+#
+# Any CLI flag overrides the value here. --no-platesolve-center skips the
+# solve on a cloudy night when you just want subs.
+#
+# TIMING (JC, 2026-05-29/30): M27 (Vulpecula, RA 20h00m) is a second-half
+# target — below the 45 deg floor until ~01:30 EDT, climbs to ~70 deg by
+# astro-dark-end (03:20), peaks 72 deg ~03:45 in nautical twilight. Prime
+# window ~01:30-04:00 EDT. The 99% moon is up the ENTIRE night (rises ~20:00,
+# no moonless window), which is exactly why this is an LP-filter emission
+# shot, not a galaxy shot. Expect the bright dumbbell body + teal/red color
+# to come through; the faint outer halo will not under this moon.
+
+ra: 299.9014
+dec: 22.7211
+# 20s exposure: under tonight's full moon the S30 is sky-limited in seconds
+# at f/5, so 20s is depth-identical to longer subs — and 20s freezes
+# tracking, limits the cost of a satellite/gust-ruined frame, and gives more
+# frames for moon-gradient rejection. Sub length is NOT set by dither
+# overhead — that's handled by --dither-every 2. M27's body doesn't saturate
+# at 20s; if the first sub's histogram runs hot, drop to 15s.
+exposure: 20
+# Gain 80: IMX585 HCG sweet spot (per the S30 gain note + the M51/M57
+# profiles). HCG's deeper effective well also helps protect the bright core.
+# Flats matched: requires data/flats/LP_g80_<date>/master_flat.fit. Only
+# LP_g120 exists on disk right now, so run `mira flats --gain 80 --filters
+# LP` BEFORE the session — `mira stack --auto-flats` hard-aborts on a gain
+# mismatch.
+gain: 80
+filter: LP
+target_name: M27
+platesolve_center: true
+# autofocus_every_min: omitted — S30 Pro has no motorized focuser.
+dither_arcsec: 30

@@ -1,0 +1,35 @@
+# M97 Owl Nebula — session profile for `mira capture --session`.
+#
+# The quick opener before M27 (2026-05-30/31). M97 is a planetary nebula
+# (bright OIII), so like M57/M27 it punches through the full moon where a
+# galaxy would drown. Well-placed at dusk — high in the NW (~65° at 21:45),
+# descending to ~50° by 23:30 — so shoot it FIRST, then hand off to M27 as it
+# clears the house (~23:15). Use with:
+#   mira capture --session targets/m97.yaml --dest captures/m97_<UTC> \
+#     --no-platesolve-center --dither-every 2
+#
+# Any CLI flag overrides the value here.
+#
+# TIMING (JC, 2026-05-30/31): high in the NW at dusk and clear of the balcony
+# horizon (NW roofline is only +15-18° there). Descending all evening, so
+# it's an early-session target — wrap by ~23:30 when M27 takes over.
+
+ra: 168.6990
+dec: 55.0190
+# 20s exposure: under the full moon the S30 is sky-limited in seconds at f/5,
+# so 20s is depth-identical to longer subs — and short subs freeze tracking,
+# limit the cost of a satellite-ruined frame, and bank more frames for
+# moon-gradient rejection in a short session. M97 is a diffuse ~3' disk (no
+# bright core to clip). Dither overhead is handled by --dither-every 2, NOT
+# by lengthening the sub.
+exposure: 20
+# Gain 80: IMX585 HCG sweet spot (per the S30 gain note + the M51/M57/M27
+# profiles). No-flat stack is fine for a small centered planetary (vignetting
+# is an edge effect; GraXpert handles the gradient). No LP_g80 master on disk
+# — stack without --auto-flats.
+gain: 80
+filter: LP
+target_name: M97
+platesolve_center: true
+# autofocus_every_min: omitted — S30 Pro has no motorized focuser.
+dither_arcsec: 30

@@ -4,18 +4,21 @@
 # brightness planetary nebula (mean SB ~18 mag/arcsec², ~40x brighter per
 # arcsec² than M51's disk), so it punches through moonlight where faint
 # galaxies/reflection nebulae drown. The one broadband S30 target that
-# genuinely beats the galaxy queue under a 95% moon (see the galaxy-finder
-# surface-brightness logic). Use with:
+# genuinely beats the galaxy queue under a near-full moon (see the
+# galaxy-finder surface-brightness logic). Use with:
 #   mira capture --session targets/m57.yaml --dest captures/m57_<UTC>
 #
 # Any CLI flag overrides the value here. --no-platesolve-center skips the
 # solve on a cloudy night when you just want subs.
 #
-# TIMING (JC, 2026-05-28): M57 (Lyra, RA 18h53m) is a late-riser — below
-# the 45 deg floor until ~midnight, peaks ~81 deg around 03:00, and the
-# 95%-illuminated moon sets ~04:00. Prime window is 02:00-04:10 EDT (M57
-# high, moon low/down). Shoot something moon-proof and well-placed early
-# (M13 is ~85 deg overhead all evening) and swing to M57 after midnight.
+# TIMING (JC, 2026-05-29/30): M57 (Lyra, RA 18h53m) clears the 45 deg floor
+# ~23:30 EDT, peaks 82 deg ~02:30, and stays high to nautical-dark end
+# (04:10) — so it's actually the best-PLACED of tonight's options: up
+# earlier, higher, and longer than M27 (310 vs 210 min above 40 deg). The
+# catch is size — at 1.4' it's only ~23 px on the S30's wide field, so
+# expect a small, low-detail ring (M27 frames far better). The 99% moon is
+# up the ENTIRE night (rises ~20:00, no moon-down window), so this is purely
+# an LP-filter emission grab: the bright ring shows, the faint halo won't.
 
 ra: 283.3962
 dec: 33.0292

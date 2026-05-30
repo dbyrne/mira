@@ -10,7 +10,7 @@ Mira produces a short observing queue of known VSX variable stars worth amateur 
 
 Two rigs share the codebase. Pick the profile that matches what's on the pier tonight.
 
-- **ZWO Seestar S30 Pro (Jersey City)** — wide-field OSC scout. Config: `config/s30_pro_jc.yaml`. Reaches mag ~12, alt-az, single-machine workflow (NINA + Mira on the same laptop). LP/IR filters only — AAVSO submissions emit TG (tri-color green) per the OSC convention, not Johnson V.
+- **ZWO Seestar S30 Pro (Jersey City)** — wide-field OSC scout. Config: `config/s30_pro_jc.yaml`. Reaches mag ~12, operated on an equatorial wedge (**EQ mode, not alt-az** — so no field rotation; long subs are fine), single-machine workflow (NINA + Mira on the same laptop). LP/IR filters only — AAVSO submissions emit TG (tri-color green) per the OSC convention, not Johnson V.
 - **Sky-Watcher Esprit 120 EDX + ASI2600MM Pro + AM7 (Jersey City)** — science rig. Config: `config/esprit120_jc.yaml`. Reaches mag ~16 from urban skies, guided EQ with autofocus, Antlia LRGB-V (V is Johnson-V photometric) + SHO 3nm narrowband, motorized Wanderer Cover V4-EC 190mm for unattended flats. Two-machine workflow: MeLE Quieter 4C on the rig drives NINA, homebase plans + processes + submits. See `docs/rig_workflow.md` for the Syncthing-based split and Siril Live Stack integration.
 
 The Esprit is *primarily a narrowband astrophotography rig* in the medium term. Mira plans only its variable-star photometry nights; narrowband nights run directly through NINA Target Scheduler without going through `mira tonight`. The `esprit120_jc.yaml` profile is for photometry use only.

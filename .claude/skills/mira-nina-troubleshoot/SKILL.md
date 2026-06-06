@@ -34,16 +34,29 @@ order.
   `& "C:\Program Files\astap\astap_cli.exe" -f <file> -ra <RA_hours>
   -spd <Dec+90> -fov 0 -r 20 -z 2 -update`  (`-fov 0` essential).
 - **Capture runs but copies 0 frames (watch folder stays empty):**
-  `nina_root` must match NINA's *actual* save path. Documents is
-  OneDrive-redirected here (Known Folder Move), so the real path is
-  `C:\Users\david\OneDrive\Documents\N.I.N.A` — NOT plain `Documents`.
-  `mira capture` exposes/dithers fine (NINA saves there) but globs
-  `nina_root` for `*<exp>s*.fit*` to copy into `--dest`; a wrong root copies
-  nothing, **silently**, while the loop still logs "captured". Tell:
-  exposure logs look normal but `--dest` (and your Siril live stack) stay
-  empty. Fix: set `capture_defaults.nina_root` (or `--nina-root`) to the
-  OneDrive path. The cli builtin default is already correct — a stale config
-  override is the usual culprit.
+  `nina_root` must match NINA's *actual current* save path. `mira capture`
+  exposes/dithers fine (NINA saves somewhere) but globs `nina_root` for
+  `*<exp>s*.fit*` to copy into `--dest`; a wrong root copies nothing,
+  **silently**, while the loop still logs "captured" and the sidecar shows
+  `captured:0/copied:0`. Verify-pointing + dither also skip (same wrong
+  glob). Tell: exposure logs look normal but `--dest` (and your Siril live
+  stack) stay empty. Two real save locations seen: `Documents` is
+  OneDrive-redirected (Known Folder Move) so the path is
+  `C:\Users\david\OneDrive\Documents\N.I.N.A` — NOT plain `Documents`; but
+  the save path can also **drift to the run's cwd base** (`C:\mira\captures`
+  observed 2026-06-01 after a TPPA/Target-Scheduler thrash). **The builtin
+  default is NOT always right** — match NINA's real dir whichever way it
+  points. Fix: `--nina-root "<NINA's real save dir>"` (or set
+  `capture_defaults.nina_root`).
+- **Frames named `Snapshot_<date>(N).fits` piling up in NINA's save dir:**
+  these are the orphaned subs from the bug above — the API-capture path
+  names frames `Snapshot_<date>` when `target_name` is blank (and
+  `verify_pointing_<date>.fits` for the verify shot). They're real,
+  dithered, on-target subs (each plate-solves; no in-header WCS, as usual).
+  **Salvage without re-shooting:** copy them into a capture folder (renaming
+  is unnecessary — solve/stack glob `*.fits`), then `mira solve` → `mira
+  cull` → stack. Move them out *before* the next run, or NINA keeps
+  appending `Snapshot(N+1)...` into the same dir and intermixes batches.
 
 ## Slew goes to the wrong place
 - **Slew RA/Dec are J2000 DEGREES.** But NINA mount/info *reports* RA in
@@ -64,6 +77,32 @@ order.
   capture --verify-pointing-deg` is coupled to `--platesolve-center`, so it
   is *skipped* under `--no-platesolve-center`; solve a frame yourself and
   compare CRVAL1/2 to nominal.
+
+## Polar alignment (TPPA)
+- **Three Point Polar Alignment crashes NINA → forces an S30 restart.**
+  TPPA rotates the mount between points with ASCOM **`MoveAxis`** ("Moving
+  axis by 3 ... until distance 10° traveled"). The Seestar driver wedges on
+  ~the third move; afterward every property read (`Tracking`, `DeviceState`,
+  `CCDTemperature`) throws `Dynamic client timeout` every ~20s forever, the
+  UI thread blocks on the synchronous timeouts and NINA dies, and the device
+  session is locked → only an S30 power-cycle clears it. (Same wedge as a
+  hung `Connected`: Alpaca *reads* still return 200 fast; the *control*
+  method blocks the full timeout.) **Fix:** don't let NINA `MoveAxis` the
+  S30 — use the **Seestar app's native align**, or **TPPA Manual Mode** (you
+  rotate between points, NINA only solves + computes). Connect scope **+
+  both cameras first** or the log fills with `GET_USER_LOCATION fail:
+  TELEPHOTO not connected`. Raising the ASCOM timeout does not help.
+
+## Dithering
+- **Target Scheduler dither silently no-ops** on the S30: TS logs `adding
+  dither` per sub, but execution fails `Item: Dither - Guider not connected`
+  every frame (no guide camera) → consecutive subs on the same pixels →
+  walking noise. **Fix:** NINA → Equipment → **Guider → "Direct Guider" →
+  Connect** (dithers by nudging the mount, no hardware). Watch the first few
+  complete — Direct-Guider dither issues mount moves and this driver can
+  wedge (see TPPA above). `mira capture` is unaffected: it dithers by
+  **slewing the mount itself**, not via a guider — that's the dither path
+  that always works.
 
 ## Plate solve / scale
 - **FocalLength = NaN:** the Seestar driver reports NaN focal length, so

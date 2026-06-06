@@ -84,6 +84,11 @@ def main(a):
     if a.sat != 1.0:
         lum = rgb.mean(-1, keepdims=True)
         rgb = np.clip(lum + (rgb - lum) * a.sat, 0, 1)
+    # asymmetric trim (T,B,L,R fractions per edge) — wide-field edge cleanup
+    if a.trim:
+        t, b, l, r = (float(x) for x in a.trim.split(","))
+        rgb = rgb[int(H * t):H - int(H * b), int(W * l):W - int(W * r)]
+        H, W, _ = rgb.shape
     # crop fraction per side
     if a.crop > 0:
         cx, cy = int(W * a.crop), int(H * a.crop)
@@ -133,5 +138,6 @@ if __name__ == "__main__":
     p.add_argument("--sat", type=float, default=1.0)
     p.add_argument("--rgb", default=None, help="per-channel gains 'R,G,B' e.g. 1.0,0.95,1.1")
     p.add_argument("--crop", type=float, default=0.0, help="fraction cropped per side")
+    p.add_argument("--trim", default=None, help="asymmetric trim 'T,B,L,R' fractions per edge (wide-field)")
     p.add_argument("--tiff", action="store_true", help="also write a 16-bit lossless TIFF next to the PNG (use for keepers/finals)")
     main(p.parse_args())

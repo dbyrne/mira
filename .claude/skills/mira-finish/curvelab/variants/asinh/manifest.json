@@ -1,0 +1,24 @@
+[
+  {
+    "curve": "asinh",
+    "params": {
+      "a": 0.15
+    },
+    "png": "C:/mira/.claude/skills/mira-finish/curvelab/variants/asinh/asinh__a0.15.png",
+    "prev": "C:/mira/.claude/skills/mira-finish/curvelab/variants/asinh/asinh__a0.15_prev.png",
+    "stats": {
+      "rim_chroma": 0.1997,
+      "rim_lum": 0.3328,
+      "rim_clip": 0.0,
+      "center_chroma": 0.3799,
+      "halo_contrast": 0.00401,
+      "halo_lum": 0.0045,
+      "sky_lum": 0.0005,
+      "sky_noise_lum": 0.0152,
+      "sky_noise_chroma": 0.0076,
+      "midtone": 0.0008,
+      "lin_rim_snr": 11.9,
+      "lin_halo_snr": 0.14
+    }
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "filter": "LP",
+  "gain": 80,
+  "exposure_s": 0.8351713537996877,
+  "target_adu": 30000.0,
+  "measured_median_adu": 29944.0,
+  "n_frames": 25,
+  "n_rejected": 0,
+  "captured_utc": "2026-06-03T00:59:25.035398+00:00",
+  "flat_source": "paper",
+  "panel_brightness": null,
+  "recipe": "siril convert + rej stack -norm=mul",
+  "reusable": "reusable for future captures at this filter/gain as long as focus, rotation, and dust pattern have not changed"
+}

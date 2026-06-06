@@ -20,7 +20,8 @@
 #   - WSW gap (240°): cleanest non-east direction at +10°
 #
 # Notable blocked directions:
-#   - NE/E (30°-60°): house + chimney peak, +40° to +45° minimum
+#   - NE/E (30°-85°): house + chimney peak, +42° to +47°; roofline shoulder holds
+#     ~44° out to az ~70° (corrected 2026-05-30 — proved ~9° higher than eyeballed)
 #   - SW (210°-225°): tall tree, peak +40° around 220°
 
 site: "Jersey City balcony"
@@ -32,12 +33,19 @@ points:
   - {az:  25, alt: 10}
 
   # --- NE: back of house, tall roof + chimney peak ---
-  - {az:  30, alt: 25}
-  - {az:  40, alt: 40}
-  - {az:  50, alt: 45}
-  - {az:  60, alt: 40}
-  - {az:  75, alt: 30}
-  - {az:  85, alt: 15}
+  # Conservative correction 2026-05-30: the Crescent (NGC 6888) stayed behind the
+  # roofline until ~43deg altitude at az ~70deg — ~9deg higher than this eyeballed
+  # 2026-05-06 silhouette interpolated there (~34deg). The screenshot read
+  # under-called the whole house; raised the az 60-85 shoulder to match the
+  # observation + a few deg of margin across the segment. Re-measure if framing
+  # ever depends on it (this is still gating-grade, not pointing-grade).
+  - {az:  30, alt: 27}
+  - {az:  40, alt: 42}
+  - {az:  50, alt: 47}
+  - {az:  60, alt: 46}
+  - {az:  70, alt: 44}   # measured 2026-05-30: Crescent cleared the roof here at ~43deg
+  - {az:  75, alt: 40}
+  - {az:  85, alt: 20}
 
   # --- E: cleaner stretch (Arcturus visible to horizon) ---
   - {az:  90, alt: 10}

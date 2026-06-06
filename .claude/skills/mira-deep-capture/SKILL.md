@@ -37,10 +37,13 @@ mira capture --ra <J2000_deg> --dec <J2000_deg> --exposure 45 --gain 120 \
   selected as NINA's plate solver with a star DB). If Center is fixed it's
   preferable to the manual dance — treat `--no-platesolve-center` as a
   workaround, not a law.
-- **`--park-at-end` (default on) safes the rig at dawn:** parks the mount
+- **`--park-at-end` (default OFF) safes the rig at dawn:** parks the mount
   (stops tracking) + rotates the wheel to the opaque 'Dark' position to
-  shield the sensor — fires on normal stop AND crash/Ctrl-C.
-  `--no-park-at-end` leaves it tracking (e.g. to hand off to another target).
+  shield the sensor — fires on normal stop AND crash/Ctrl-C. Default is OFF
+  because parking can drop the Seestar's entire NINA connection (2026-06-06)
+  and must not interrupt a target-to-target handoff. **Pass `--park-at-end`
+  explicitly on the LAST run of an unattended night** to safe the rig against
+  dawn sun; leave it off for every earlier run in a multi-target chain.
 - It stops itself at `--alt-floor` altitude or `--sun-max` twilight.
 
 ## Site reality — the horizon profile exists; compute it, don't hedge

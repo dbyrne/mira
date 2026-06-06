@@ -28,7 +28,7 @@ import random
 import shutil
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
@@ -90,20 +90,36 @@ def _target_alt_deg(ra_deg: float, dec_deg: float, lat: float, lon: float,
 def altitude_sun_guard(
     ra_deg: float, dec_deg: float, lat: float, lon: float, *,
     alt_floor_deg: float = 30.0, sun_max_deg: float = -15.0,
+    clock: Callable[[], datetime] | None = None,
 ) -> Callable[[int], str | None]:
     """Returns a predicate(frame_index) -> stop-reason str or None. Stops
-    when the target drops below `alt_floor_deg` or the Sun rises above
-    `sun_max_deg` (astro-twilight). Imported lazily to avoid pulling
-    ephemeris into module import."""
+    when the target drops below `alt_floor_deg`, or — only at DAWN — when
+    the Sun rises above `sun_max_deg`.
+
+    The Sun gate fires only while the Sun is *rising* (morning), so it acts
+    as an end-of-night dawn shutdown but never blocks an evening start: the
+    operator decides when dusk is dark enough to begin (per user request
+    2026-06-05 — the evening gate kept killing legitimate twilight starts).
+    A *descending* (dusk) Sun above the threshold is therefore ignored.
+    `clock` is injectable for deterministic tests.
+
+    Imported lazily to avoid pulling ephemeris into module import."""
     from .observability import sun_position
+    _clock = clock or (lambda: datetime.now(timezone.utc))
 
     def _guard(_i: int) -> str | None:
-        now = datetime.now(timezone.utc)
+        now = _clock()
         if _target_alt_deg(ra_deg, dec_deg, lat, lon, now) < alt_floor_deg:
             return f"target below {alt_floor_deg:.0f} deg altitude"
         sra, sdec = sun_position(now)
-        if _target_alt_deg(sra, sdec, lat, lon, now) > sun_max_deg:
-            return f"sun above {sun_max_deg:.0f} deg (astro twilight)"
+        sun_alt = _target_alt_deg(sra, sdec, lat, lon, now)
+        if sun_alt > sun_max_deg:
+            # Only stop at dawn (Sun rising). A dusk Sun above the gate is
+            # the operator's call — they start when they judge it dark.
+            later = now + timedelta(minutes=10)
+            lra, ldec = sun_position(later)
+            if _target_alt_deg(lra, ldec, lat, lon, later) > sun_alt:
+                return f"sun above {sun_max_deg:.0f} deg (dawn)"
         return None
 
     return _guard
@@ -119,10 +135,16 @@ def _verify_pointing(
     nina_root: Path,
     tolerance_deg: float,
     emit: Callable[[str], None],
-) -> tuple[bool, float | None, str]:
+) -> tuple[bool, float | None, str, Path | None]:
     """Take one test sub, ASTAP-solve it, compare solved center to nominal.
 
-    Returns (ok, separation_deg, message). When ASTAP can't run at all
+    Returns (ok, separation_deg, message, keeper_frame). `keeper_frame` is the
+    solved test FITS — a real, on-target, science-exposure sub that already
+    carries WCS (solve_one ran with -update) — returned ONLY on a clean pass so
+    the caller can keep it instead of wasting a free frame. Every skip/fail path
+    returns None for it: no frame was taken, or it's cloudy/unsolved/off-target.
+
+    When ASTAP can't run at all
     (no astap_cli on PATH, no star DB), or solve fails for a non-pointing
     reason (clouds, no stars), we return ok=True with the message — better
     to capture an un-verified session than refuse a session over a
@@ -140,10 +162,13 @@ def _verify_pointing(
         astap = find_astap_cli()
     except AstapNotFound as exc:
         emit(f"  verify-pointing skipped: {exc}")
-        return True, None, f"astap_cli not found: {exc}"
+        return True, None, f"astap_cli not found: {exc}", None
 
-    exp_tag = f"{float(exposure_s):.2f}s"
-    glob_pat = os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*")
+    # Detect the test sub by a before/after diff of ALL FITS, not by parsing
+    # an exposure token out of the filename: NINA's image file pattern is
+    # user-configurable, so any `*<token>*` glob is fragile (see the copy
+    # loop's note re: the 2026-06-03 `*60.00s*` bug).
+    glob_pat = os.path.join(str(nina_root), "**", "*.fit*")
     before = set(glob.glob(glob_pat, recursive=True))
 
     emit("verify-pointing: capturing test sub for plate-solve...")
@@ -155,13 +180,13 @@ def _verify_pointing(
         )
     except Exception as exc:
         emit(f"  verify-pointing skipped (capture failed): {exc}")
-        return True, None, f"test capture failed: {exc}"
+        return True, None, f"test capture failed: {exc}", None
 
     after = set(glob.glob(glob_pat, recursive=True))
     new_files = after - before
     if not new_files:
         emit("  verify-pointing skipped: couldn't find new FITS in nina_root")
-        return True, None, "test FITS not found"
+        return True, None, "test FITS not found", None
 
     test_frame = Path(max(new_files, key=os.path.getmtime))
     emit(f"  test frame: {test_frame.name}; ASTAP-solving with tight hint...")
@@ -172,7 +197,7 @@ def _verify_pointing(
     )
     if solve_res.status != "solved":
         emit(f"  verify-pointing skipped: ASTAP {solve_res.note}")
-        return True, None, f"solve failed: {solve_res.note}"
+        return True, None, f"solve failed: {solve_res.note}", None
 
     # solve_one used -update; the FITS now carries WCS.
     from astropy.io import fits
@@ -182,7 +207,7 @@ def _verify_pointing(
         solved_dec = float(hdr["CRVAL2"])
     except (KeyError, OSError, ValueError) as exc:
         emit(f"  verify-pointing skipped: couldn't read WCS: {exc}")
-        return True, None, f"WCS read failed: {exc}"
+        return True, None, f"WCS read failed: {exc}", None
 
     sep = angular_separation_deg(ra_deg, dec_deg, solved_ra, solved_dec)
     if sep > tolerance_deg:
@@ -194,11 +219,11 @@ def _verify_pointing(
             f"{test_frame} for inspection."
         )
         emit(msg)
-        return False, sep, msg
+        return False, sep, msg, None
 
     emit(f"  verify-pointing OK: solved center {sep:.3f}deg from nominal "
          f"(within {tolerance_deg:.2f}deg)")
-    return True, sep, f"verified {sep:.3f}deg from nominal"
+    return True, sep, f"verified {sep:.3f}deg from nominal", test_frame
 
 
 def run_capture(
@@ -339,7 +364,7 @@ def run_capture(
     # east — six hours of imaging lost). Take one test sub, ASTAP-solve
     # it, abort if solved center is too far from nominal.
     if platesolve_center and verify_pointing_deg > 0:
-        ok, sep, msg = _verify_pointing(
+        ok, sep, msg, keeper = _verify_pointing(
             client, ra_deg=ra_deg, dec_deg=dec_deg,
             exposure_s=exposure_s, gain=gain, nina_root=nina_root,
             tolerance_deg=verify_pointing_deg, emit=_emit,
@@ -347,6 +372,20 @@ def run_capture(
         res.pointing_offset_deg = sep
         if ok:
             res.pointing_verified = True
+            # The verify sub is a real, on-target, science-exposure frame that
+            # ASTAP already solved (carries WCS) — keep it rather than waste a
+            # free sub. `keeper` is non-None only on a clean pass; skip/fail
+            # paths return None (no frame, or cloudy/off-target). It's copied
+            # explicitly here; the loop's `seen` snapshot (taken just below)
+            # includes its source in nina_root, so the loop won't re-copy it.
+            if keeper is not None:
+                try:
+                    shutil.copy2(keeper, dest_dir)
+                    res.captured += 1
+                    res.copied += 1
+                    _emit(f"  kept verify sub as a light frame: {keeper.name}")
+                except OSError as exc:
+                    _emit(f"  (could not keep verify sub: {exc})")
         else:
             res.stopped_reason = msg
             _persist_sidecar()
@@ -382,8 +421,16 @@ def run_capture(
     # tallies.
     _persist_sidecar()
 
-    exp_tag = f"{float(exposure_s):.2f}s"
-    seen = set(glob.glob(os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*"),
+    # New-frame detection is by snapshot diff, NOT filename parsing. NINA's
+    # image file pattern is user-configurable (e.g.
+    # $$DATEMINUS12$$_$$TIME$$_$$FILTER$$_$$SENSORTEMP$$_$$EXPOSURETIME$$_$$FRAMENR$$),
+    # so a token-matching glob is fragile: the original `*{exp:.2f}s*` glob
+    # appended an 's' that $$EXPOSURETIME$$ never emits and copied 0/70 real
+    # frames (2026-06-03). `seen` is snapshotted here AFTER verify-pointing +
+    # pre-loop autofocus, so any FITS that appears during the loop is a new
+    # science sub. Reposition slews use center=False (no mid-loop solve
+    # frames), and NINA does not write autofocus exposures into the light dir.
+    seen = set(glob.glob(os.path.join(str(nina_root), "**", "*.fit*"),
                          recursive=True))
 
     for i in range(1, n_max + 1):
@@ -431,7 +478,7 @@ def run_capture(
         except Exception as exc:
             _emit(f"  capture {i} failed: {exc}")
 
-        for p in glob.glob(os.path.join(str(nina_root), "**", f"*{exp_tag}*.fit*"),
+        for p in glob.glob(os.path.join(str(nina_root), "**", "*.fit*"),
                            recursive=True):
             if p not in seen:
                 seen.add(p)

@@ -35,7 +35,6 @@ class FakeClient:
         self.parked = False
         self._n = 0
         self.nina_root: Path | None = None
-        self.exp_tag = ""
 
     def set_filter(self, filter_ref, *, wait=True, timeout_s=60.0):
         if self._fail_filter:
@@ -59,7 +58,13 @@ class FakeClient:
             self._n += 1
             d = self.nina_root / "SNAPSHOT"
             d.mkdir(parents=True, exist_ok=True)
-            (d / f"2026_{self.exp_tag}_{self._n:04d}.fits").write_text("x")
+            # Mimic a REAL, user-configured NINA filename. Deliberately carries
+            # NO parseable science-exposure token (a valid pattern, e.g.
+            # DATEMINUS12_TIME_FILTER_SENSORTEMP_FRAMENR) so these tests fail if
+            # the copy logic ever regresses to filename-substring matching (the
+            # 2026-06-03 `*60.00s*` bug). New-frame detection must be by
+            # snapshot diff, pattern-independent.
+            (d / f"2026-06-03_21-35-37_IR_26.50_{self._n:04d}.fits").write_text("x")
         return {"Response": "Capture started"}
 
     def run_autofocus(self, *, timeout_s=600.0, poll_s=5.0):
@@ -103,7 +108,6 @@ class TestRunCaptureDither(TestCase):
         nina = Path(d) / "nina"
         nina.mkdir()
         c.nina_root = nina
-        c.exp_tag = f"{float(kw.get('exposure_s', 45.0)):.2f}s"
         # Existing tests pre-date verify-pointing and rely on platesolve
         # being a single slew(center=True). Default verify to 0 here so
         # they aren't perturbed by ASTAP-availability-dependent behavior;
@@ -284,7 +288,6 @@ class TestVerifyPointing(TestCase):
         nina = Path(d) / "nina"
         nina.mkdir()
         c.nina_root = nina
-        c.exp_tag = f"{float(kw.get('exposure_s', 45.0)):.2f}s"
         with patch("mira.capture._verify_pointing", side_effect=verifier):
             res = run_capture(
                 c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
@@ -297,7 +300,9 @@ class TestVerifyPointing(TestCase):
 
     def test_verification_pass_proceeds_to_loop(self) -> None:
         def verifier(*a, **kw):
-            return True, 0.05, "verified 0.050deg from nominal"
+            # keeper=None: this mock doesn't simulate a kept verify frame, so
+            # captured reflects loop subs only (see test_verify_sub_is_kept).
+            return True, 0.05, "verified 0.050deg from nominal", None
         with TemporaryDirectory() as d:
             c, res = self._run_with_verifier(
                 d, verifier=verifier, n_max=2, dither_arcsec=10.0,
@@ -306,10 +311,39 @@ class TestVerifyPointing(TestCase):
             self.assertEqual(res.pointing_offset_deg, 0.05)
             self.assertEqual(res.captured, 2)         # loop ran
 
+    def test_verify_sub_is_kept_as_light_frame(self) -> None:
+        """A passing verify sub is a real, on-target, already-solved frame at
+        the science exposure — it must be copied into dest and counted, not
+        wasted. (keeper non-None == the clean-pass path of the real helper.)"""
+        from unittest.mock import patch
+        with TemporaryDirectory() as d:
+            nina = Path(d) / "nina"
+            nina.mkdir()
+            c = FakeClient()
+            c.nina_root = nina
+            # The solved test sub the real helper leaves in nina_root + returns.
+            keeper = nina / "2026-06-04_00-00-00_IR_26.50_9999.fits"
+            keeper.write_text("solved-test-sub")
+
+            def verifier(*a, **kw):
+                return True, 0.05, "verified 0.050deg from nominal", keeper
+            with patch("mira.capture._verify_pointing", side_effect=verifier):
+                res = run_capture(
+                    c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                    dest_dir=Path(d) / "dest", nina_root=nina,
+                    rng=random.Random(7), settle_s=0.0,
+                    platesolve_center=True, verify_pointing_deg=1.0,
+                    n_max=2, dither_arcsec=10.0,
+                )
+            # 2 loop subs + the kept verify sub == 3, and it's not double-copied
+            self.assertEqual(res.captured, 3)
+            self.assertEqual(res.copied, 3)
+            self.assertTrue((Path(d) / "dest" / keeper.name).exists())
+
     def test_verification_fail_aborts_before_loop(self) -> None:
         def verifier(*a, **kw):
             return False, 2.81, ("pointing verification FAILED: solved center "
-                                  "is 2.81deg from nominal")
+                                  "is 2.81deg from nominal"), None
         with TemporaryDirectory() as d:
             c, res = self._run_with_verifier(
                 d, verifier=verifier, n_max=10, dither_arcsec=10.0,
@@ -330,11 +364,10 @@ class TestVerifyPointing(TestCase):
             nina = Path(d) / "nina"
             nina.mkdir()
             c.nina_root = nina
-            c.exp_tag = "45.00s"
             calls = []
             def verifier(*a, **kw):
                 calls.append(1)
-                return True, 0.0, ""
+                return True, 0.0, "", None
             with patch("mira.capture._verify_pointing", side_effect=verifier):
                 res = run_capture(
                     c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
@@ -350,7 +383,7 @@ class TestVerifyPointing(TestCase):
         """On abort, the sidecar still captures the failure for audit —
         no silent drop of a session worth of intent."""
         def verifier(*a, **kw):
-            return False, 5.0, "pointing verification FAILED: 5.00deg off"
+            return False, 5.0, "pointing verification FAILED: 5.00deg off", None
         with TemporaryDirectory() as d:
             c, res = self._run_with_verifier(
                 d, verifier=verifier, n_max=10, dither_arcsec=0.0,
@@ -403,8 +436,36 @@ class TestGuard(TestCase):
                                 alt_floor_deg=200.0, sun_max_deg=-90.0)
         self.assertIn("altitude", g(1))
 
-    def test_sun_branch_deterministic(self) -> None:
-        # floor passes (alt always > -90); sun always > -90 -> sun reason
+    def test_sun_branch_fires_at_dawn(self) -> None:
+        # floor passes (alt always > -90); sun always > -90. At a RISING-sun
+        # (morning) clock the dawn gate fires. ~10:00 UTC at lon -74 is after
+        # solar midnight (~04:56 UTC) and before solar noon (~16:56) -> rising.
+        from datetime import datetime, timezone
+        morning = datetime(2026, 6, 6, 10, 0, tzinfo=timezone.utc)
         g = altitude_sun_guard(200.0, 40.0, 40.7, -74.0,
-                                alt_floor_deg=-90.0, sun_max_deg=-90.0)
-        self.assertIn("sun", g(1))
+                                alt_floor_deg=-90.0, sun_max_deg=-90.0,
+                                clock=lambda: morning)
+        reason = g(1)
+        self.assertIsNotNone(reason)
+        self.assertIn("sun", reason)
+        self.assertIn("dawn", reason)
+
+    def test_sun_branch_silent_at_dusk(self) -> None:
+        # Same impossible gate, but a SETTING-sun (evening) clock must NOT
+        # stop: the operator controls the dusk start. ~23:00 UTC at lon -74
+        # is after solar noon (~16:56) -> descending.
+        from datetime import datetime, timezone
+        evening = datetime(2026, 6, 6, 23, 0, tzinfo=timezone.utc)
+        g = altitude_sun_guard(200.0, 40.0, 40.7, -74.0,
+                                alt_floor_deg=-90.0, sun_max_deg=-90.0,
+                                clock=lambda: evening)
+        self.assertIsNone(g(1))
+
+    def test_floor_beats_sun_at_dusk(self) -> None:
+        # The altitude floor still stops any time, dusk included.
+        from datetime import datetime, timezone
+        evening = datetime(2026, 6, 6, 23, 0, tzinfo=timezone.utc)
+        g = altitude_sun_guard(200.0, 40.0, 40.7, -74.0,
+                                alt_floor_deg=200.0, sun_max_deg=-90.0,
+                                clock=lambda: evening)
+        self.assertIn("altitude", g(1))

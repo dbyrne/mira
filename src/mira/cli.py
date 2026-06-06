@@ -304,7 +304,7 @@ def main() -> None:
     capture_parser.add_argument("--recenter-every", type=int, default=None, help="If NOT dithering, blind re-center to nominal every N subs.")
     capture_parser.add_argument("--n-max", type=int, default=None, help="Hard cap on subs (default 1000; guards usually stop first).")
     capture_parser.add_argument("--alt-floor", type=float, default=None, help="Stop when target drops below this altitude (deg).")
-    capture_parser.add_argument("--sun-max", type=float, default=None, help="Stop when Sun rises above this (deg); -15 = astro twilight.")
+    capture_parser.add_argument("--sun-max", type=float, default=None, help="Dawn shutdown: stop when the *rising* Sun crosses above this (deg); -15 = astro twilight. Only fires at dawn — never blocks an evening/dusk start.")
     capture_parser.add_argument("--lat", type=float, default=None, help="Site latitude (default Jersey City).")
     capture_parser.add_argument("--lon", type=float, default=None, help="Site longitude (default Jersey City).")
     capture_parser.add_argument("--settle", type=float, default=None, help="Seconds to settle after a reposition slew before exposing.")
@@ -1613,8 +1613,8 @@ def capture(args: argparse.Namespace) -> None:
         f"Capture loop: RA {cfg['ra']}, Dec {cfg['dec']}, {cfg['exposure']}s "
         f"gain={cfg['gain']} dither={cfg['dither_arcsec']}\" every "
         f"{cfg['dither_every']} filter={cfg['filter'] or '(current)'} "
-        f"-> {cfg['dest']}. Stops at <{cfg['alt_floor']} deg alt or sun "
-        f">{cfg['sun_max']}."
+        f"-> {cfg['dest']}. Stops at <{cfg['alt_floor']} deg alt or at dawn "
+        f"(rising sun > {cfg['sun_max']} deg). Evening/dusk start is not gated."
     )
     if args.session:
         print(f"(session profile: {args.session})")

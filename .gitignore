@@ -36,3 +36,31 @@ output/_webapp.log
 output/**/*.npy
 # Claude Code runtime state (transient — not project content)
 .claude/scheduled_tasks.lock
+
+# --- Processing image scratch under output/ ---------------------------------
+# Keepers (TARGET_descriptor_date.{png,tiff}) ARE committed. Everything below
+# is regenerable from the linear *_cc FITS and stays local.
+# (NOTE: .gitignore has no inline comments — keep patterns on their own lines.)
+# curve_lab per-curve sweep grids:
+output/**/variants/
+# throwaway shootout workdirs (unanchored — matches the dir at any depth):
+*_curveshootout/
+# underscore intermediates (_step*, _core*, _eye_*, _starless, ...):
+output/**/_*.png
+output/**/_*.tiff
+# curve_lab param dumps (<curve>__<params>.png) + preview thumbnails:
+output/**/*__*.png
+output/**/*__*.tiff
+output/**/*_prev.png
+# auto stack previews (~40 MB each) + side-by-side compares:
+output/**/*_stack_preview.png
+output/**/*_compare.png
+# per-target stretch iterations (superseded by the committed keeper finals):
+output/m27/m27_v*.png
+output/m27/m27_crop*.png
+output/m27/m27_stars_*.png
+output/m57_20260530/m57_center.png
+output/m97/m97_ghs_handtune.png
+output/ngc4631/v[0-9]*.png
+output/m13_work/w_*.png
+output/ngc6888_work/cr_*.png

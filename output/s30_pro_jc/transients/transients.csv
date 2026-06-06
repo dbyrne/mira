@@ -1,0 +1,14 @@
+rank,name,type,magnitude,mag_stale,host,ra_deg,dec_deg,within_reach,best_site,peak_alt_deg,dark_minutes,best_night
+1,2026fvx,Ia,15.1,no,NGC 4205,183.74221,+63.78789,yes,Jersey City,64.44,180,2026-05-28
+2,AT2026nma,unk,15.3,no,none,171.22506,+47.95037,yes,Jersey City,66.62,150,2026-05-28
+3,2026kie,Ic,15.5,no,NGC 3437,163.15220,+22.93172,yes,Jersey City,52.50,60,2026-05-28
+4,2026dix,IIb,15.6,no,NGC 3913,177.65595,+55.35359,yes,Jersey City,68.04,180,2026-05-28
+5,2026kid,II,15.7,no,NGC 5907,228.98829,+56.30908,yes,Jersey City,74.41,180,2026-06-01
+6,2026fjc,Ia,15.9,yes,NGC 4914,195.17942,+37.31005,yes,Jersey City,83.32,180,2026-05-28
+7,AT2026nhs,unk,16.1,no,none,268.07928,+50.02089,no,Jersey City,75.94,180,2026-06-10
+8,AT2026lmp,unk,16.4,no,none,231.09425,+61.77100,no,Jersey City,68.95,180,2026-06-03
+9,2026icv,Ia,16.4,no,UGC 7180,182.71124,+66.92528,no,Jersey City,61.59,180,2026-05-28
+10,2026gwx,Ib,16.4,no,NGC 3689,172.04536,+25.65670,no,Jersey City,60.57,90,2026-05-28
+11,2026jlm,Ia,16.5,no,NGC 5583,215.41623,+13.22954,no,Jersey City,62.51,180,2026-06-10
+12,2026ejy,II,16.7,no,NGC 6070,242.50113,+0.70573,no,Jersey City,49.99,150,2026-06-07
+13,2026lga,Ia,16.9,no,anonymous,243.10167,+29.40559,no,Jersey City,78.69,180,2026-05-31

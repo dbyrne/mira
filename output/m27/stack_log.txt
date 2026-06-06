@@ -1,0 +1,6 @@
+--auto-flats: matched LP_g80_20260603 -> data\flats\LP_g80_20260603\master_flat.fit
+Stacking 'captures\m27_20260603' with Siril...
+
+Stacked 219 frames.
+Wrote C:\mira\output\m27\m27_stack.fit (linear)
+Wrote C:\mira\output\m27\m27_stack_preview.png (stretched preview)

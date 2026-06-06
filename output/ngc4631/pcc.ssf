@@ -1,0 +1,7 @@
+requires 1.2.0
+cd "C:/mira/output/ngc4631"
+load ngc4631_dc.fits
+platesolve 12:42:08,+32:32:28 -focal=163 -pixelsize=2.9
+pcc
+save ngc4631_cc
+close

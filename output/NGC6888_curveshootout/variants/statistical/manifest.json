@@ -1,0 +1,164 @@
+[
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.013,
+      "target": 0.14,
+      "sh_knee": 0.007,
+      "sh_pow": 3.0,
+      "toe_knee": 0.0008,
+      "toe_pow": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow3.0_target0.14_toe_knee0.0008_toe_pow2.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow3.0_target0.14_toe_knee0.0008_toe_pow2.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0234,
+      "rim_lum": 0.0213,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0404,
+      "halo_contrast": 0.00068,
+      "halo_lum": 0.0012,
+      "sky_lum": 0.0005,
+      "sky_noise_lum": 0.0265,
+      "sky_noise_chroma": 0.0144,
+      "midtone": 0.0012,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.013,
+      "target": 0.14,
+      "sh_knee": 0.007,
+      "sh_pow": 4.0,
+      "toe_knee": 0.0008,
+      "toe_pow": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow4.0_target0.14_toe_knee0.0008_toe_pow2.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow4.0_target0.14_toe_knee0.0008_toe_pow2.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0233,
+      "rim_lum": 0.0212,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0402,
+      "halo_contrast": 0.00068,
+      "halo_lum": 0.0012,
+      "sky_lum": 0.0005,
+      "sky_noise_lum": 0.0254,
+      "sky_noise_chroma": 0.0142,
+      "midtone": 0.0012,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.013,
+      "target": 0.14,
+      "sh_knee": 0.007,
+      "sh_pow": 2.0,
+      "toe_knee": 0.0008,
+      "toe_pow": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow2.0_target0.14_toe_knee0.0008_toe_pow2.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow2.0_target0.14_toe_knee0.0008_toe_pow2.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0237,
+      "rim_lum": 0.0216,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0411,
+      "halo_contrast": 0.00068,
+      "halo_lum": 0.0012,
+      "sky_lum": 0.0005,
+      "sky_noise_lum": 0.0295,
+      "sky_noise_chroma": 0.0148,
+      "midtone": 0.0012,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.013,
+      "target": 0.16,
+      "sh_knee": 0.006,
+      "sh_pow": 3.0,
+      "toe_knee": 0.0008,
+      "toe_pow": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.006_sh_pow3.0_target0.16_toe_knee0.0008_toe_pow2.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.006_sh_pow3.0_target0.16_toe_knee0.0008_toe_pow2.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0296,
+      "rim_lum": 0.0275,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.051,
+      "halo_contrast": 0.00093,
+      "halo_lum": 0.0016,
+      "sky_lum": 0.0007,
+      "sky_noise_lum": 0.0309,
+      "sky_noise_chroma": 0.0172,
+      "midtone": 0.0017,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.01,
+      "target": 0.16,
+      "sh_knee": 0.005,
+      "sh_pow": 2.5,
+      "toe_knee": 0.0008,
+      "toe_pow": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.01_sh_knee0.005_sh_pow2.5_target0.16_toe_knee0.0008_toe_pow2.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.01_sh_knee0.005_sh_pow2.5_target0.16_toe_knee0.0008_toe_pow2.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0329,
+      "rim_lum": 0.0314,
+      "rim_clip": 0.0004,
+      "center_chroma": 0.0568,
+      "halo_contrast": 0.00112,
+      "halo_lum": 0.002,
+      "sky_lum": 0.0008,
+      "sky_noise_lum": 0.034,
+      "sky_noise_chroma": 0.019,
+      "midtone": 0.002,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.013,
+      "target": 0.14,
+      "sh_knee": 0.007,
+      "sh_pow": 1.0,
+      "toe_knee": 0.0,
+      "toe_pow": 1.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow1.0_target0.14_toe_knee0.0_toe_pow1.0.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/statistical/statistical__anchor0.013_sh_knee0.007_sh_pow1.0_target0.14_toe_knee0.0_toe_pow1.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.0176,
+      "rim_lum": 0.0154,
+      "rim_clip": 0.0004,
+      "center_chroma": 0.0285,
+      "halo_contrast": 0.00073,
+      "halo_lum": 0.002,
+      "sky_lum": 0.0013,
+      "sky_noise_lum": 0.0358,
+      "sky_noise_chroma": 0.0153,
+      "midtone": 0.002,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  }
+]

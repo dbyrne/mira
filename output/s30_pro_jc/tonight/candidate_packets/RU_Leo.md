@@ -1,6 +1,6 @@
 # RU Leo
 
-Score: **92.0**  
+Score: **62.0**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `72.0 deg`
-- Best single-night dark time above altitude floor: `180 min`
-- Best window date: `2026-05-05`
-- Best sampled local time: `2026-05-05T21:30:00-04:00`
+- Max altitude in dark window: `52.0 deg`
+- Best single-night dark time above altitude floor: `60 min`
+- Best window date: `2026-05-30`
+- Best sampled local time: `2026-05-30T22:00:00-04:00`
 
 ## Observing Strategy
 
@@ -28,8 +28,7 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 72.0 deg from Jersey City
-- long nightly window from Jersey City
+- max altitude 52.0 deg from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 1.70 mag
 - bright enough for Jersey City (10.30)
@@ -42,7 +41,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `0`
-- JD range: `2460436.41-2461166.41`
+- JD range: `2460461.41-2461191.41`
 - Most recent observation: `none in the configured window`
 
 ## SIMBAD Context

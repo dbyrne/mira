@@ -1,0 +1,5 @@
+requires 1.2.0
+load m97_bg_dn_dc
+platesolve 168.699,55.019 -focal=163 -pixelsize=2.9
+pcc
+save m97_cc

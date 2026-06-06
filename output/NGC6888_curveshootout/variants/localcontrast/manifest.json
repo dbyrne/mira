@@ -1,0 +1,34 @@
+[
+  {
+    "curve": "localcontrast",
+    "params": {
+      "a": 0.012,
+      "cgain": 2.0,
+      "lc_amount": 0.0,
+      "s_struct": 0.004,
+      "s_reg": 0.02,
+      "dcap": 0.02,
+      "rlo": 0.013,
+      "rhi": 0.03,
+      "mlo": 0.013,
+      "mhi": 0.032,
+      "hi_prot": 2.0
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/localcontrast/localcontrast__a0.012_cgain2.0_dcap0.02_hi_prot2.0_lc_amount0.0_mhi0.032_mlo0.013_rhi0.03_rlo0.013_s_reg0.02_s_struct0.004.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/localcontrast/localcontrast__a0.012_cgain2.0_dcap0.02_hi_prot2.0_lc_amount0.0_mhi0.032_mlo0.013_rhi0.03_rlo0.013_s_reg0.02_s_struct0.004_prev.png",
+    "stats": {
+      "rim_chroma": 0.0302,
+      "rim_lum": 0.0201,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0595,
+      "halo_contrast": 0.00096,
+      "halo_lum": 0.0027,
+      "sky_lum": 0.0017,
+      "sky_noise_lum": 0.0378,
+      "sky_noise_chroma": 0.0164,
+      "midtone": 0.0027,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  }
+]

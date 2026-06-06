@@ -1,0 +1,5 @@
+requires 1.2.0
+load ngc6888_bg_dn_dc
+platesolve 303.0,38.35 -focal=163 -pixelsize=2.9
+pcc
+save ngc6888_cc

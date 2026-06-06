@@ -1,0 +1,164 @@
+[
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.008,
+      "passes": 2.0,
+      "midtone": 0.225,
+      "shadow_clip": 0.0,
+      "knee": 0.55,
+      "gamma": 3.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.225_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.225_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4257,
+      "rim_lum": 0.3259,
+      "rim_clip": 0.0,
+      "center_chroma": 0.4969,
+      "halo_contrast": 0.01173,
+      "halo_lum": 0.0117,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.0247,
+      "sky_noise_chroma": 0.0219,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  },
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.008,
+      "passes": 2.0,
+      "midtone": 0.21,
+      "shadow_clip": 0.0,
+      "knee": 0.55,
+      "gamma": 3.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.21_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.21_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4519,
+      "rim_lum": 0.3625,
+      "rim_clip": 0.0,
+      "center_chroma": 0.5294,
+      "halo_contrast": 0.01393,
+      "halo_lum": 0.0139,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.0267,
+      "sky_noise_chroma": 0.0253,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  },
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.008,
+      "passes": 2.0,
+      "midtone": 0.24,
+      "shadow_clip": 0.0,
+      "knee": 0.55,
+      "gamma": 3.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.24_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma3.0_knee0.55_midtone0.24_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.3958,
+      "rim_lum": 0.2924,
+      "rim_clip": 0.0,
+      "center_chroma": 0.462,
+      "halo_contrast": 0.00994,
+      "halo_lum": 0.0099,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.023,
+      "sky_noise_chroma": 0.0191,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  },
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.006,
+      "passes": 2.0,
+      "midtone": 0.225,
+      "shadow_clip": 0.0,
+      "knee": 0.55,
+      "gamma": 3.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.006_gamma3.0_knee0.55_midtone0.225_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.006_gamma3.0_knee0.55_midtone0.225_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4148,
+      "rim_lum": 0.3364,
+      "rim_clip": 0.0,
+      "center_chroma": 0.4859,
+      "halo_contrast": 0.02505,
+      "halo_lum": 0.0251,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.0267,
+      "sky_noise_chroma": 0.0276,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  },
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.01,
+      "passes": 2.0,
+      "midtone": 0.215,
+      "shadow_clip": 0.0,
+      "knee": 0.55,
+      "gamma": 3.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.01_gamma3.0_knee0.55_midtone0.215_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.01_gamma3.0_knee0.55_midtone0.215_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4563,
+      "rim_lum": 0.3391,
+      "rim_clip": 0.0,
+      "center_chroma": 0.5305,
+      "halo_contrast": 0.0,
+      "halo_lum": 0.0,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.0243,
+      "sky_noise_chroma": 0.0194,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  },
+  {
+    "curve": "loghist",
+    "params": {
+      "black": 0.008,
+      "passes": 2.0,
+      "midtone": 0.22,
+      "shadow_clip": 0.0,
+      "knee": 0.5,
+      "gamma": 4.0
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma4.0_knee0.5_midtone0.22_passes2.0_shadow_clip0.0.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/loghist/loghist__black0.008_gamma4.0_knee0.5_midtone0.22_passes2.0_shadow_clip0.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4285,
+      "rim_lum": 0.3366,
+      "rim_clip": 0.0,
+      "center_chroma": 0.503,
+      "halo_contrast": 0.01241,
+      "halo_lum": 0.0124,
+      "sky_lum": 0.0,
+      "sky_noise_lum": 0.0245,
+      "sky_noise_chroma": 0.0229,
+      "midtone": 0.0,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  }
+]

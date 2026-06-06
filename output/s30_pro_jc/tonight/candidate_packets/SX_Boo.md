@@ -1,6 +1,6 @@
 # SX Boo
 
-Score: **85.4**  
+Score: **85.3**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `63.4 deg`
-- Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-05`
-- Best sampled local time: `2026-05-06T00:00:00-04:00`
+- Max altitude in dark window: `63.3 deg`
+- Best single-night dark time above altitude floor: `180 min`
+- Best window date: `2026-05-30`
+- Best sampled local time: `2026-05-30T22:30:00-04:00`
 
 ## Observing Strategy
 
@@ -28,7 +28,7 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 63.4 deg from Jersey City
+- max altitude 63.3 deg from Jersey City
 - long nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 4.04 mag
@@ -42,7 +42,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `2`
-- JD range: `2460436.19-2461166.19`
+- JD range: `2460461.41-2461191.41`
 - Most recent observation: `2025-03-19` (JD `2460754.37`)
 - Period agreement: not assessable (Lomb-Scargle did not return a period)
 

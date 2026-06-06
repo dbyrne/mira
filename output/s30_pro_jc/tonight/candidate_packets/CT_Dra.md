@@ -1,6 +1,6 @@
 # CT Dra
 
-Score: **79.2**  
+Score: **70.9**  
 Observable from: **Jersey City**
 
 ## Catalog
@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `55.2 deg`
-- Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-05`
-- Best sampled local time: `2026-05-05T21:30:00-04:00`
+- Max altitude in dark window: `52.9 deg`
+- Best single-night dark time above altitude floor: `150 min`
+- Best window date: `2026-05-30`
+- Best sampled local time: `2026-05-30T22:00:00-04:00`
 
 ## Observing Strategy
 
@@ -28,8 +28,8 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 55.2 deg from Jersey City
-- long nightly window from Jersey City
+- max altitude 52.9 deg from Jersey City
+- usable nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 0.60 mag
 - bright enough for Jersey City (9.80)
@@ -41,7 +41,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `0`
-- JD range: `2460436.41-2461166.41`
+- JD range: `2460461.41-2461191.41`
 - Most recent observation: `none in the configured window`
 
 ## SIMBAD Context

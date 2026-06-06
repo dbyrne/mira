@@ -1,0 +1,28 @@
+[
+  {
+    "curve": "statistical",
+    "params": {
+      "anchor": 0.05,
+      "target": 0.35,
+      "toe_knee": 0.03,
+      "toe_pow": 3.0,
+      "black": 0.0
+    },
+    "png": "variants/_eye_honest/statistical__anchor0.05_black0.0_target0.35_toe_knee0.03_toe_pow3.0.png",
+    "prev": "variants/_eye_honest/statistical__anchor0.05_black0.0_target0.35_toe_knee0.03_toe_pow3.0_prev.png",
+    "stats": {
+      "rim_chroma": 0.4136,
+      "rim_lum": 0.3297,
+      "rim_clip": 0.0,
+      "center_chroma": 0.4801,
+      "halo_contrast": 0.00599,
+      "halo_lum": 0.0061,
+      "sky_lum": 0.0001,
+      "sky_noise_lum": 0.0242,
+      "sky_noise_chroma": 0.0157,
+      "midtone": 0.0002,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  }
+]

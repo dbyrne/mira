@@ -17,10 +17,10 @@ Observable from: **Jersey City**
 
 ## Observability from Jersey City (best)
 
-- Max altitude in dark window: `89.6 deg`
-- Best single-night dark time above altitude floor: `210 min`
-- Best window date: `2026-05-05`
-- Best sampled local time: `2026-05-05T23:30:00-04:00`
+- Max altitude in dark window: `88.3 deg`
+- Best single-night dark time above altitude floor: `180 min`
+- Best window date: `2026-05-30`
+- Best sampled local time: `2026-05-30T22:00:00-04:00`
 
 ## Observing Strategy
 
@@ -28,7 +28,7 @@ Observable from: **Jersey City**
 
 ## Why It Was Flagged
 
-- max altitude 89.6 deg from Jersey City
+- max altitude 88.3 deg from Jersey City
 - long nightly window from Jersey City
 - classical GCVS variable, suitable for practice and follow-up
 - catalog amplitude about 1.30 mag
@@ -41,7 +41,7 @@ Observable from: **Jersey City**
 
 - Status: `ok`
 - Recent observations: `2`
-- JD range: `2460436.19-2461166.19`
+- JD range: `2460461.41-2461191.41`
 - Most recent observation: `2025-08-30` (JD `2460917.64`)
 - Period agreement: not assessable (Lomb-Scargle did not return a period)
 

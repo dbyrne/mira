@@ -1,0 +1,24 @@
+[
+  {
+    "curve": "asinh",
+    "params": {
+      "a": 0.03
+    },
+    "png": "variants/_eye_base/asinh__a0.03.png",
+    "prev": "variants/_eye_base/asinh__a0.03_prev.png",
+    "stats": {
+      "rim_chroma": 0.3132,
+      "rim_lum": 0.2917,
+      "rim_clip": 0.0,
+      "center_chroma": 0.367,
+      "halo_contrast": 0.03986,
+      "halo_lum": 0.0519,
+      "sky_lum": 0.012,
+      "sky_noise_lum": 0.0292,
+      "sky_noise_chroma": 0.0391,
+      "midtone": 0.0142,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  }
+]

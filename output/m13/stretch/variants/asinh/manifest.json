@@ -1,0 +1,20 @@
+[
+  {
+    "curve": "asinh",
+    "params": {
+      "a": 0.035
+    },
+    "png": "C:/mira/output/m13/stretch/variants/asinh/asinh__a0.035.png",
+    "prev": "C:/mira/output/m13/stretch/variants/asinh/asinh__a0.035_prev.png",
+    "stats": {
+      "faint_contrast": 0.6369,
+      "faint_detect": 23.52,
+      "sky_disp": 0.01,
+      "sky_noise_disp": 0.0232,
+      "core_clip": 0.0,
+      "frame_clip": 8e-05,
+      "midtone": 0.0077,
+      "lin_feat_snr": 67.72
+    }
+  }
+]

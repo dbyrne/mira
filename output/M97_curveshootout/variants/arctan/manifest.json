@@ -1,0 +1,27 @@
+[
+  {
+    "curve": "arctan",
+    "params": {
+      "gain": 3.0,
+      "pivot": 0.04,
+      "b": 2.5,
+      "shadow": 0.006
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/arctan/arctan__b2.5_gain3.0_pivot0.04_shadow0.006.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/arctan/arctan__b2.5_gain3.0_pivot0.04_shadow0.006_prev.png",
+    "stats": {
+      "rim_chroma": 0.6096,
+      "rim_lum": 0.3671,
+      "rim_clip": 0.0,
+      "center_chroma": 0.6904,
+      "halo_contrast": 0.014,
+      "halo_lum": 0.0157,
+      "sky_lum": 0.0017,
+      "sky_noise_lum": 0.0258,
+      "sky_noise_chroma": 0.0174,
+      "midtone": 0.0022,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  }
+]

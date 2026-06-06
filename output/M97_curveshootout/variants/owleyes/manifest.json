@@ -1,0 +1,30 @@
+[
+  {
+    "curve": "owleyes",
+    "params": {
+      "gain": 3.2,
+      "pivot": 0.045,
+      "b": 2.1,
+      "shadow": 0.006,
+      "denoise": 1.5,
+      "cdenoise": 6.0,
+      "cgain": 1.6
+    },
+    "png": "C:/mira/output/M97_curveshootout/variants/owleyes/owleyes__b2.1_cdenoise6.0_cgain1.6_denoise1.5_gain3.2_pivot0.045_shadow0.006.png",
+    "prev": "C:/mira/output/M97_curveshootout/variants/owleyes/owleyes__b2.1_cdenoise6.0_cgain1.6_denoise1.5_gain3.2_pivot0.045_shadow0.006_prev.png",
+    "stats": {
+      "rim_chroma": 0.6995,
+      "rim_lum": 0.4034,
+      "rim_clip": 0.0,
+      "center_chroma": 0.8142,
+      "halo_contrast": 0.01384,
+      "halo_lum": 0.0153,
+      "sky_lum": 0.0014,
+      "sky_noise_lum": 0.0258,
+      "sky_noise_chroma": 0.0162,
+      "midtone": 0.0019,
+      "lin_rim_snr": 3.0,
+      "lin_halo_snr": 0.38
+    }
+  }
+]

@@ -1,0 +1,176 @@
+[
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 11.0,
+      "b": 4.0,
+      "sp": 0.001,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength11.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength11.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001_prev.png",
+    "stats": {
+      "rim_chroma": 0.0202,
+      "rim_lum": 0.0177,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0329,
+      "halo_contrast": 0.00088,
+      "halo_lum": 0.0024,
+      "sky_lum": 0.0015,
+      "sky_noise_lum": 0.0323,
+      "sky_noise_chroma": 0.0149,
+      "midtone": 0.0024,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 12.0,
+      "b": 4.0,
+      "sp": 0.001,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength12.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength12.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001_prev.png",
+    "stats": {
+      "rim_chroma": 0.0215,
+      "rim_lum": 0.0188,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0349,
+      "halo_contrast": 0.00094,
+      "halo_lum": 0.0026,
+      "sky_lum": 0.0017,
+      "sky_noise_lum": 0.0333,
+      "sky_noise_chroma": 0.0153,
+      "midtone": 0.0026,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 13.0,
+      "b": 4.0,
+      "sp": 0.001,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength13.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength13.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001_prev.png",
+    "stats": {
+      "rim_chroma": 0.0227,
+      "rim_lum": 0.0199,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0368,
+      "halo_contrast": 0.00101,
+      "halo_lum": 0.0028,
+      "sky_lum": 0.0018,
+      "sky_noise_lum": 0.0343,
+      "sky_noise_chroma": 0.0157,
+      "midtone": 0.0028,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 14.0,
+      "b": 4.0,
+      "sp": 0.001,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength14.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength14.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.001_prev.png",
+    "stats": {
+      "rim_chroma": 0.0239,
+      "rim_lum": 0.0209,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0387,
+      "halo_contrast": 0.00107,
+      "halo_lum": 0.0029,
+      "sky_lum": 0.0019,
+      "sky_noise_lum": 0.0353,
+      "sky_noise_chroma": 0.0162,
+      "midtone": 0.0029,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 16.0,
+      "b": 4.0,
+      "sp": 0.002,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength16.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.002.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b4.0_faint_strength16.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.002_prev.png",
+    "stats": {
+      "rim_chroma": 0.0258,
+      "rim_lum": 0.0223,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0422,
+      "halo_contrast": 0.00108,
+      "halo_lum": 0.003,
+      "sky_lum": 0.0019,
+      "sky_noise_lum": 0.0375,
+      "sky_noise_chroma": 0.017,
+      "midtone": 0.003,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  },
+  {
+    "curve": "masked",
+    "params": {
+      "faint_strength": 16.0,
+      "b": 8.0,
+      "sp": 0.002,
+      "lp": 0.0,
+      "hp": 0.45,
+      "highlight_strength": 0.45,
+      "mask_thresh": 0.3,
+      "mask_soft": 0.1
+    },
+    "png": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b8.0_faint_strength16.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.002.png",
+    "prev": "C:/mira/output/NGC6888_curveshootout/variants/masked/masked__b8.0_faint_strength16.0_highlight_strength0.45_hp0.45_lp0.0_mask_soft0.1_mask_thresh0.3_sp0.002_prev.png",
+    "stats": {
+      "rim_chroma": 0.0323,
+      "rim_lum": 0.0282,
+      "rim_clip": 0.0003,
+      "center_chroma": 0.0532,
+      "halo_contrast": 0.00138,
+      "halo_lum": 0.0038,
+      "sky_lum": 0.0024,
+      "sky_noise_lum": 0.0418,
+      "sky_noise_chroma": 0.019,
+      "midtone": 0.0038,
+      "lin_rim_snr": 0.0,
+      "lin_halo_snr": 0.0
+    }
+  }
+]

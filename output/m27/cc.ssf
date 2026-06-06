@@ -1,0 +1,5 @@
+requires 1.2.0
+load m27_dc.fits
+platesolve 299.901,22.721 -focal=163 -pixelsize=2.9
+pcc
+save m27_cc

@@ -1,0 +1,30 @@
+[
+  {
+    "curve": "localcontrast",
+    "params": {
+      "a": 0.15,
+      "cgain": 1.4,
+      "lc_amount": 3.5,
+      "s_struct": 0.0015,
+      "s_reg": 0.006,
+      "dcap": 0.03,
+      "rlo": 0.05,
+      "rhi": 0.12,
+      "mlo": 0.02,
+      "mhi": 0.1,
+      "hi_prot": 2.0
+    },
+    "png": "output/ngc6888_work/localcontrast__a0.15_cgain1.4_dcap0.03_hi_prot2.0_lc_amount3.5_mhi0.1_mlo0.02_rhi0.12_rlo0.05_s_reg0.006_s_struct0.0015.png",
+    "prev": "output/ngc6888_work/localcontrast__a0.15_cgain1.4_dcap0.03_hi_prot2.0_lc_amount3.5_mhi0.1_mlo0.02_rhi0.12_rlo0.05_s_reg0.006_s_struct0.0015_prev.png",
+    "stats": {
+      "faint_contrast": 0.0529,
+      "faint_detect": 0.63,
+      "sky_disp": 0.0105,
+      "sky_noise_disp": 0.0796,
+      "core_clip": 0.0156,
+      "frame_clip": 0.00302,
+      "midtone": 0.0133,
+      "lin_feat_snr": 4.49
+    }
+  }
+]

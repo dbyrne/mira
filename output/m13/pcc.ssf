@@ -1,0 +1,5 @@
+requires 1.2.0
+load m13_bg_dn
+platesolve 250.4217,36.4603 -focal=163 -pixelsize=2.9
+pcc
+save m13_cc

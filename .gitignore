@@ -31,3 +31,8 @@ output/**/tmp/
 # Scratch
 /.fltmp/
 output/_webapp.log
+# Numpy scratch arrays from the curve-shootout / processing experiments —
+# huge (100-200 MB each) and fully regenerable from the linear FITS.
+output/**/*.npy
+# Claude Code runtime state (transient — not project content)
+.claude/scheduled_tasks.lock

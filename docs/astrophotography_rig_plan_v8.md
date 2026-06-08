@@ -1,10 +1,24 @@
-**ASTROPHOTOGRAPHY RIG PLAN — v8**
+**ASTROPHOTOGRAPHY RIG PLAN — v9**
 
 Sky-Watcher Esprit 120EDX + ZWO AM7 + Daystar Quark
 
 *Mono SHO Deep Sky · Solar H-alpha · Backyard + Travel Configuration*
 
 ## Changelog
+
+**v9 (2026-06-07)** — Adds the **Dual-OTA Configuration** section: a swap plan
+for running an **Askar 65PHQ** (65mm f/6.4, 416mm wide/mid-field flat-field
+astrograph) as a second OTA that *shares this rig's camera train, control core,
+and guide scope*. The architectural change vs the single-OTA v8 topology is two
+moves: (1) the **MeLE + Powerbox relocate from the OTA's top D-plate to a
+pier-side bracket** so the control core stays put during a scope swap, and (2)
+the **guide scope becomes a shared, finder-shoe-transferred module** — add ONE
+finder shoe to the Askar (≈$20), not a second guider; the 30F5 + ASI220MM Mini
+ride whichever tube is in the saddle. Net effect: swap OTAs in ~10 minutes
+without disturbing the Esprit's dialed-in cabling. Adds a dual-OTA BOM
+(~$1,055–1,195 essential; ~$1,300 with autofocus). The only big-ticket add is
+the 65PHQ OTA itself — camera, filters, control core, and guiding all carry
+over. (Filename retains the `_v8` stem; rename to `_v9` if desired.)
 
 **v8 (2026-06-04)** — Adds the **Sky-Watcher 355mm Universal D-Plate** as the
 top accessory rail, and a new **Physical Layout and Accessory Topology** section
@@ -256,6 +270,159 @@ The Universal D-Plate is a Losmandy-D-profile dovetail bar with a top face full 
 ## Balance and payload impact
 
 The 355mm D-plate adds ~0.7–1.3 lb. Total imaging payload moves from ~30 lb to ~31 lb — still ~70% of the AM7's 44 lb counterweight-free spec, comfortably inside the rated middle. Strain-wave drives hold position without counterweight balancing, so the rail's added top-side mass **does not require rebalancing for tracking**; it only raises the center of mass slightly, marginally affecting wind/vibration sensitivity (negligible on the Anchor pier). Use the rail's length to slide items until the assembled OTA sits roughly neutral in the saddle for easy handling and a tidy flip.
+
+# Dual-OTA Configuration — Adding the Askar 65PHQ
+
+*(Added v9.)*
+
+This section describes adding the **Askar 65PHQ** (65mm f/6.4, 416mm flat-field
+quintuplet Petzval) as a **second OTA** that shares this rig's camera train,
+control core, and guide scope. It is a *wide/mid-field* complement: it owns the
+~60′–110′ target band (Markarian's Chain, M33, Rosette, M81/M82 + IFN, Pleiades,
+Orion's core) that the S30 Pro frames only at low resolution and the Esprit 120
+overflows. On APS-C it gives ~3.24° × 2.16° at 1.86″/px — squarely between the
+S30 (4.25°, 4.0″/px) and the Esprit (1.6°, 0.92″/px). The design goal: **swap
+OTAs in ~10 minutes without disturbing the Esprit's dialed-in cabling.**
+
+## The three-module principle
+
+In the v8 single-OTA build, everything (OTA + guide scope + MeLE + Powerbox +
+camera) is one welded assembly on the Esprit's rings. A two-scope life splits it
+into three modules, only one of which swaps:
+
+1. **Mount + control core (never moves):** AM7 + Apertura Anchor + **MeLE +
+   Powerbox**, mounted *to the pier/mount*, not to an OTA rail.
+2. **Shared camera train (moves between OTAs):** ASI2600MM + EFW + 16.5 mm
+   spacer = the existing 55 mm stack.
+3. **Swappable OTA module:** Esprit 120EDX (with its guide scope + WandererCover)
+   **or** the Askar 65PHQ.
+
+Swapping = loosen the saddle, lift one OTA's dovetail out, drop the other in,
+move the camera train across, slide the guide scope into the new OTA's shoe,
+plug in one cable bundle. The control core — the part that's annoying to
+re-cable — is never touched.
+
+## What changes vs the v8 single-OTA topology
+
+- **Control core moves pier-side.** Relocate the MeLE + Powerbox from the
+  Esprit's 355 mm top D-plate to a short Losmandy bar + clamp on the **Apertura
+  Anchor pier top** (reusing the existing BuckeyeStargazer trays). They become
+  permanent infrastructure shared by both OTAs. Bonus: the Powerbox's leads no
+  longer sweep the meridian-flip arc on the moving tube. The 355 mm D-plate
+  *stays on the Esprit*, now carrying only the guide scope.
+- **Camera train transfers as one 55 mm unit.** The 65PHQ is also a 55 mm
+  back-focus scope (built-in flattener; M68 / M54 / M48×0.75 rear adapters with
+  2″ filter thread). The same train threads onto its rear adapter with the
+  *identical 16.5 mm spacer* — no re-spacing, no new math. Framing/rotation:
+  rotate the train in the M54/M48 joint (the 65PHQ has a 360° rotator in its
+  rear stack).
+- **Guide scope becomes a shared finder-shoe module** (see next).
+
+## Guiding: one guide scope, shared (the v9 corrected approach)
+
+The guide scope and guide camera (ZWO 30F5 + ASI220MM Mini) are already one
+rigid unit on a Vixen finder shoe. Rather than buy a second guider or run the
+Askar unguided, **add one finder shoe to the 65PHQ** so the guide assembly
+slides between the two scopes in ~10 seconds, no tools. It rides whichever OTA
+is in the saddle — which is exactly where a guide scope belongs (rigid with the
+main OTA so flexure is shared).
+
+Why this works with no penalty:
+
+- **Calibration carries over.** PHD2's calibration is a function of the guide
+  pixel scale + mount + declination — **not** the main OTA. Same 30F5 + same
+  guide camera → identical 6.9″/px guide scale on either scope, so the saved
+  calibration is reusable (PHD2 just auto-selects a new guide star in the new
+  field). Worst case is a 2–3 minute recalibrate.
+- **Flexure is negligible on both.** This rig already chose a guide scope over
+  an OAG for the Esprit at 840 mm (see *Guide system architecture*); the Askar
+  at 416 mm is even more forgiving. One guide scope is correctly sized for both.
+- **Rigidity is adequate from a finder shoe** at both focal lengths (same basis
+  as the Esprit's thumbscrew-mounted guide scope).
+
+No conflict from sharing: the rig images with one main camera at a time, so only
+one OTA runs per night regardless.
+
+## Per-OTA items that do NOT transfer
+
+- **Focuser.** The Pegasus FocusCube 3 + L-bracket is Esprit-specific. The
+  65PHQ has its own dual-speed rack-and-pinion focuser. For occasional
+  wide-field nights, manual focus + a Bahtinov mask is fine; for unattended
+  autofocus on the Askar too, add a second small motor (ZWO EAF + Askar bracket).
+  Do not try to move the FocusCube — the bracket won't fit.
+- **Flats.** The WandererCover V4-EC is 190 mm and won't fit the 65PHQ's ~70 mm
+  objective. Askar flats = a small A4 LED tracing panel over the aperture (feeds
+  the existing `mira flats` paper/panel path) or twilight sky flats.
+- **Dew strap.** A small strap sized to the 65PHQ dew shield, off a spare
+  Powerbox port. The 120 mm Kendrick strap is Esprit-sized.
+
+## Swap checklist (once the control core is pier-side)
+
+1. WandererCover closed / cap on; power down the camera cooler.
+2. Unthread the camera train (2600MM + EFW + 16.5 mm spacer) from the Esprit
+   flattener — keep it assembled as one unit.
+3. Loosen the AM7 saddle; lift the Esprit dovetail out and set it aside (its
+   guide scope + WandererCover ride with it, untouched).
+4. Drop the 65PHQ dovetail into the saddle; snug the clamp.
+5. Thread the camera train onto the 65PHQ's M54/M48 rear adapter (same 55 mm —
+   drop-in).
+6. Slide the guide scope from the Esprit's shoe into the 65PHQ's finder shoe.
+7. Plug the Askar's short cable bundle into the pier-side Powerbox/MeLE (camera
+   USB3, EFW, guide cam, dew; focuser if an EAF is fitted).
+8. Slide the dovetail in the saddle until the tube handles neutrally
+   (strain-wave needs no balancing for tracking; this is just for clean handling
+   + flip clearance — the Askar is ~3.5 kg loaded, trivial for the AM7).
+9. Cap off → plate-solve → autofocus (or Bahtinov) → frame. Clone the NINA
+   profile, set focal length to 416 mm and (if no EAF) the focuser to manual.
+
+## Dual-OTA Bill of Materials
+
+### Tier 1 — Essential (makes the swap work)
+
+| **Item** | **Specification** | **Recommended Vendor** | **Price** |
+| --- | --- | --- | --- |
+| Askar 65PHQ OTA | 65mm f/6.4, 416mm, quintuplet Petzval, built-in flattener, 55mm back-focus, M68/M54/M48 rear adapters w/ 2″ filter thread + 360° rotator; ships with rings + Vixen/Arca foot | Agena / High Point / Starizona | $899–999 |
+| Pier-side electronics bracket | Short Losmandy bar + clamp (or AM7 side bracket) to relocate the MeLE + Powerbox onto the Anchor pier top; reuses existing Buckeye trays | Agena / ADM | $40–60 |
+| Second finder shoe (+ short top rail/clamp if the 65PHQ clamp lacks a mount point) | Vixen finder shoe for the Askar so the shared 30F5 guide scope transfers in seconds | Agena / Amazon | $15–25 (+$25 rail) |
+| Per-OTA cable bundles (×2 sets) | Locking USB3 (camera) + 2× short USB2 (EFW, guide/focuser) + a 12V dew tail, made into one connectorized bundle per OTA so a swap is one plug | Amazon | $50 |
+| Small dew heater strap | Sized to the 65PHQ dew shield, off a spare Powerbox port | Kendrick / ZWO | $25–30 |
+| A4 LED flat panel | Flat-field source over the aperture (WandererCover won't fit the Askar); feeds `mira flats` | Amazon (Huion/AGPtek) | $25–35 |
+| Bahtinov mask (~70mm) | Manual focus on the Askar (Tier 1 has no focus motor) | Amazon / Etsy | $15–20 |
+| **Tier 1 subtotal** | | | **~$1,055–1,195** |
+
+### Tier 2 — Optional (unattended-autonomous Askar nights)
+
+| **Item** | **Specification** | **Recommended Vendor** | **Price** |
+| --- | --- | --- | --- |
+| ZWO EAF + Askar EAF bracket | Second focus motor so the Askar autofocuses unattended like the Esprit | Agena / High Point | $198 + $40–70 |
+| Camera-train adapter contingency | Thin M54↔M48 / extension in case the Askar rear doesn't mate the exact train gender (often unneeded — the supplied adapter set usually covers it) | Agena | $25–40 |
+| **Tier 2 subtotal** | | | **~$265–310** |
+
+**Recommended build:** Tier 1 + the ZWO EAF. The shared guide scope (one finder
+shoe) gives real guiding on both tubes with no second guider and no unguided
+compromise. All-in ≈ **$1,300**, fully autonomous.
+
+### Transfers for free (already owned — do not re-buy)
+
+- **ASI2600MM + EFW + 16.5 mm spacer** — the whole 55 mm camera train, drop-in
+  (the 65PHQ is also 55 mm).
+- **Antlia 3nm SHO + (Phase 5) LRGB 36mm** — stay in the EFW; fully illuminate
+  APS-C at f/6.4.
+- **MeLE mini PC + Pegasus Powerbox** — relocated pier-side, shared by both OTAs.
+- **ZWO 30F5 + ASI220MM Mini guide scope** — shared, transfers via the finder
+  shoe; PHD2 calibration reuses.
+- **AM7 + Apertura Anchor** — unchanged; the Askar is a trivial ~3.5 kg load.
+- **NINA equipment profile** — clone the Esprit profile, change focal length to
+  416 mm (and focuser to manual if no EAF).
+
+## Balance and payload
+
+The 65PHQ is ~2.0 kg bare, ~3.5 kg with the shared camera train and guide scope
+— a non-event on the AM7 (rated 44 lb counterweight-free). Strain-wave drives
+need no rebalancing for tracking; slide the dovetail in the saddle only so the
+assembled tube handles neutrally and clears the flip. Moving the MeLE + Powerbox
+off the tube and onto the pier *lowers* the moving mass and the center of mass
+versus the v8 single-OTA loadout.
 
 # Three Areas of Care for Refractor Imaging
 

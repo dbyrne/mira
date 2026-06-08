@@ -1,0 +1,116 @@
+# Local horizon profile for the PROPOSED Jersey City rooftop pier.
+#
+# *** PROJECTED, NOT MEASURED. ***
+# This is a geometric projection of the measured balcony profile
+# (horizon_balcony_jc.yaml, read from house_photos/1000017156-171.png on
+# 2026-05-06), transformed for the higher rooftop-nook vantage. The two
+# transforms applied to each balcony segment:
+#
+#   1. OWN-HOUSE obstructions COLLAPSE. The balcony sits below the house
+#      roofline, so the house itself blocks NE/E (+27..+47), ESE (+15..+25),
+#      WNW/NW (+15..+28), and the N rail. From a rooftop pier you are AT or
+#      ABOVE the roofline, so these fall away to the urban neighbor-roof floor
+#      (~8-12 deg). A chimney/vent may still spike locally — RE-MEASURE on site.
+#   2. EXTERNAL trees PERSIST, a few degrees LOWER. A fixed-height tree at
+#      fixed distance subtends a smaller elevation angle when viewed from
+#      higher up. Closer/taller obstructions (the SW tree) drop ~5 deg; distant
+#      low ones drop ~2-3 deg. They do NOT vanish — the SW tree is the residual.
+#
+# Precision: WORSE than the balcony profile (that was a direct read; this is a
+# model on top of it). Treat as a planning estimate only — the whole point of
+# generating it is to decide whether the rooftop sky is worth building. Shoot a
+# real 360 horizon panorama from the actual pier height before trusting it.
+#
+# Convention: identical to horizon_balcony_jc.yaml. Azimuth deg, 0=N clockwise;
+# altitude deg above horizon; a target at an azimuth must be ABOVE the listed
+# altitude to clear the obstruction. Linear interpolation between points.
+#
+# Headline vs balcony:
+#   - The own-house NE/E wall (+47) and NW peak (+28) are GONE — the biggest win.
+#   - Due south stays clean and improves (neighbor roofs drop from the height).
+#   - The SW tree (az ~220) survives at ~+34 — the one obstruction the move
+#     does NOT fix. It still eats low Cygnus/Sagittarius transits in the SW.
+
+site: "Jersey City rooftop (proposed)"
+captured_at: "2026-06-07 (projected from 2026-05-06 balcony read)"
+points:
+  # --- N quadrant: balcony rail GONE; rooftop parapet/neighbor floor only ---
+  - {az:   0, alt:  6}
+  - {az:  15, alt:  6}
+  - {az:  25, alt:  8}
+
+  # --- NE: OWN-HOUSE roof+chimney (+47 from balcony) COLLAPSES to neighbor
+  #     rooftops. A residual chimney/vent could spike here -- verify on site. ---
+  - {az:  30, alt: 10}
+  - {az:  40, alt: 12}
+  - {az:  50, alt: 12}
+  - {az:  60, alt: 11}
+  - {az:  70, alt: 10}
+  - {az:  75, alt: 10}
+  - {az:  85, alt:  9}
+
+  # --- E: was already clean; stays clean (maybe marginally better) ---
+  - {az:  90, alt:  8}
+  - {az: 100, alt:  8}
+  - {az: 105, alt:  9}
+
+  # --- ESE: OWN-HOUSE body (+25 from balcony) collapses to neighbor floor ---
+  - {az: 110, alt: 10}
+  - {az: 120, alt: 11}
+  - {az: 125, alt: 12}
+
+  # --- SE: EXTERNAL tree mass (+30) persists, ~4 deg lower from the height ---
+  - {az: 130, alt: 26}
+  - {az: 140, alt: 26}
+  - {az: 145, alt: 22}
+
+  # --- S: neighbor roofs + low trees DROP from the higher vantage. This is the
+  #     "dramatically better due south" the rooftop buys. ---
+  - {az: 150, alt: 20}
+  - {az: 160, alt: 14}
+  - {az: 170, alt: 10}
+  - {az: 180, alt:  8}
+
+  # --- SSW: clean window stays clean (neighbors' rooftops well below) ---
+  - {az: 185, alt:  5}
+  - {az: 190, alt:  5}
+  - {az: 195, alt:  6}
+  - {az: 200, alt: 12}
+
+  # --- SW: the TALL EXTERNAL TREE (peak +40 @ 220 from balcony). The residual
+  #     obstruction the move does NOT fix -- drops only ~5 deg from the height. ---
+  - {az: 205, alt: 22}
+  - {az: 210, alt: 27}
+  - {az: 215, alt: 33}
+  - {az: 220, alt: 34}
+  - {az: 225, alt: 30}
+
+  # --- WSW: gap between trees, persists ~same (already low + external) ---
+  - {az: 230, alt: 15}
+  - {az: 235, alt: 10}
+  - {az: 240, alt:  9}
+  - {az: 245, alt: 11}
+  - {az: 250, alt: 16}
+
+  # --- W: large EXTERNAL tree (+25), persists ~3 deg lower ---
+  - {az: 255, alt: 22}
+  - {az: 265, alt: 22}
+  - {az: 270, alt: 22}
+  - {az: 275, alt: 18}
+  - {az: 280, alt: 15}
+
+  # --- WNW: small tree gaps then OWN-HOUSE; house part collapses ---
+  - {az: 290, alt: 12}
+  - {az: 300, alt: 12}
+
+  # --- NW: OWN-HOUSE roof peak (+28 from balcony) COLLAPSES. Possible chimney
+  #     spike -- verify on site. ---
+  - {az: 310, alt: 10}
+  - {az: 320, alt: 11}
+  - {az: 325, alt: 10}
+  - {az: 330, alt:  9}
+
+  # --- N: house thinning, back to start ---
+  - {az: 345, alt:  8}
+  - {az: 355, alt:  7}
+  - {az: 360, alt:  6}  # closes the loop, matches az:0

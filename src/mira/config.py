@@ -197,6 +197,25 @@ GALAXY_DEFAULTS = DsoConfig(
 )
 
 
+# Defaults for the `emission:` section — the emission-nebula planner
+# (`mira emission`). Moon-RELAXED like the narrowband DSO defaults
+# (Ha/OIII/SII narrowband and the S30's LP dual-band all tolerate moonlight,
+# the opposite of broadband galaxies), but points at the emission-nebula
+# catalog (union of the Esprit + S30 image books) and writes to its own
+# `emission/` subdir. FOV defaults to the Esprit single frame; a wide-field
+# rig (the S30) overrides `fov_deg` in its config so the giant complexes stop
+# being mosaic-flagged. Rig-agnostic — run it with either rig's config.
+EMISSION_DEFAULTS = DsoConfig(
+    enabled=True,
+    catalog_path=Path("data/dso_catalog/emission_nebulae.yaml"),
+    fov_deg=(1.6, 1.07),
+    relax_moon=True,
+    output_subdir="emission",
+    captures_root=Path("captures"),
+    deficit_weight=1.0,
+)
+
+
 @dataclass(frozen=True)
 class ScoutConfig:
     sites: tuple[SiteConfig, ...]
@@ -209,6 +228,7 @@ class ScoutConfig:
     output: OutputConfig
     dso: DsoConfig = DSO_DEFAULTS
     galaxies: DsoConfig = GALAXY_DEFAULTS
+    emission: DsoConfig = EMISSION_DEFAULTS
 
 
 def load_config(path: str | Path) -> ScoutConfig:
@@ -267,6 +287,9 @@ def load_config(path: str | Path) -> ScoutConfig:
         dso=_parse_dso(raw.get("dso")),
         galaxies=_parse_dso(
             raw.get("galaxies"), defaults=GALAXY_DEFAULTS, section="galaxies",
+        ),
+        emission=_parse_dso(
+            raw.get("emission"), defaults=EMISSION_DEFAULTS, section="emission",
         ),
     )
 

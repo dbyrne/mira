@@ -155,6 +155,19 @@ galaxies:
   deficit_weight: 1.0
   output_subdir: galaxies
 
+# Emission-nebula planner (`mira emission plan`). Same engine as the Esprit's,
+# but the S30's wide field frames the giant complexes (North America, full
+# Veil, Heart, California, IC1396) as SINGLE shots instead of mosaics — so the
+# FOV override is the load-bearing setting here. Moon-relaxed: the LP dual-band
+# (Ha+OIII) filter tolerates moonlight, unlike the broadband galaxies path.
+emission:
+  enabled: true
+  catalog_path: data/dso_catalog/emission_nebulae.yaml
+  fov_deg: [4.2, 2.4]
+  relax_moon: true
+  deficit_weight: 1.0
+  output_subdir: emission
+
 # Site/rig constants consumed by `mira capture --config config/s30_pro_jc.yaml`
 # (lowest-priority tier; CLI flags + session profiles still win). Lets session
 # YAMLs and CLI invocations stay terse — the things that don't change per run

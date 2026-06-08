@@ -160,6 +160,19 @@ dso:
   relax_moon: true
   output_subdir: dso
 
+# Emission-nebula planner (`mira emission plan`) — same engine as `dso:` above,
+# pointed at the broader emission catalog (the union of the Esprit + S30 image
+# books). Single-frame FOV, so the giant complexes (North America, full Veil,
+# Heart, California) are mosaic-flagged here; on the S30 config they fit one
+# frame. Moon-relaxed (narrowband tolerates moonlight).
+emission:
+  enabled: true
+  catalog_path: data/dso_catalog/emission_nebulae.yaml
+  fov_deg: [1.6, 1.07]
+  relax_moon: true
+  deficit_weight: 1.0
+  output_subdir: emission
+
 # Site/rig constants for `mira capture --config config/esprit120_jc.yaml` on
 # the MeLE Quieter 4C (the rig brain). Homebase doesn't run mira capture, so
 # the nina_root path is only meaningful when this config is loaded on the

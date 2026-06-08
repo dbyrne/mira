@@ -44,7 +44,12 @@ for n in names:
         name=n, common=base["common"], typ=TYPE_MAP.get(base["typ"], "HII"),
         ra=float(base["ra"]), dec=float(base["dec"]), maj=maj, mn=mn,
         const=base["const"], pal=pal, budget=budget(pal),
-        mosaic=(maj > 96.0), notes=" | ".join(x for x in notes if x)))
+        # Static flag = "mosaic on ANY rig" (overflows even the S30's wide
+        # 4.2x2.4deg field). Per-rig single-frame fit is computed at plan time
+        # from fov_deg, so the Esprit correctly flags the medium giants
+        # (NGC7000, California) while the S30 frames them single-shot.
+        mosaic=(maj > 252.0 or mn > 144.0),
+        notes=" | ".join(x for x in notes if x)))
 
 # emit YAML by hand (keeps formatting clean + comments)
 L = ['# Emission-nebula catalog — union of the Esprit 120 + S30 Pro image books.',

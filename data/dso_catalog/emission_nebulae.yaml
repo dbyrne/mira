@@ -312,7 +312,7 @@ targets:
     size_arcmin: [120, 100]
     constellation: Cyg
     budget_minutes: {Ha: 210, OIII: 90}
-    mosaic: true
+    mosaic: false
     notes: "S30: fits | NGC7000+IC5070 in one frame — flagship S30 target"
   - name: "Cygnus Loop"
     common_name: "Veil (full loop)"
@@ -352,7 +352,7 @@ targets:
     size_arcmin: [170, 140]
     constellation: Cep
     budget_minutes: {Ha: 210, OIII: 90}
-    mosaic: true
+    mosaic: false
     notes: "S30: tight | full nebula + cluster + trunk"
   - name: "IC 1805"
     common_name: "Heart"
@@ -362,7 +362,7 @@ targets:
     size_arcmin: [100, 90]
     constellation: Cas
     budget_minutes: {Ha: 210, OIII: 90}
-    mosaic: true
+    mosaic: false
     notes: "S30: fits | Heart alone (Heart+Soul pair ~5° overflows)"
   - name: "IC 1848"
     common_name: "Soul"
@@ -382,7 +382,7 @@ targets:
     size_arcmin: [145, 40]
     constellation: Per
     budget_minutes: {Ha: 210, OIII: 90}
-    mosaic: true
+    mosaic: false
     notes: "S30: fits | E-W elongated — TIGHT on fixed N-S frame"
   - name: "Sh2-129"
     common_name: "Flying Bat (Ou4 Squid)"
@@ -392,7 +392,7 @@ targets:
     size_arcmin: [150, 120]
     constellation: Cep
     budget_minutes: {Ha: 120, OIII: 180}
-    mosaic: true
+    mosaic: false
     notes: "S30: fits | OIII Squid very faint — dark-site"
   - name: "Simeis 147"
     common_name: "Spaghetti (Sh2-240)"
@@ -412,5 +412,5 @@ targets:
     size_arcmin: [150, 50]
     constellation: CMa
     budget_minutes: {Ha: 210, OIII: 90}
-    mosaic: true
+    mosaic: false
     notes: "S30: fits | low from JC (~39°); spans the wide frame"

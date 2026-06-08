@@ -636,6 +636,93 @@ def main() -> None:
         help="Only list orphan sessions (captures whose target_name doesn't match any catalog entry).",
     )
 
+    emission_parser = subparsers.add_parser(
+        "emission",
+        help="Emission-nebula planner: rank the emission catalog (HII/PN/SNR/WR) by observability + FOV fit. Moon-relaxed; works with either rig's config.",
+    )
+    em_sub = emission_parser.add_subparsers(dest="emission_command", required=True)
+    em_plan = em_sub.add_parser(
+        "plan",
+        help="Rank the emission catalog against tonight/this week's window and write a plan.",
+    )
+    em_plan.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (uses its `emission:` section or defaults; the S30 config sets the wide FOV).",
+    )
+    em_plan.add_argument(
+        "--catalog", default=None,
+        help="Override emission catalog YAML path (default: from config or data/dso_catalog/emission_nebulae.yaml).",
+    )
+    em_plan.add_argument(
+        "--start-date", default=None,
+        help="Local observing start date YYYY-MM-DD (default: today in the first site's timezone).",
+    )
+    em_plan.add_argument(
+        "--fov", default=None,
+        help="Override rig FOV as 'major,minor' in degrees (e.g. 1.6,1.07 Esprit, 4.2,2.4 S30).",
+    )
+    em_plan.add_argument(
+        "--strict-moon", action="store_true",
+        help="Apply the VSX-style moon gate (default: relaxed — emission/narrowband tolerates moonlight).",
+    )
+    em_plan.add_argument(
+        "--output-dir", default=None,
+        help="Override output directory (default: <config.output.directory>/<emission.output_subdir>).",
+    )
+    em_plan.add_argument(
+        "--top", type=int, default=None,
+        help="Limit ranked list to top N candidates in the report (default: all viable).",
+    )
+    em_plan.add_argument(
+        "--captures-root", default=None,
+        help="Override captures root for the integration ledger (default: from config or 'captures').",
+    )
+    em_plan.add_argument(
+        "--ignore-ledger", action="store_true",
+        help="Skip the integration ledger entirely — pure observability ranking.",
+    )
+
+    em_status = em_sub.add_parser(
+        "status",
+        help="Show the integration ledger for emission targets: per-target per-filter captured vs budget.",
+    )
+    em_status.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (catalog + captures_root read from its `emission:` section).",
+    )
+    em_status.add_argument(
+        "--catalog", default=None, help="Override emission catalog YAML path.",
+    )
+    em_status.add_argument(
+        "--captures-root", default=None,
+        help="Override captures root (default: from config or 'captures').",
+    )
+    em_status.add_argument(
+        "target", nargs="?", default=None,
+        help="Show detail for one target (canonical catalog name). Omit for the full summary.",
+    )
+    em_status.add_argument(
+        "--orphans", action="store_true",
+        help="Only list orphan sessions (captures whose target_name doesn't match any catalog entry).",
+    )
+
+    em_research = em_sub.add_parser(
+        "research",
+        help="Render an offline-research Markdown view of the emission catalog (every target, external links).",
+    )
+    em_research.add_argument(
+        "--config", default="config/esprit120_jc.yaml",
+        help="YAML config path (used to locate the catalog if --catalog is unset).",
+    )
+    em_research.add_argument(
+        "--catalog", default=None,
+        help="Override emission catalog YAML path (default: from config).",
+    )
+    em_research.add_argument(
+        "--out", default=None,
+        help="Output Markdown path (default: <catalog_dir>/research_notes.md).",
+    )
+
     transients_parser = subparsers.add_parser(
         "transients",
         help="Check for bright transients (supernovae/novae) observable + within reach tonight.",
@@ -712,6 +799,8 @@ def main() -> None:
         dso(args)
     elif args.command == "galaxies":
         galaxies(args)
+    elif args.command == "emission":
+        emission(args)
     elif args.command == "transients":
         transients(args)
     elif args.command == "webapp":
@@ -2164,6 +2253,144 @@ def galaxies(args: argparse.Namespace) -> None:
             f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
             f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
             f", mag {top.magnitude:.1f}{sb_note}"
+        )
+
+
+def emission(args: argparse.Namespace) -> None:
+    """Emission-nebula planner. Reuses the DSO engine + report against the
+    emission catalog (HII / PN / SNR / WR — the union of the Esprit + S30
+    image books). Moon-relaxed by default (emission/narrowband tolerates
+    moonlight). Rig-agnostic: the `emission:` config section sets the FOV, so
+    the same catalog mosaic-flags the giants on the Esprit and frames them
+    single-shot on the S30. Distinct from `mira dso` (the SHO curated
+    catalog) and `mira galaxies` (broadband, SB-ranked)."""
+    from .config import load_config
+    from .dso.catalog import load_dso_catalog
+    from .dso.ledger import aggregate_ledger, walk_sidecars
+
+    cfg = load_config(args.config)
+    em_cfg = cfg.emission
+    catalog_path = Path(args.catalog) if args.catalog else em_cfg.catalog_path
+
+    if args.emission_command == "research":
+        from .dso.research import render_research_notes
+        print(f"Loading emission catalog: {catalog_path}")
+        catalog = load_dso_catalog(catalog_path)
+        print(f"  catalog v{catalog.version}: {len(catalog.targets)} targets")
+        out_path = (
+            Path(args.out) if args.out
+            else catalog_path.parent / "research_notes.md"
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(render_research_notes(catalog), encoding="utf-8")
+        print(f"Wrote {out_path}")
+        return
+
+    if args.emission_command == "status":
+        print(f"Loading emission catalog: {catalog_path}")
+        catalog = load_dso_catalog(catalog_path)
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else em_cfg.captures_root
+        )
+        print(f"Walking sidecars under {captures_root}/ ...")
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        print(_render_dso_status(
+            ledger, catalog,
+            target_name=args.target, orphans_only=args.orphans,
+        ))
+        return
+
+    if args.emission_command != "plan":
+        raise SystemExit(f"unknown emission subcommand: {args.emission_command}")
+    from datetime import date as _date
+    from zoneinfo import ZoneInfo
+    from .dso.planner import build_dso_candidates
+    from .dso.report import write_dso_plan
+
+    print(f"Loading emission catalog: {catalog_path}")
+    catalog = load_dso_catalog(catalog_path)
+    print(f"  catalog v{catalog.version}: {len(catalog.targets)} targets")
+
+    if args.start_date:
+        start_date = _date.fromisoformat(args.start_date)
+    else:
+        first_tz = ZoneInfo(cfg.sites[0].observer.timezone)
+        start_date = datetime.now(first_tz).date()
+
+    if args.fov:
+        try:
+            major_str, minor_str = args.fov.split(",")
+            fov_deg = (float(major_str), float(minor_str))
+        except ValueError as exc:
+            raise SystemExit(f"--fov must be 'major,minor' degrees (e.g. 1.6,1.07): {exc}")
+    else:
+        fov_deg = em_cfg.fov_deg
+
+    relax_moon = em_cfg.relax_moon and not args.strict_moon
+
+    ledger = None
+    if not args.ignore_ledger:
+        captures_root = (
+            Path(args.captures_root) if args.captures_root else em_cfg.captures_root
+        )
+        sessions = walk_sidecars(captures_root)
+        ledger = aggregate_ledger(sessions, catalog=catalog)
+        if ledger.sessions:
+            print(
+                f"Ledger: {len(ledger.sessions)} session(s) over "
+                f"{len(ledger.by_target)} target(s) from {captures_root}/"
+                + (f" ({len(ledger.orphan_target_names)} orphan)"
+                   if ledger.orphan_target_names else "")
+            )
+        else:
+            print(f"Ledger: no sessions under {captures_root}/ (pure observability ranking).")
+
+    print(
+        f"Ranking against {len(cfg.sites)} site(s) for "
+        f"{cfg.sites[0].observing_window.nights} night(s) from {start_date} "
+        f"(FOV {fov_deg[0]:.2f}°×{fov_deg[1]:.2f}°, "
+        f"moon {'relaxed' if relax_moon else 'strict'}"
+        f"{', ledger-weighted' if ledger is not None else ''})..."
+    )
+    candidates = build_dso_candidates(
+        catalog, cfg,
+        start_date=start_date,
+        fov_deg=fov_deg,
+        relax_moon=relax_moon,
+        ledger=ledger,
+        deficit_weight=em_cfg.deficit_weight,
+    )
+    print(f"  {len(candidates)} target(s) viable in the window")
+    if args.top is not None:
+        candidates = candidates[: args.top]
+
+    out_root = Path(args.output_dir) if args.output_dir else cfg.output.directory
+    out_dir = out_root / em_cfg.output_subdir
+    md_path, csv_path = write_dso_plan(
+        candidates, out_dir,
+        ledger=ledger,
+        config_path=args.config,
+        catalog_version=catalog.version,
+        start_date=start_date,
+        window_nights=cfg.sites[0].observing_window.nights,
+    )
+    print(f"Wrote {md_path}")
+    print(f"Wrote {csv_path}")
+    if candidates:
+        top = candidates[0]
+        deficit_note = ""
+        if ledger is not None and top.budget_minutes > 0:
+            pct = top.completion_fraction * 100.0
+            deficit_note = (
+                f" — {top.captured_minutes:.0f}/{top.budget_minutes:.0f}m "
+                f"captured ({pct:.0f}% done)"
+            )
+        print(
+            f"\nTop pick: {top.target.name} ({top.target.common_name}) "
+            f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
+            f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
+            f"{deficit_note}"
         )
 
 

@@ -1,0 +1,14 @@
+Capture loop: RA 313.75, Dec 44.4, 60.0s gain=80 dither=30.0" every 1 filter=LP -> captures/ngc7000_20260605. Stops at <30.0 deg alt or at dawn (rising sun > -15.0 deg). Evening/dusk start is not gated.
+
+Siril Live Stack (homebase):
+  watch folder : C:\mira\captures\ngc7000_20260605
+  master flat  : C:\mira\data\flats\LP_g80_20260603\master_flat.fit  (matched LP_g80_20260603)
+
+selecting filter 'LP'...
+filter 'LP' not confirmed by the wheel; aborting before capture (refusing to shoot through the wrong/no filter)
+
+DONE: 0 captured, 0 copied to captures\ngc7000_20260605, 0 dithers, 0 re-centers, 0 AF runs. Stopped: filter 'LP' not confirmed by the wheel; aborting before capture (refusing to shoot through the wrong/no filter)
+
+safing rig (mount park + sensor shield)...
+  safing: 'Dark' filter not confirmed — sensor shield skipped (no opaque position on this wheel?)
+  safing: mount parked (tracking stopped)

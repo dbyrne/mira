@@ -1,0 +1,5 @@
+requires 1.2.0
+load m81_dc.fits
+platesolve 148.888,69.065 -focal=163 -pixelsize=2.9
+pcc
+save m81_cc

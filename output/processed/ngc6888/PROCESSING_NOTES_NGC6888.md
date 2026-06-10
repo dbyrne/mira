@@ -62,6 +62,35 @@ structure instead of flattening. Result: pure-red-blown 0.87% → **0.000%**, OI
   `ngc6888_bg_dn_dc.fits`, `ngc6888_cc.fit`.
 - Prior single-night `*_20260531` artifacts left in place for comparison.
 
+## Refinish 2026-06-09 — toe+dig decouple from a re-flattened linear (NEW CANDIDATE)
+`NGC6888_crescent_refinish_20260609.png/.tiff` (+`_crop.png`), via `crescent_refinish.py`.
+
+**What changed vs the 06-02 primary:**
+1. **Second-pass GraXpert bg-extraction on `ngc6888_cc.fit`** → `ngc6888_cc_flat.fits`.
+   The original chain ran bg-extraction BEFORE PCC; PCC's global channel scaling left a
+   spatially-varying blue/teal gradient that any deep stretch surfaces (v1–v3 of this
+   refinish all went blue-purple until this fix). The flatten dropped the apparent "sky
+   pedestal" 0.019 → 0.00125 in normalized units — it was gradient, not sky.
+   **Lesson for the recipe: bg-extract AFTER color calibration too** (or instead: PCC
+   first, then one bg pass).
+2. **StarNet decouple with the M81-shootout toe+dig** (a=0.05 prestretch w/ the June-2
+   rolloff k=0.62, starless re-linearized → toe 1.5σ → asinh b=0.03 dig, stars sg=1.0 +
+   "light" tone 1.7/0.95), luminance-gated teal boost, brightness-rolloff saturation
+   (knots only: 0.62→0.95), gated chroma blur, bg-neutralize, pedestal 0.03.
+
+**Verified vs 06-02 primary (same annuli):** bg speckle 0.0622 → **0.0083** (7.5×),
+bg chroma 0.0709 → **0.0201** (3.5×), star garishness 0.172 → **0.079**,
+pure-red-clip 0.000% (matched), red-dominant rim 28.3% vs 35.0% (theirs includes
+red-tinted noise wash; shell reads cleaner+deeper by eye — see `_compare_0602_vs_0609.png`).
+
+**The teal question (honest finding):** the 06-02 keeper's prominent OIII teal does NOT
+survive significance testing on the flattened linear — per-pixel interior teal margin is
+−1σ vs background, and a binned test can't be calibrated because the "background" annulus
+is itself full of real Cygnus Ha structure (the positive control fails too). So: bold teal
+at this depth (4.6h LP dual-band) is stylization, not measurement; this refinish keeps only
+the locally-real teal excess (~1% of rim pixels). **A few hours of mono OIII on the Esprit
+settles it** — the Crescent already carries an OIII budget in the emission catalog.
+
 ## Candidates / scratch (in `output/ngc6888_work/`, yours to delete)
 `cr_*.png` (the stretch sweep), `_crescent_stretch_compare.png`, `_asinh_vs_localcon.png`,
 the curvelab `localcontrast`/`asinh` outputs, plus `output/ngc6888/_deconv_check.png` and

@@ -24,6 +24,10 @@ it. If the trip slips to Jun 20, the target picks still work (sky shifts only
 the moony first hours to L… or better, to nothing — set up, focus, and run the
 S30's LP capture, which tolerates the moon.
 
+**Full candidate menu with framing charts + the JWST/Hubble showpieces:
+[`trip_book/trip_book.md`](trip_book/trip_book.md)** — every chart carries both
+rig footprints (cyan S30, green Esprit 80), June-13 altitude tracks, per-rig recs.
+
 ## Conditions — Sat Jun 13→14 (EDT)
 
 - **Astro dark:** 22:50 → 03:05 (~4h15m usable).

@@ -1,61 +1,134 @@
-# Catskills dark-site trip — June 18, 2026
+# Catskills dark-site trip — plan v2 (target night: Sat June 13, 2026)
 
-**Rig:** ZWO Seestar S30 Pro (LP dual-band), no rotator. FOV 2.196° (E–W, short)
-× 3.904° (N–S, long) @ 3.66″/px. Native orientation: **long axis ≈ N–S** (~4°
-tilt), confirmed from the M81 frame.
+**v2 supersedes the Jun 18 Veil-mosaic plan**: trip likely moves to **Saturday
+night**, the S30 switches to the **Elephant Trunk (IC 1396)** single frame, and
+the **Esprit 80 ED comes along** with a target of its own. The Veil 2-panel kit
+is shelved, not deleted — see the appendix. (Folder keeps the `catskills_jun18`
+name until the date is confirmed; `git mv` it then.)
 
-**Site:** Catskills (~lat 42.1, lon −74.4). Confirm a clear **southern horizon**
-if you want the low Milky Way targets another night.
+**Site:** Catskills (~lat 42.1, lon −74.4). No southern-horizon dependency in
+this plan — every primary sits dec +57 to +68 (N/NE, climbing) and M101 is high
+NW. The v1 "confirm southern horizon" caveat only matters if you flex to M16/M17.
 
-## Conditions (Jun 18 → 19)
-- **Moon:** 21% waxing crescent, **sets ~23:50 EDT** (thin, low in the W — on LP
-  emission targets in the E it's irrelevant; no need to wait for moonset).
-- **Astro dark:** ~22:40 → 03:35 EDT.
-- **Moonless dark:** 23:50 → 03:35 EDT (~3h45m).
-- Cygnus rides overhead all the back half of the night.
+## Pick the night
 
-## PRIORITY — full-night Veil 2-panel mosaic
+| Night | Moon | Moon during astro dark (≈22:50→03:05) |
+| --- | --- | --- |
+| **Sat Jun 13→14** | **2%** | **none — sets 19:25, rises 04:25. Entire window moonless.** |
+| Thu Jun 18→19 (v1 date) | 21% | thin in the W until ~23:50 |
+| Sat Jun 20→21 | 42% | up until 00:30 — first ~1.5h compromised for broadband |
 
-The Cygnus Loop is ~3° wide E–W; the S30's 3.9° N–S long axis covers its height
-in one frame, so split into **two panels in RA** (no rotator needed — the loop's
-wide axis is E–W, matching the S30's short axis split). ~22% overlap.
+Jun 13 is the best dark window of the month and the whole plan below assumes
+it. If the trip slips to Jun 20, the target picks still work (sky shifts only
+~30 min earlier) but **start the Esprit on RGB after moonset (00:30)** and give
+the moony first hours to L… or better, to nothing — set up, focus, and run the
+S30's LP capture, which tolerates the moon.
 
-| Panel | RA | Dec | Covers |
-| --- | --- | --- | --- |
-| **1 — West** | 311.78° (20h47.1m) | +31.0° | NGC 6960 (Witch's Broom / 52 Cyg) + Pickering's Triangle |
-| **2 — East** | 313.78° (20h55.1m) | +31.0° | NGC 6992/6995 (Network / Eastern Veil) |
+## Conditions — Sat Jun 13→14 (EDT)
 
-Seam check: W Veil → panel 1, E Veil → panel 2, northern arc (NGC 6974/79) in
-both (overlap). Each panel covers RA ±1.28°, Dec ±1.95°.
+- **Astro dark:** 22:50 → 03:05 (~4h15m usable).
+- **Moon:** 2% — below the horizon the entire window.
+- Altitudes by hour:
 
-### Capture (do West first; East peaks at dawn)
+| Target | 22:00 | 23:00 | 00:00 | 01:00 | 02:00 | 03:00 | 04:00 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| IC 1396 (S30) | 27° | 34° | 41° | 49° | 57° | 65° | 71° |
+| Iris NGC 7023 (Esprit 80) | 36° | 41° | 47° | 52° | 57° | 61° | 64° |
+| M101 (alternate) | 77° | 71° | 63° | 54° | 45° | 37° | 29° |
+| NGC 7000 (alternate) | 24° | 33° | 43° | 53° | 63° | 74° | 85° |
+
+Both primaries **climb all night** — no setting deadline, no meridian flip
+(Iris transits ~04:50, after dark ends; IC 1396 even later).
+
+## Rig 1 — S30 Pro: IC 1396 / Elephant Trunk, single frame (LP)
+
+The full IC 1396 shell is ~170′×140′ (2.8°×2.3°). The S30's frame is 2.196°
+(E–W, short) × 3.904° (N–S, long), long axis native ≈ N–S (~4° tilt). N–S is
+generous — μ Cep (the Garnet Star) on the north rim lands in-frame; E–W the
+shell rim kisses both edges (2.33° vs 2.20° — the ~4′ clipped per side is
+diffuse rim, fine). **Framing chart: `ic1396_framing_dss.png`.**
+
+- **Center: RA 324.78, Dec +57.50** (shell center; Trunk sits 0.78° W of
+  center, safely inside).
+- μ Cep doubles as a color sanity-check after PCC — it should be strikingly red.
+
 ```powershell
-# Test frame FIRST: shoot one sub, plate-solve, confirm long axis ~N-S
-#   (the whole split assumes it; it's fixed in EQ mode but verify).
-# Dark site: try --exposure 120 (check star roundness on the test frame).
+# Test frame FIRST: one sub, mira solve the dir, then confirm orientation +
+# that the Trunk is in-frame:
+#   python output/trips/catskills_jun18/check_orientation.py <solved.fits> 324.05 57.49 IC1396A
+# Dark site: try --exposure 120 on the test frame (check star roundness);
+# 60s is the safe default.
 
-# Panel 1 — West  (no --park-at-end: keep the Seestar connected for the handoff)
-mira capture --ra 311.78 --dec 31.0 --exposure 60 --gain 80 --filter LP `
-  --dest captures/veil_p1_west --platesolve-center
-
-# Panel 2 — East  (last run of the night -> --park-at-end safes the rig at dawn)
-mira capture --ra 313.78 --dec 31.0 --exposure 60 --gain 80 --filter LP `
-  --dest captures/veil_p2_east --platesolve-center --park-at-end
+# Single run, all night; last run on this rig -> park-at-end safes it at dawn
+mira capture --ra 324.78 --dec 57.5 --exposure 60 --gain 80 --filter LP `
+  --dest captures/ic1396_20260613 --platesolve-center --park-at-end
 ```
-Time split: ~1h50m/panel over the moonless window, or ~2.5h/panel if you start
-at astro dark (~22:40). LP_g80 master flat exists → `--auto-flats` works.
 
-## Reduction (after the trip)
-Run `output/catskills_jun18/reduce_veil.ps1` (or the steps below). It stacks each
-panel, then `mosaic_veil.py` reprojects + coadds them into one WCS mosaic, which
-you finish with GraXpert + PCC + stretch.
+Budget: 22:50→03:05 ≈ ~3h30m–4h integration after dither/re-center overhead
+(~200+ × 60s, or ~110 × 120s). LP_g80 master flat exists → `--auto-flats`
+resolves it at stack time (sealed system — no on-site flats needed).
 
-## Earlier-in-the-night options (decide on-site)
-Spring/early-evening sky is galaxies+globulars (no bright nebulae high in the W),
-so the early *nebula* options are the rising Cygnus/Lyra ones — start them at
-astro dark, don't wait for moonset:
-- **Crescent + Tulip** one LP frame — RA 302.71° / +36.82° (covers both + Cyg X-1)
-- **M57 Ring** (Lyra) — RA 283.6° / +33.0°, well-placed early
-- **M13** (Hercules globular) — overhead ~22:30, best early showpiece if you flex
-  off "nebula only"
-(These are secondary; the Veil mosaic is the full-night priority.)
+## Rig 2 — Esprit 80 ED + ASI2600MM + AM7: Iris + Ghost, LRGB
+
+**Target: NGC 7023 (Iris) + vdB 141 (Ghost Nebula) in one frame.**
+Center **RA 317.25, Dec +68.20**, camera long axis **E–W** — the 3.37°×2.25°
+field catches the Iris, the Ghost 1.4° to its east, and the LDN 1170-complex
+dust between them. **Framing chart: `iris_framing_dss.png`.**
+
+Why this over another nebula: a 2%-moon dark site is the one thing JC can never
+give you, and its leverage is **broadband** — reflection nebulae + brown LDN
+dust are invisible from Bortle-9. Narrowband (NGC 7000 etc.) works fine from
+the backyard; spending the trip on it wastes the sky. This is also the kind of
+field the galaxy/emission planners never surface — it's a dust target.
+
+**Capture (NINA Target Scheduler on the MeLE — the Esprit's normal
+non-photometry path; TS dithers through PHD2 correctly):**
+
+- Gain 100 / offset 50, **120s subs**, dither every 3, AF on filter change +
+  temp drift.
+- **RGB while lower, L at peak altitude:** R→G→B ~40 min each 22:50→00:50,
+  then **L 00:50→03:05** (~65 × 120s ≈ 2h10m).
+- Yields L ≈ 2h + 40m/channel RGB ≈ 4h total — a real single-night LRGB set at
+  f/5.
+
+**Flats — do not skip, do not refocus first:** the Wanderer 190mm panel stays
+home (it can't clamp the 80's dew shield). At dawn, **before touching focus or
+rotation**, tape paper over the aperture and run:
+
+```powershell
+mira flats --filters L,R,G,B --gain 100
+```
+
+Per-filter dest dirs (`captures/iris_L` …) mean each dir's sidecar keys
+`--auto-flats` to the right `<filter>_g100` master at stack time.
+
+Dew: straps on the Esprit OTA + guide scope (the S30 handles its own).
+
+### Alternates (decide on-site)
+- **M101, LRGB, early block** — 77° at dusk but sinking; if you want two
+  trophies, run M101 22:50→00:30 and hand the Esprit to Iris after. Costs
+  depth on both; default is all-night Iris.
+- **NGC 7000 Cygnus Wall, HOO** — if broadband conditions disappoint (haze
+  kills dust contrast first). Honest note: weakest use of the dark site.
+
+## After the trip
+
+`reduce_trip.ps1` runs both reductions: S30 solve→cull→stack→PCC→
+`mira finish --preset emission`; Esprit per-filter stacks → `combine_lrgb.py`
+(WCS-registers R/G/B onto the L grid) → PCC → contact sheet → preset pick →
+manual L-blend per the M51 all-lum recipe. The LRGB combine is a first for
+this kit — budget an evening.
+
+## Packing deltas vs a JC night
+
+- Esprit 80 OTA + ASI2600MM + wheel + AM7 + MeLE + PHD2 guide kit + dew straps.
+- Paper/tape for Esprit flats (no panel).
+- Both laptops or just homebase + MeLE (Syncthing share works over the field
+  router; or sneakernet the captures after).
+
+## Appendix — shelved v1: Veil 2-panel mosaic (S30)
+
+Kit stays runnable if revived: `veil_framing_dss.png`, `mosaic_veil.py`,
+`reduce_veil.ps1`, panels W (311.78, +31.0) / E (313.78, +31.0), ~22% overlap,
+do West first. `check_orientation.py` now takes the feature to check as args
+(defaults to NGC 6960 for this plan).

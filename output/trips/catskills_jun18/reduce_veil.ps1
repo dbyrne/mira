@@ -1,9 +1,10 @@
-# Veil 2-panel mosaic reduction — Catskills Jun 18.
+# Veil 2-panel mosaic reduction — SHELVED (plan v2 moved the S30 to IC 1396;
+# see reduce_trip.ps1). Kept runnable in case the Veil mosaic is revived.
 # Run from the repo root (C:\mira) after the trip. Each block is independent;
 # run top to bottom. Heavy steps (solve/stack/GraXpert) take minutes.
 
 $ErrorActionPreference = "Stop"
-$work = "output/catskills_jun18"
+$work = "output/trips/catskills_jun18"
 
 # ---- 1. Per-panel: solve -> cull -> stack (debayer, LP_g80 auto-flats) ----
 foreach ($p in @("veil_p1_west","veil_p2_east")) {
@@ -40,7 +41,7 @@ save veil_cc
 #   stretch_m27.py target coords only affect the SNR stat readout; fine as-is,
 #   or copy + edit to the Veil center. White point 99.97+ so bright filament
 #   knots don't clip (the M82 lesson).
-Copy-Item output/m27/stretch_m27.py "$work/stretch_veil.py" -Force
+Copy-Item output/processed/m27/stretch_m27.py "$work/stretch_veil.py" -Force
 python "$work/stretch_veil.py" --in "$work/veil_cc.fit" `
   --out "$work/Veil_mosaic_20260618.png" --mode asinh --param 0.08 `
   --black 35 --white 99.97 --sat 1.7 --tiff

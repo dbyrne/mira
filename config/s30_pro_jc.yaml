@@ -140,10 +140,11 @@ dso:
 galaxies:
   enabled: true
   catalog_path: data/dso_catalog/galaxies.yaml
-  # S30 Pro: 150mm fl + IMX585 (11.14 × 6.26 mm) → ~4.25° × 2.39°. The wide
-  # field means galaxies never need a mosaic here — instead small ones get
+  # S30 Pro measured FOV: plate solves give 3.66"/px (effective fl ≈ 163mm,
+  # not the nominal 150mm) → 3.91° × 2.20° on the IMX585. The wide field
+  # means galaxies never need a mosaic here — instead small ones get
   # flagged "undersampled" (a postage stamp on this rig; save for the Esprit).
-  fov_deg: [4.2, 2.4]
+  fov_deg: [3.9, 2.2]
   # Broadband from the city is moon-sensitive: keep the strict moon gate
   # (the opposite of the narrowband dso: default). Override per-run with
   # `mira galaxies plan --relax-moon` on a moonless night.
@@ -163,7 +164,10 @@ galaxies:
 emission:
   enabled: true
   catalog_path: data/dso_catalog/emission_nebulae.yaml
-  fov_deg: [4.2, 2.4]
+  # Measured FOV (3.66"/px / eff. 163mm), same as galaxies:. The planner's
+  # 10% rim tolerance keeps near-fits like full IC 1396 (140' vs the 132'
+  # short axis) single-frame rather than mosaic-demoted.
+  fov_deg: [3.9, 2.2]
   relax_moon: true
   deficit_weight: 1.0
   output_subdir: emission

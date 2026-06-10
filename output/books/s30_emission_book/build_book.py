@@ -1,37 +1,40 @@
 #!/usr/bin/env python
 """S30 Pro emission-nebula 'image book' — single-frame, wide-field.
 
-S30 Pro: 150mm + IMX585 OSC (11.14×6.26mm) -> 4.25°×2.39° @ ~4.0"/px, LP
-dual-band (Ha+OIII). Wide FOV => this book features the LARGE emission
-complexes (the ones the Esprit book excludes as mosaics) plus medium targets,
-and flags small objects as 'Esprit territory'. Frame is FIXED (long axis ≈
-N-S, ~4° tilt, no rotator) so there's no per-target rotation.
+S30 Pro: IMX585 OSC (11.14×6.26mm) at the MEASURED effective focal length —
+plate solves consistently give 3.66"/px => eff. fl ≈ 163mm (not the nominal
+150mm) => 3.91°×2.20°, LP dual-band (Ha+OIII). Wide FOV => this book features
+the LARGE emission complexes (the ones the Esprit book excludes as mosaics)
+plus medium targets, and flags small objects as 'Esprit territory'. Frame is
+FIXED (long axis ≈ N-S, ~4° tilt, no rotator) so there's no per-target
+rotation — E-W extents are judged against the SHORT 2.20° axis.
 
-Run:  python output/s30_emission_book/build_book.py
+Run:  python output/books/s30_emission_book/build_book.py
 """
 import io, math, csv, traceback
 from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-OUT = Path("output/s30_emission_book"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("output/books/s30_emission_book"); OUT.mkdir(parents=True, exist_ok=True)
 LAT = 40.7178
 FOV = 5.5; PX = 1000; PPD = PX / FOV
-S30_L = math.degrees(2*math.atan(11.14/2/150))  # 4.25° long (≈N-S)
-S30_S = math.degrees(2*math.atan(6.26/2/150))    # 2.39° short (≈E-W)
-LMAX = S30_L*60                                   # 255'
-SMAX = S30_S*60                                   # 143'
+EFF_FL = 163.0                                    # measured: 3.66"/px plate scale
+S30_L = math.degrees(2*math.atan(11.14/2/EFF_FL))  # 3.91° long (≈N-S)
+S30_S = math.degrees(2*math.atan(6.26/2/EFF_FL))   # 2.20° short (≈E-W)
+LMAX = S30_L*60                                    # 235'
+SMAX = S30_S*60                                    # 132'
 
 # id (SIMBAD), common, const, type, maj', min', palette, fb RA, fb Dec, note
 T = [
- ("NGC 7000","North America (+Pelican)","Cyg","HII",120,100,"Ha+OIII",314.75,44.30,"NGC7000+IC5070 in one frame — flagship S30 target"),
- ("Cygnus Loop","Veil (full loop)","Cyg","SNR",180,170,"HOO (OIII-rich)",312.50,30.90,"whole Veil in one shot — S30's signature"),
+ ("NGC 7000","North America (+Pelican)","Cyg","HII",120,100,"Ha+OIII",314.75,44.30,"NGC7000+IC5070 combo spans ~2.2° E-W = exactly the frame — center carefully (test frame first)"),
+ ("Cygnus Loop","Veil (full loop)","Cyg","SNR",180,170,"HOO (OIII-rich)",312.50,30.90,"~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped"),
  ("Sh2-119","Clamshell","Cyg","HII",90,90,"Ha+OIII",319.62,43.93,"fits whole; 68 Cyg"),
- ("IC 1318","Sadr / Butterfly","Cyg","HII",180,170,"Ha+OIII",305.55,40.25,"Gamma Cyg complex; very large"),
+ ("IC 1318","Sadr / Butterfly","Cyg","HII",180,170,"Ha+OIII",305.55,40.25,"Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel"),
  ("IC 1396","Elephant's Trunk (full)","Cep","HII",170,140,"Ha+OIII",324.74,57.50,"full nebula + cluster + trunk"),
  ("IC 1805","Heart","Cas","HII",100,90,"Ha+OIII",38.20,61.50,"Heart alone (Heart+Soul pair ~5° overflows)"),
  ("IC 1848","Soul","Cas","HII",60,40,"Ha+OIII",42.70,60.40,"pairs with Heart"),
- ("NGC 1499","California","Per","HII",145,40,"Ha+OIII",60.00,36.40,"E-W elongated — TIGHT on fixed N-S frame"),
+ ("NGC 1499","California","Per","HII",145,40,"Ha+OIII",60.00,36.40,"E-W elongated — OVERFLOWS the fixed 2.20° E-W axis by ~13'; clip the ends or use a rotatable rig (Esprit 80 book)"),
  ("IC 405","Flaming Star (+Tadpoles)","Aur","HII",150,120,"Ha+OIII",78.00,34.30,"IC405+IC410+IC417 Auriga trio; late-fall"),
  ("NGC 2237","Rosette","Mon","HII",80,70,"Ha+OIII",97.95,4.95,"fits well; low alt from JC; late fall"),
  ("Sh2-129","Flying Bat (Ou4 Squid)","Cep","HII",150,120,"HOO",317.80,59.40,"OIII Squid very faint — dark-site"),
@@ -39,7 +42,7 @@ T = [
  ("Sh2-157","Lobster Claw (+M52/Bubble)","Cas","HII",90,60,"Ha+OIII",345.40,61.50,"rich wide field with NGC7635+M52"),
  ("Sh2-155","Cave","Cep","HII",50,30,"Ha+OIII",343.49,62.62,"fits comfortably"),
  ("Sh2-132","Lion","Cep","HII",40,30,"Ha+OIII",335.00,56.10,"faint"),
- ("Simeis 147","Spaghetti (Sh2-240)","Tau","SNR",180,180,"HOO",84.62,28.00,"huge faint SNR — dark-site only; late fall"),
+ ("Simeis 147","Spaghetti (Sh2-240)","Tau","SNR",180,180,"HOO",84.62,28.00,"huge faint SNR ~3° round — overflows E-W; dark-site only; late fall"),
  ("IC 443","Jellyfish","Gem","SNR",50,40,"HOO",94.20,22.50,"SNR; fall/winter"),
  ("NGC 2174","Monkey Head","Ori","HII",40,30,"Ha+OIII",91.00,20.30,"fall/winter"),
  ("NGC 2264","Christmas Tree / Cone","Mon","HII",40,20,"Ha+OIII",100.25,9.90,"cluster + Cone; late fall"),
@@ -110,6 +113,12 @@ for qid,common,const,typ,maj,mn,pal,fra,fdec,note in T:
     try:
         ra,dec,src=simbad_coord(qid,fra,fdec)
         maxalt=90-abs(LAT-dec); pk=peak_month(ra); fit=classify(maj,mn)
+        # classify() assumes the object's long axis can ride the frame's long
+        # (N-S) axis. These targets' E-W extent exceeds the fixed 2.20° (132')
+        # short axis — California's 145' run E-W, and the ~3° round giants
+        # overflow in every direction E-W — so they overflow regardless of
+        # what classify() says about the N-S fit.
+        if qid in ("NGC 1499","Cygnus Loop","IC 1318","Simeis 147"): fit="EW-overflow"
         img=fetch(ra,dec)
         sub=f"{typ} | {maj}'×{mn}' | LP {pal} | maxAlt {maxalt:.0f}° | peak {pk} | {fit}"
         draw_box(img,f"{qid}  ({common})  — {const}",sub)
@@ -128,14 +137,17 @@ so={"Jul":0,"Aug":1,"Sep":2,"Oct":3,"Nov":4,"Dec":5,"Jan":6}
 rows.sort(key=lambda r:(so.get(r["peak"],9),-r["maxalt"]))
 md=["# S30 Pro — Emission Nebula Image Book (single-frame, wide-field)","",
  f"Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar S30 Pro "
- f"(**{S30_L:.2f}°×{S30_S:.2f}°**, ~4.0\"/px, **LP dual-band Ha+OIII**) from Jersey City this "
+ f"(**{S30_L:.2f}°×{S30_S:.2f}°** — the *measured* field, 3.66\"/px plate scale / eff. 163mm fl, "
+ f"not the nominal-150mm 4.25°×2.39° — **LP dual-band Ha+OIII**) from Jersey City this "
  "**summer/fall**. The S30's wide field makes it the *complement* of the Esprit book: it owns the "
- "**large complexes** (North America, full Veil, Heart, California, IC1396) that overflow the Esprit, "
- "while **small targets** (Crescent, Tulip, M27) are flagged — those belong on the Esprit at 840mm.",
+ "**large complexes** (North America+Pelican, full IC 1396, Heart, Clamshell, the Auriga trio) that "
+ "overflow the Esprit, while **small targets** (Crescent, Tulip, M27) are flagged — those belong on "
+ "the Esprit at 840mm. The ~3° round giants (full Veil, Sadr, Simeis 147) overflow even this frame's "
+ "E–W axis — flagged **EW-overflow** below: crop, or 2-panel them in RA.",
  "",
- "**Fixed frame:** the S30 has no rotator; the long (4.25°) axis sits ≈**N–S** (~4° tilt). So framing "
- "is choose-the-center only. **E–W-elongated targets (California) use the narrower 2.39° axis** and "
- "run tight — flagged below. Box = cyan; DSS2 color (Ha reads brown; through the LP it's red/teal HOO).",
+ f"**Fixed frame:** the S30 has no rotator; the long ({S30_L:.2f}°) axis sits ≈**N–S** (~4° tilt). So framing "
+ f"is choose-the-center only. **E–W-elongated targets (California, 145') overflow the narrower {S30_S:.2f}° axis** — "
+ "clip the ends or hand them to a rotatable rig. Box = cyan; DSS2 color (Ha reads brown; through the LP it's red/teal HOO).",
  "",
  "| Target | Common | Type | Size | Fit | Palette | maxAlt(JC) | Peak |",
  "|---|---|---|---|---|---|---|---|"]

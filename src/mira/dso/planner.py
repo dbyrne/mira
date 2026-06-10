@@ -31,6 +31,13 @@ from .ledger import Ledger, target_completion_fraction
 # planner's fov_deg kwarg.
 DEFAULT_FOV_DEG = (1.6, 1.07)
 
+# A target whose diffuse rim overflows the frame by <10% per axis is still a
+# single-frame shot in practice (nobody mosaics for a rim kiss — IC 1396 at
+# 140' in the S30's measured 132' short axis is the canonical case). Applied
+# per axis in the fits_fov check; the catalog's static `mosaic` flag is not
+# affected.
+FOV_FIT_TOLERANCE = 1.10
+
 # Surface-brightness scoring (galaxies only — targets with an integrated
 # magnitude). Brighter mean SB (a *smaller* mag/arcsec²) scores higher,
 # because SB — not integrated mag — is what survives urban light pollution
@@ -162,8 +169,8 @@ def build_dso_candidates(
         minor_deg = target.size_arcmin[1] / 60.0
         fits_fov = (
             not target.mosaic
-            and major_deg <= fov_deg[0]
-            and minor_deg <= fov_deg[1]
+            and major_deg <= fov_deg[0] * FOV_FIT_TOLERANCE
+            and minor_deg <= fov_deg[1] * FOV_FIT_TOLERANCE
         )
 
         # Ledger-derived display fields. The captured_minutes calc caps

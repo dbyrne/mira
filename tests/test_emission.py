@@ -51,8 +51,10 @@ class EmissionConfigTests(TestCase):
     def test_s30_wide_fov_override(self):
         # The load-bearing setting: the S30's wide field frames the giants
         # single-shot, so its emission FOV must override the Esprit default.
+        # Values are the MEASURED field (3.66"/px plate scale / eff. 163mm fl),
+        # not the nominal-150mm 4.2x2.4.
         cfg = load_config(S30)
-        self.assertEqual(cfg.emission.fov_deg, (4.2, 2.4))
+        self.assertEqual(cfg.emission.fov_deg, (3.9, 2.2))
         self.assertTrue(cfg.emission.relax_moon)
 
     def test_absent_section_falls_back_to_defaults(self):
@@ -121,3 +123,36 @@ class EmissionFovBehaviorTests(TestCase):
             crescent = self._candidate(cands, "NGC 6888")  # 18'×12'
             self.assertIsNotNone(crescent)
             self.assertTrue(crescent.fits_fov)
+
+    def test_rim_kiss_within_tolerance_stays_single_frame(self):
+        # Full IC 1396 (170'×140') vs the S30's measured 3.9°×2.2° field:
+        # the 140' minor axis overflows the 132' short axis by ~6% — a diffuse
+        # rim kiss, not a mosaic (it's the Catskills single-frame target).
+        # FOV_FIT_TOLERANCE (10%/axis) must keep it fits_fov=True.
+        cat = load_dso_catalog(CATALOG)
+        s30 = load_config(S30)
+        cands = build_dso_candidates(
+            cat, s30, start_date=date(2026, 8, 15),
+            fov_deg=s30.emission.fov_deg,
+            relax_moon=True, ledger=None, deficit_weight=0.0,
+        )
+        ic1396 = self._candidate(cands, "IC 1396")
+        self.assertIsNotNone(ic1396)
+        self.assertTrue(ic1396.fits_fov)
+
+    def test_static_mosaic_flag_not_blessed_by_tolerance(self):
+        # The full Cygnus Loop carries the catalog's static mosaic=true (it
+        # overflows even the S30). FOV_FIT_TOLERANCE must never bless a
+        # static-flagged target as single-frame — the flag short-circuits.
+        # (Beyond-tolerance *arithmetic* is pinned by NGC 7000 on the Esprit
+        # in test_medium_giant_fits_s30_not_esprit: 1.67° minor vs 1.07°×1.1.)
+        cat = load_dso_catalog(CATALOG)
+        s30 = load_config(S30)
+        cands = build_dso_candidates(
+            cat, s30, start_date=date(2026, 8, 15),
+            fov_deg=s30.emission.fov_deg,
+            relax_moon=True, ledger=None, deficit_weight=0.0,
+        )
+        loop = self._candidate(cands, "Cygnus Loop")
+        self.assertIsNotNone(loop)
+        self.assertFalse(loop.fits_fov)

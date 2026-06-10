@@ -1,31 +1,31 @@
 # S30 Pro — Emission Nebula Image Book (single-frame, wide-field)
 
-Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar S30 Pro (**4.25°×2.39°**, ~4.0"/px, **LP dual-band Ha+OIII**) from Jersey City this **summer/fall**. The S30's wide field makes it the *complement* of the Esprit book: it owns the **large complexes** (North America, full Veil, Heart, California, IC1396) that overflow the Esprit, while **small targets** (Crescent, Tulip, M27) are flagged — those belong on the Esprit at 840mm.
+Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar S30 Pro (**3.91°×2.20°** — the *measured* field, 3.66"/px plate scale / eff. 163mm fl, not the nominal-150mm 4.25°×2.39° — **LP dual-band Ha+OIII**) from Jersey City this **summer/fall**. The S30's wide field makes it the *complement* of the Esprit book: it owns the **large complexes** (North America+Pelican, full IC 1396, Heart, Clamshell, the Auriga trio) that overflow the Esprit, while **small targets** (Crescent, Tulip, M27) are flagged — those belong on the Esprit at 840mm. The ~3° round giants (full Veil, Sadr, Simeis 147) overflow even this frame's E–W axis — flagged **EW-overflow** below: crop, or 2-panel them in RA.
 
-**Fixed frame:** the S30 has no rotator; the long (4.25°) axis sits ≈**N–S** (~4° tilt). So framing is choose-the-center only. **E–W-elongated targets (California) use the narrower 2.39° axis** and run tight — flagged below. Box = cyan; DSS2 color (Ha reads brown; through the LP it's red/teal HOO).
+**Fixed frame:** the S30 has no rotator; the long (3.91°) axis sits ≈**N–S** (~4° tilt). So framing is choose-the-center only. **E–W-elongated targets (California, 145') overflow the narrower 2.20° axis** — clip the ends or hand them to a rotatable rig. Box = cyan; DSS2 color (Ha reads brown; through the LP it's red/teal HOO).
 
 | Target | Common | Type | Size | Fit | Palette | maxAlt(JC) | Peak |
 |---|---|---|---|---|---|---|---|
-| IC 1318 | Sadr / Butterfly | HII | 180'×170' | tight | LP Ha+OIII | 89° | Jul |
+| IC 1318 | Sadr / Butterfly | HII | 180'×170' | EW-overflow | LP Ha+OIII | 89° | Jul |
 | NGC 6888 | Crescent | WR bubble | 18'×12' | small | LP HOO | 88° | Jul |
 | Sh2-101 | Tulip | HII | 16'×9' | small | LP Ha+OIII | 85° | Jul |
 | M27 | Dumbbell | PN | 8'×6' | small | LP HOO | 72° | Jul |
 | Sh2-119 | Clamshell | HII | 90'×90' | fits | LP Ha+OIII | 87° | Aug |
 | NGC 7000 | North America (+Pelican) | HII | 120'×100' | fits | LP Ha+OIII | 86° | Aug |
 | IC 5146 | Cocoon (+B168 trail) | HII | 12'×12' | small | LP Ha+OIII | 83° | Aug |
-| Cygnus Loop | Veil (full loop) | SNR | 180'×170' | tight | LP HOO (OIII-rich) | 80° | Aug |
+| Cygnus Loop | Veil (full loop) | SNR | 180'×170' | EW-overflow | LP HOO (OIII-rich) | 80° | Aug |
 | Sh2-132 | Lion | HII | 40'×30' | fits | LP Ha+OIII | 75° | Aug |
 | IC 1396 | Elephant's Trunk (full) | HII | 170'×140' | tight | LP Ha+OIII | 73° | Aug |
-| Sh2-129 | Flying Bat (Ou4 Squid) | HII | 150'×120' | fits | LP HOO | 71° | Aug |
+| Sh2-129 | Flying Bat (Ou4 Squid) | HII | 150'×120' | tight | LP HOO | 71° | Aug |
 | Sh2-157 | Lobster Claw (+M52/Bubble) | HII | 90'×60' | fits | LP Ha+OIII | 71° | Sep |
 | Sh2-155 | Cave | HII | 50'×30' | fits | LP Ha+OIII | 68° | Sep |
 | NGC 7822 | Ced 214 / Sh2-171 | HII | 90'×60' | fits | LP Ha+OIII | 63° | Sep |
 | NGC 281 | Pacman | HII | 35'×30' | small | LP Ha+OIII | 74° | Oct |
 | IC 1805 | Heart | HII | 100'×90' | fits | LP Ha+OIII | 69° | Oct |
-| NGC 1499 | California | HII | 145'×40' | fits | LP Ha+OIII | 86° | Nov |
+| NGC 1499 | California | HII | 145'×40' | EW-overflow | LP Ha+OIII | 86° | Nov |
 | IC 1848 | Soul | HII | 60'×40' | fits | LP Ha+OIII | 70° | Nov |
-| IC 405 | Flaming Star (+Tadpoles) | HII | 150'×120' | fits | LP Ha+OIII | 84° | Dec |
-| Simeis 147 | Spaghetti (Sh2-240) | SNR | 180'×180' | tight | LP HOO | 77° | Dec |
+| IC 405 | Flaming Star (+Tadpoles) | HII | 150'×120' | tight | LP Ha+OIII | 84° | Dec |
+| Simeis 147 | Spaghetti (Sh2-240) | SNR | 180'×180' | EW-overflow | LP HOO | 77° | Dec |
 | IC 443 | Jellyfish | SNR | 50'×40' | fits | LP HOO | 72° | Dec |
 | M1 | Crab | SNR | 6'×4' | small | LP HOO | 71° | Dec |
 | NGC 2174 | Monkey Head | HII | 40'×30' | fits | LP Ha+OIII | 70° | Dec |
@@ -41,10 +41,10 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![IC 1318](IC_1318.png)
 
 - **Coords (J2000):** 20h16m47s +41°57'  (304.2°, 41.957°) — *SIMBAD*
-- **Type / size:** HII, 180'×170'  → **tight** in the S30 frame
+- **Type / size:** HII, 180'×170'  → **EW-overflow** in the S30 frame
 - **Palette:** LP dual-band (Ha+OIII)
 - **JC observability:** max altitude 89°, peaks ~Jul
-- **Note:** Gamma Cyg complex; very large
+- **Note:** Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel
 
 ## NGC 6888 — Crescent  (Cyg)
 
@@ -94,7 +94,7 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 - **Type / size:** HII, 120'×100'  → **fits** in the S30 frame
 - **Palette:** LP dual-band (Ha+OIII)
 - **JC observability:** max altitude 86°, peaks ~Aug
-- **Note:** NGC7000+IC5070 in one frame — flagship S30 target
+- **Note:** NGC7000+IC5070 combo spans ~2.2° E-W = exactly the frame — center carefully (test frame first)
 
 ## IC 5146 — Cocoon (+B168 trail)  (Cyg)
 
@@ -111,10 +111,10 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![Cygnus Loop](Cygnus_Loop.png)
 
 - **Coords (J2000):** 20h51m00s +30°40'  (312.75°, 30.667°) — *SIMBAD*
-- **Type / size:** SNR, 180'×170'  → **tight** in the S30 frame
+- **Type / size:** SNR, 180'×170'  → **EW-overflow** in the S30 frame
 - **Palette:** LP dual-band (HOO (OIII-rich))
 - **JC observability:** max altitude 80°, peaks ~Aug
-- **Note:** whole Veil in one shot — S30's signature
+- **Note:** ~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped
 
 ## Sh2-132 — Lion  (Cep)
 
@@ -141,7 +141,7 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![Sh2-129](Sh2-129.png)
 
 - **Coords (J2000):** 21h11m47s +59°56'  (317.95°, 59.95°) — *SIMBAD*
-- **Type / size:** HII, 150'×120'  → **fits** in the S30 frame
+- **Type / size:** HII, 150'×120'  → **tight** in the S30 frame
 - **Palette:** LP dual-band (HOO)
 - **JC observability:** max altitude 71°, peaks ~Aug
 - **Note:** OIII Squid very faint — dark-site
@@ -201,10 +201,10 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![NGC 1499](NGC_1499.png)
 
 - **Coords (J2000):** 04h03m17s +36°25'  (60.825°, 36.422°) — *SIMBAD*
-- **Type / size:** HII, 145'×40'  → **fits** in the S30 frame
+- **Type / size:** HII, 145'×40'  → **EW-overflow** in the S30 frame
 - **Palette:** LP dual-band (Ha+OIII)
 - **JC observability:** max altitude 86°, peaks ~Nov
-- **Note:** E-W elongated — TIGHT on fixed N-S frame
+- **Note:** E-W elongated — OVERFLOWS the fixed 2.20° E-W axis by ~13'; clip the ends or use a rotatable rig (Esprit 80 book)
 
 ## IC 1848 — Soul  (Cas)
 
@@ -221,7 +221,7 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![IC 405](IC_405.png)
 
 - **Coords (J2000):** 05h17m24s +34°22'  (79.35°, 34.383°) — *SIMBAD*
-- **Type / size:** HII, 150'×120'  → **fits** in the S30 frame
+- **Type / size:** HII, 150'×120'  → **tight** in the S30 frame
 - **Palette:** LP dual-band (Ha+OIII)
 - **JC observability:** max altitude 84°, peaks ~Dec
 - **Note:** IC405+IC410+IC417 Auriga trio; late-fall
@@ -231,10 +231,10 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 ![Simeis 147](Simeis_147.png)
 
 - **Coords (J2000):** 05h38m28s +28°00'  (84.62°, 28.0°) — *fallback*
-- **Type / size:** SNR, 180'×180'  → **tight** in the S30 frame
+- **Type / size:** SNR, 180'×180'  → **EW-overflow** in the S30 frame
 - **Palette:** LP dual-band (HOO)
 - **JC observability:** max altitude 77°, peaks ~Dec
-- **Note:** huge faint SNR — dark-site only; late fall
+- **Note:** huge faint SNR ~3° round — overflows E-W; dark-site only; late fall
 
 ## IC 443 — Jellyfish  (Gem)
 

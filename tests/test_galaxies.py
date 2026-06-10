@@ -210,7 +210,8 @@ class GalaxyConfigTests(TestCase):
         cfg = load_config("config/s30_pro_jc.yaml")
         self.assertTrue(cfg.galaxies.enabled)
         self.assertFalse(cfg.galaxies.relax_moon)
-        self.assertEqual(cfg.galaxies.fov_deg, (4.2, 2.4))
+        # Measured FOV (3.66"/px / eff. 163mm fl), not the nominal-150mm 4.2x2.4.
+        self.assertEqual(cfg.galaxies.fov_deg, (3.9, 2.2))
         self.assertEqual(
             cfg.galaxies.catalog_path, Path("data/dso_catalog/galaxies.yaml"),
         )

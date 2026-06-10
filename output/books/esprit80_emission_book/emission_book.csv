@@ -1,0 +1,35 @@
+qid,common,const,typ,ra,dec,radm,decdm,maj,min,pa,rot,pal,maxalt,peak,fit,src,note,png
+NGC 7000,North America,Cyg,HII,314.696,44.33,20h58m46s,+44°19',120,100,0,any (round),SHO,86,Aug,fits,SIMBAD,NA alone fits with room (mosaic on the 120); +Pelican combo ~2.2°+ E-W = S30 or 2-panel,NGC_7000.png
+IC 5070,Pelican,Cyg,HII,312.75,44.367,20h51m00s,+44°22',60,50,0,any (round),SHO,86,Aug,fits,SIMBAD,own frame with context (tight on the 120),IC_5070.png
+NGC 6960,Western Veil,Cyg,SNR,311.408,30.708,20h45m37s,+30°42',70,8,10,PA 010° (long axis),HOO,80,Aug,fits,SIMBAD,Witch's Broom + Pickering's with room the 120 can't give; full loop = 2-panel on this rig,NGC_6960.png
+NGC 6992,Eastern Veil,Cyg,SNR,314.079,31.743,20h56m19s,+31°44',60,8,200,PA 200° (long axis),HOO,81,Aug,fits,SIMBAD,Network + Bat in one frame,NGC_6992.png
+Sh2-119,Clamshell,Cyg,HII,319.625,43.933,21h18m30s,+43°56',90,90,0,any (round),Ha / HOO,87,Aug,fits,SIMBAD,"whole shell + 68 Cyg, with field",Sh2-119.png
+Sh2-101,Tulip,Cyg,HII,299.979,35.277,19h59m55s,+35°16',16,9,135,PA 135° (long axis),SHO,85,Jul,small,SIMBAD,840mm territory; ok as a Cyg X-1 wide-context frame,Sh2-101.png
+NGC 6888,Crescent,Cyg,WR bubble,303.027,38.355,20h12m06s,+38°21',18,12,60,PA 060° (long axis),SHO / HOO,88,Jul,small,SIMBAD,840mm territory (existing data is from the 120),NGC_6888.png
+IC 5146,Cocoon (+B168),Cyg,HII+refl,328.372,47.246,21h53m29s,+47°14',12,12,105,any (round),Ha / HOO,83,Aug,small,SIMBAD,"nebula is small, but at PA~105 the B168 dark river (~1.5°) makes the frame",IC_5146.png
+IC 1396,Elephant's Trunk (full),Cep,HII,324.745,57.514,21h38m58s,+57°30',170,140,0,any (round),SHO,73,Aug,tight,SIMBAD,tight: 140' across vs 135' short axis — rim kiss; mu Cep + trunk + full shell,IC_1396.png
+Sh2-129,Flying Bat (+OU4 Squid),Cep,HII,317.95,59.95,21h11m47s,+59°56',150,120,0,any (round),HOO,71,Aug,fits,SIMBAD,Bat+Squid fit together; the OIII Squid is dark-site-deep,Sh2-129.png
+NGC 7380,Wizard,Cep,HII,341.817,58.125,22h47m16s,+58°07',25,20,0,any (round),SHO,73,Sep,fits,SIMBAD,fits with generous field,NGC_7380.png
+Sh2-155,Cave,Cep,HII,344.275,62.636,22h57m05s,+62°38',50,30,90,PA 090° (long axis),SHO,68,Sep,fits,SIMBAD,"comfortable, dark rim + field",Sh2-155.png
+Sh2-132,Lion,Cep,HII,334.787,56.079,22h19m08s,+56°04',40,30,30,PA 030° (long axis),SHO,75,Aug,fits,SIMBAD,faint; SHO rewards it,Sh2-132.png
+NGC 7822,Ced 214 / Sh2-171,Cep,HII,0.286,67.421,00h01m08s,+67°25',90,60,90,PA 090° (long axis),SHO,63,Sep,fits,SIMBAD,whole complex + Berkeley 59; circumpolar,NGC_7822.png
+NGC 281,Pacman,Cas,HII,13.105,56.565,00h52m25s,+56°33',35,30,0,any (round),SHO,74,Oct,fits,SIMBAD,round; Bok globules,NGC_281.png
+NGC 7635,Bubble (+M52),Cas,HII,350.201,61.202,23h20m48s,+61°12',22,15,0,PA 000° (long axis),SHO,70,Sep,small,SIMBAD,840mm feature; or shoot it inside the Sh2-157 combo below,NGC_7635.png
+Sh2-157,Lobster Claw (+Bubble),Cas,HII,349.016,60.034,23h16m03s,+60°02',90,60,40,PA 040° (long axis),SHO,71,Sep,fits,SIMBAD,claw fits easily; claw+Bubble combo is razor-tight at PA~90 — test frame; M52 won't make it,Sh2-157.png
+NGC 6820,Sh2-86,Vul,HII,295.616,23.087,19h42m27s,+23°05',40,30,0,PA 000° (long axis),SHO,72,Jul,fits,SIMBAD,pillar + NGC6823 cluster,NGC_6820.png
+M27,Dumbbell,Vul,PN,299.902,22.721,19h59m36s,+22°43',8,6,30,PA 030° (long axis),HOO / SHO,72,Jul,small,SIMBAD,840mm/long-FL territory,M27.png
+IC 1805,Heart,Cas,HII,38.21,61.471,02h32m50s,+61°28',100,90,0,any (round),SHO,69,Oct,fits,SIMBAD,Heart alone with room (overflows the 120); Heart+Soul pair ~5° = 2-panel,IC_1805.png
+IC 1848,Soul,Cas,HII,42.855,60.419,02h51m25s,+60°25',60,40,90,PA 090° (long axis),SHO,70,Nov,fits,SIMBAD,fits; natural 2-panel partner with Heart,IC_1848.png
+NGC 1499,California,Per,HII,60.825,36.422,04h03m17s,+36°25',145,40,100,PA 100° (long axis),Ha / SHO,86,Nov,fits,SIMBAD,"THE rotation win: PA~100 lays the 145' ribbon along the 3.37° axis — overflows the S30's fixed frame, mosaic on the 120",NGC_1499.png
+IC 405,Flaming Star,Aur,HII+refl,79.35,34.383,05h17m24s,+34°22',37,19,30,PA 030° (long axis),Ha / HOO,84,Dec,fits,SIMBAD,or frame the IC405+IC410 pair: ~2.7° span at PA~115 fits this rig only,IC_405.png
+IC 410,Tadpoles,Aur,HII,80.5,33.483,05h21m59s,+33°29',40,30,0,PA 000° (long axis),SHO,83,Dec,fits,SIMBAD,pairs with IC 405 in one frame at PA~115,IC_410.png
+NGC 2237,Rosette,Mon,HII,97.65,4.981,06h30m36s,+04°58',80,70,0,any (round),SHO,54,Dec,fits,SIMBAD,fits with room (tight on the 120); low from JC,NGC_2237.png
+NGC 2264,Christmas Tree / Cone,Mon,HII,100.217,9.877,06h40m52s,+09°52',40,20,0,PA 000° (long axis),SHO,59,Dec,fits,SIMBAD,Cone + Fox Fur + cluster,NGC_2264.png
+IC 443,Jellyfish,Gem,SNR,94.25,22.57,06h16m59s,+22°34',50,40,140,any (round),HOO,72,Dec,fits,SIMBAD,+IC 444 context in frame,IC_443.png
+NGC 2174,Monkey Head,Ori,HII,92.425,20.5,06h09m42s,+20°30',40,30,0,PA 000° (long axis),SHO,70,Dec,fits,SIMBAD,fall/winter,NGC_2174.png
+M42,Orion Nebula (+Running Man),Ori,HII,83.82,-5.388,05h35m16s,-05°23',90,60,0,PA 000° (long axis),HOO / SHO,44,Dec,fits,SIMBAD,whole sword fits; HDR the core,M42.png
+IC 434,Belt: Flame+Horsehead,Ori,HII,85.25,-2.5,05h41m00s,-02°30',90,60,0,PA 000° (long axis),Ha / SHO,47,Dec,fits,SIMBAD,Alnitak + Flame + Horsehead strip in one,IC_434.png
+IC 2177,Seagull,CMa,HII,106.104,-10.455,07h04m24s,-10°27',150,50,0,PA 000° (long axis),Ha / HOO,39,Jan,fits,SIMBAD,150' wingspan along the long axis; low from JC (~39°),IC_2177.png
+M1,Crab,Tau,SNR,83.632,22.017,05h34m31s,+22°01',6,4,0,PA 000° (long axis),HOO,71,Dec,small,SIMBAD,840mm/long-FL territory,M1.png
+NGC 2359,Thor's Helmet,CMa,WR bubble,109.625,-13.227,07h18m30s,-13°13',10,8,0,any (round),HOO,36,Jan,small,SIMBAD,840mm territory + low from JC,NGC_2359.png
+Abell 21,Medusa,Gem,PN,112.261,13.247,07h29m02s,+13°14',10,10,0,any (round),HOO,63,Jan,small,SIMBAD,840mm territory; large faint OIII PN,Abell_21.png

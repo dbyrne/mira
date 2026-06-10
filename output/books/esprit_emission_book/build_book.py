@@ -12,14 +12,18 @@ summer/fall, this:
   - writes a framing PNG.
 Then writes emission_book.md (the book) + emission_book.csv (index).
 
-Run:  python output/esprit_emission_book/build_book.py
+Run:  python output/books/esprit_emission_book/build_book.py
 """
 import io, math, csv, traceback
 from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-OUT = Path("output/esprit_emission_book"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("output/books/esprit_emission_book"); OUT.mkdir(parents=True, exist_ok=True)
+
+# Ambiguous SIMBAD names: plain "Abell 21" resolves to the GALAXY CLUSTER
+# (RA 0h20m, +28.7°), not the Medusa planetary — query the PN id instead.
+SIMBAD_QUERY = {"Abell 21": "PN A66 21"}
 LAT = 40.7178
 FOV = 2.0; PX = 1000; PPD = PX / FOV
 ESP_L = math.degrees(2*math.atan(23.5/2/840))   # 1.60° sensor long axis
@@ -65,7 +69,7 @@ def simbad_coord(qid, fb_ra, fb_dec):
         from astroquery.simbad import Simbad
         from astropy.coordinates import SkyCoord
         import astropy.units as u
-        r = Simbad.query_object(qid)
+        r = Simbad.query_object(SIMBAD_QUERY.get(qid, qid))
         if r is None: return fb_ra, fb_dec, "fallback"
         row = r[0]
         racol = "ra" if "ra" in r.colnames else "RA"

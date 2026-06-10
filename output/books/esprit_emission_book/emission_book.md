@@ -17,7 +17,6 @@ Single-frame framing previews for **emission nebulae** (HII / planetary / SNR / 
 | NGC 6960 | Western Veil | SNR | 70'×8' | fits | PA 010° (long axis) | HOO | 80° | Aug |
 | Sh2-132 | Lion | HII | 40'×30' | fits | PA 030° (long axis) | SHO | 75° | Aug |
 | IC 1396A | Elephant's Trunk | HII | 20'×10' | fits | PA 120° (long axis) | SHO | 73° | Aug |
-| Abell 21 | Medusa | PN | 10'×10' | fits | any (round) | HOO | 78° | Sep |
 | NGC 7380 | Wizard | HII | 25'×20' | fits | any (round) | SHO | 73° | Sep |
 | Sh2-157 | Lobster Claw | HII | 60'×30' | fits | PA 040° (long axis) | SHO | 71° | Sep |
 | NGC 7635 | Bubble | HII | 22'×15' | fits | PA 000° (long axis) | SHO | 70° | Sep |
@@ -34,6 +33,7 @@ Single-frame framing previews for **emission nebulae** (HII / planetary / SNR / 
 | NGC 2024 | Flame | HII | 30'×30' | fits | any (round) | SHO | 47° | Dec |
 | IC 434 | Horsehead | HII | 60'×10' | fits | PA 000° (long axis) | Ha / SHO | 47° | Dec |
 | M42 | Orion Nebula | HII | 85'×60' | tight | PA 000° (long axis) | HOO / SHO | 44° | Dec |
+| Abell 21 | Medusa | PN | 10'×10' | fits | any (round) | HOO | 63° | Jan |
 | NGC 2359 | Thor's Helmet | WR bubble | 10'×8' | fits | any (round) | HOO | 36° | Jan |
 
 ## NGC 6888 — Crescent  (Cyg)
@@ -156,17 +156,6 @@ Single-frame framing previews for **emission nebulae** (HII / planetary / SNR / 
 - **Palette:** SHO
 - **JC observability:** max altitude 73°, peaks ~Aug
 - **Note:** trunk only (full IC1396 too big)
-
-## Abell 21 — Medusa  (Gem)
-
-![Abell 21](Abell_21.png)
-
-- **Coords (J2000):** 00h20m38s +28°41'  (5.161°, 28.695°) — *SIMBAD*
-- **Type / size:** PN, 10'×10'  → **fits** in the Esprit frame
-- **Rotation:** any (round)
-- **Palette:** HOO
-- **JC observability:** max altitude 78°, peaks ~Sep
-- **Note:** large faint PN; OIII-rich
 
 ## NGC 7380 — Wizard  (Cep)
 
@@ -343,6 +332,17 @@ Single-frame framing previews for **emission nebulae** (HII / planetary / SNR / 
 - **Palette:** HOO / SHO
 - **JC observability:** max altitude 44°, peaks ~Dec
 - **Note:** very bright; tight in frame; +M43/Running Man
+
+## Abell 21 — Medusa  (Gem)
+
+![Abell 21](Abell_21.png)
+
+- **Coords (J2000):** 07h29m02s +13°14'  (112.261°, 13.247°) — *SIMBAD*
+- **Type / size:** PN, 10'×10'  → **fits** in the Esprit frame
+- **Rotation:** any (round)
+- **Palette:** HOO
+- **JC observability:** max altitude 63°, peaks ~Jan
+- **Note:** large faint PN; OIII-rich
 
 ## NGC 2359 — Thor's Helmet  (CMa)
 

@@ -261,6 +261,37 @@ def main() -> None:
         "Else $MIRA_GRAXPERT, then PATH, then the installed graxpert module.",
     )
     finish_parser.add_argument(
+        "--preset", default=None,
+        choices=["faint-galaxy", "faint-galaxy-deep", "emission"],
+        help="Render with a verified finishing preset instead of the Siril "
+        "autostretch (recipes from the 2026-06-09 reprocessing session; see "
+        "finish_presets.py for provenance). In preset mode GraXpert bg "
+        "extraction still runs unless --no-bg; AI denoise/deconv are skipped "
+        "(the presets' gated chroma ops are the validated replacement). "
+        "Feed a color-calibrated linear; if it was PCC'd, keep bg extraction "
+        "ON — PCC leaves a spatial color gradient that deep stretches surface.",
+    )
+    finish_parser.add_argument(
+        "--contact-sheet", dest="contact_sheet", action="store_true",
+        help="Render ALL presets on a centered crop into one labeled panel "
+        "for eye-judging, instead of writing a keeper. Use --ra/--dec to "
+        "center the crop on the target (else frame center).",
+    )
+    finish_parser.add_argument("--ra", type=float, default=None, help="Target RA (deg, J2000) for the contact-sheet crop center.")
+    finish_parser.add_argument("--dec", type=float, default=None, help="Target Dec (deg, J2000) for the contact-sheet crop center.")
+    finish_parser.add_argument("--crop-half", dest="crop_half", type=int, default=800, help="Contact-sheet crop half-size in px (default 800).")
+    finish_parser.add_argument(
+        "--param", action="append", default=[], metavar="K=V",
+        help="Preset parameter override, repeatable (e.g. --param toe_sigma=2.0 "
+        "--param pedestal=0.03). Unknown keys fail with the valid list.",
+    )
+    finish_parser.add_argument("--starnet-exe", dest="starnet_exe", default=None, help="StarNet2 CLI path (else $MIRA_STARNET, then PATH).")
+    finish_parser.add_argument(
+        "--starnet-fallback", dest="starnet_fallback", action="store_true",
+        help="If StarNet2 is missing, degrade to a morphological star split "
+        "(preview quality) instead of aborting.",
+    )
+    finish_parser.add_argument(
         "--progress-dir", default=None,
         help="Directory to publish phase-progress JSON to (so the webapp can "
         "show this run live). Default: data/finish_progress.",
@@ -1427,11 +1458,85 @@ def stack(args: argparse.Namespace) -> None:
         print(f"Wrote {result.preview_path} (stretched preview)")
 
 
+def _finish_preset(args: argparse.Namespace) -> None:
+    """Preset finishing path: optional GraXpert bg extraction, then one of
+    the verified preset renders (or the all-presets contact sheet). Replaces
+    the Siril autostretch stage; AI denoise/deconv are deliberately skipped
+    — the presets' gated chroma ops are the validated noise treatment."""
+    from . import finish_presets as fpz
+    from .finishing import GraXpertError, GraXpertNotFound, find_graxpert, run_graxpert_step
+
+    input_path = Path(args.input).resolve()
+    if not input_path.is_file():
+        print(f"Input '{input_path}' does not exist.")
+        return
+    out_path = Path(args.out)
+
+    linear_path = input_path
+    if args.do_bg:
+        bg_path = (out_path.parent.resolve() / (input_path.stem + "_bg.fits"))
+        if bg_path.exists() and bg_path.stat().st_mtime >= input_path.stat().st_mtime:
+            print(f"  reusing background-extracted linear: {bg_path.name}")
+            linear_path = bg_path
+        else:
+            try:
+                inv = find_graxpert(args.graxpert_path)
+                print("  GraXpert background-extraction (pass absolute paths — "
+                      "relative -output doubles against the input dir)...")
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                linear_path = run_graxpert_step(
+                    inv, "background-extraction", input_path,
+                    bg_path.with_suffix(""), gpu=args.gpu,
+                )
+            except GraXpertNotFound as exc:
+                print(f"GraXpert not available ({exc}); continuing on the un-flattened "
+                      "input — fine ONLY if it is already background-extracted.")
+            except GraXpertError as exc:
+                print(f"GraXpert background-extraction failed: {exc}")
+                return
+
+    rgb, header = fpz.load_linear_rgb(linear_path)
+    overrides = {}
+    for kv in args.param:
+        if "=" not in kv:
+            print(f"--param expects K=V, got '{kv}'")
+            return
+        k, v = kv.split("=", 1)
+        overrides[k.strip()] = float(v)
+
+    try:
+        if args.contact_sheet:
+            sheet = fpz.contact_sheet(
+                rgb, header, out_path, ra=args.ra, dec=args.dec,
+                crop_half=args.crop_half, starnet_exe=args.starnet_exe,
+                allow_fallback=True,
+            )
+            print(f"Wrote contact sheet: {sheet}")
+            print("Pick by eye, then re-run with --preset <name> for the full-frame keeper.")
+            return
+        rendered = fpz.render_preset(
+            rgb, args.preset, overrides=overrides or None,
+            starnet_exe=args.starnet_exe, allow_fallback=args.starnet_fallback,
+        )
+    except fpz.StarNetNotFound as exc:
+        print(str(exc))
+        return
+    except KeyError as exc:
+        print(str(exc))
+        return
+    fpz.write_outputs(rendered, out_path, also_tiff=True)
+    print(f"Wrote {out_path} (+16-bit .tiff) — preset '{args.preset}'"
+          + (f" with overrides {overrides}" if overrides else ""))
+
+
 def finish(args: argparse.Namespace) -> None:
     """Finishing stage. Decoupled from `stack` on purpose: re-run it with
     different params against the same linear master without re-stacking
     (the iterative workflow). GraXpert is optional — the Siril-only path
     (--no-bg --no-denoise --no-deconv) needs no extra install."""
+    if args.preset or args.contact_sheet:
+        _finish_preset(args)
+        return
     from .finish_progress import (
         FinishProgress,
         default_progress_dir,

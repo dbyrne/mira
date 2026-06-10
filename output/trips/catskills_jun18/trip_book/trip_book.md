@@ -13,97 +13,35 @@ their release pages.
 
 | Target | What | Window | 23:00 | 01:00 | 03:00 | S30 Pro | Esprit 80 |
 |---|---|---|---|---|---|---|---|
-| M13 | Hercules Cluster | EARLY 22:50-00:30 | 75° | 79° | 57° | IR broadband, 30-60s | L (or LRGB), 60s — hold the core with GHS, not saturation |
-| M101 | Pinwheel Galaxy | EARLY 22:50-00:30 | 71° | 54° | 37° | IR broadband (low SB — dark site only) | LRGB — the official plan-v2 early alternate |
-| M51 | Whirlpool Galaxy | EARLY 22:50-00:00 | 68° | 48° | 29° | IR broadband (deep JC data exists — only the tidal halo is new) | LRGB if M101 is taken |
-| M57 | Ring Nebula | QUICK GRAB after 23:00 | 49° | 71° | 78° | dot at 3.66"/px — skip or 15min novelty | ~85px at 1.94"/px — quick HOO snack, not a main course |
+| Markarian's Chain | Virgo core galaxy sweep | EARLY 22:50-00:00 — spring leftover sinking W; hour one or wait till next May | 41° | 19° | -3° | IR broadband — the whole chain + M87 in one frame | LRGB at PA~060: the chain lies along the long axis |
 | IC 1396 | Elephant Trunk (full shell) | ALL NIGHT | 34° | 49° | 65° | PRIMARY: LP 60s (test 120s), full moonless window | tight at PA 0 (rim kiss) — the SHO version is a JC project, save dark time |
 | NGC 7023 | Iris + vdB 141 Ghost | ALL NIGHT | 41° | 52° | 61° | IR broadband: the whole dusty field, small scale | PRIMARY: LRGB — RGB 22:50-00:50, L 00:50-03:05 (plan v2) |
 | NGC 7000 | North America + Pelican | ALL NIGHT riser | 33° | 53° | 74° | combo in ONE frame — spans ~2.2° E-W = exactly the frame, center carefully | green box = NA alone (the combo overflows the 80) |
+| Sh2-119 | Clamshell Nebula | ALL NIGHT riser | 30° | 49° | 71° | LP single frame with field to spare | fits with room — HOO |
 | NGC 6960 | Western Veil (Witch's Broom) | RISER 00:00+ | 28° | 50° | 71° | single frame, LP — or revive the shelved 2-panel full-loop kit | HOO: ~1.5h Ha + 1.5h OIII fits the window |
 | NGC 6888 | Crescent Nebula | ALL NIGHT | 38° | 59° | 82° | small — context frame only | HOO/SHO — you HAVE JC data; dark site adds the faint OIII envelope |
 | IC 5146 | Cocoon + B168 dark river | RISER 00:30+ | 27° | 45° | 65° | IR broadband — LP would erase the dark river | LRGB at PA~105: the river flows along the long axis |
 | Sh2-129 | Flying Bat + OU4 Squid | ALL NIGHT | 38° | 52° | 66° | LP long stare — SAMPLE it (the real Squid wants 6h+ of OIII) | OIII-only if feeling brave |
-| NGC 6946 | Fireworks Galaxy + NGC 6939 | ALL NIGHT | 42° | 57° | 69° | IR broadband, both in frame | LRGB — galaxy + cluster pair composition |
 | M16 + M17 | Eagle + Swan, ONE frame | SOUTH WINDOW 00:30-02:30 | 21° | 32° | 31° | the killer frame: pair is N-S = made for the fixed long axis, LP | fits at PA 0 (2.9° vs 3.37°) if the S30 is on IC 1396 |
+| M24 | Small Sagittarius Star Cloud + B92/93 | SOUTH WINDOW 00:30-02:30 | 18° | 28° | 27° | IR broadband — the cloud + dark nebulae fill the frame | LRGB; the B92/B93 Bok bites resolve at 1.94"/px |
 | M8 + M20 | Lagoon + Trifid | SOUTH WINDOW ~00:30-01:30, VERY low | 15° | 24° | 21° | both in one frame, LP, brief | skip — airmass eats 1.94"/px resolution |
-| M27 | Dumbbell Nebula | LATE 02:00-03:05 | 32° | 54° | 70° | small | HOO quick hit — 250px across, bright, 30-45min is real data |
+| Rho Ophiuchi | Antares + the colorful clouds + M4 | SOUTH WINDOW 23:30-01:30, VERY low | 22° | 21° | 11° | IR broadband — Antares, M4 and the dust columns in one vertical frame | skip — this is a wide-field play through 2.5 airmasses |
 
-## M13 — Hercules Cluster
+## Markarian's Chain — Virgo core galaxy sweep
 
-![M13](m13.png)
+![Markarian's Chain](markarian.png)
 
-- **Center (J2000):** 250.42°, +36.46°  |  **Size:** 20' GC
-- **Window:** EARLY 22:50-00:30 (high at dusk, sinking W)  |  **Alt 23:00/01:00/03:00:** 75°/79°/57°
-- **S30 Pro:** IR broadband, 30-60s
-- **Esprit 80:** L (or LRGB), 60s — hold the core with GHS, not saturation (PA 000°)
-- **Why at a dark site:** resolved stars to the core; a dark sky doubles the outskirts
+- **Center (J2000):** 186.90°, +13.20°  |  **Size:** ~1.5° chain of 8+ galaxies; M87 in-frame
+- **Window:** EARLY 22:50-00:00 — spring leftover sinking W; hour one or wait till next May  |  **Alt 23:00/01:00/03:00:** 41°/19°/-3°
+- **S30 Pro:** IR broadband — the whole chain + M87 in one frame
+- **Esprit 80:** LRGB at PA~060: the chain lies along the long axis (PA 060°)
+- **Why at a dark site:** a galaxy *field* — the ensemble is the picture, and ensemble = surface brightness = dark sky
 
-**Hubble** ([release](https://esahubble.org/images/opo0840a/)):
+**Hubble — M87's jet, at your frame edge** ([release](https://esahubble.org/images/opo0020a/)):
 
-![Hubble](m13_opo0840a.jpg)
+![Hubble — M87's jet, at your frame edge](markarian_opo0020a.jpg)
 
-*Credit: NASA, ESA, and the Hubble Heritage Team (STScI/AURA)*
-
-## M101 — Pinwheel Galaxy
-
-![M101](m101.png)
-
-- **Center (J2000):** 210.80°, +54.35°  |  **Size:** 29' face-on galaxy
-- **Window:** EARLY 22:50-00:30 (the plan's Esprit early block)  |  **Alt 23:00/01:00/03:00:** 71°/54°/37°
-- **S30 Pro:** IR broadband (low SB — dark site only)
-- **Esprit 80:** LRGB — the official plan-v2 early alternate (PA 000°)
-- **Why at a dark site:** the canonical dark-site-only galaxy: mean SB ~23.9, invisible from JC
-
-**Hubble** ([release](https://esahubble.org/images/heic0602a/)):
-
-![Hubble](m101_heic0602a.jpg)
-
-*Credit: NASA, ESA, K. Kuntz (JHU), F. Bresolin (U. Hawaii), J. Trauger (JPL), J. Mould (NOAO), Y.-H. Chu (U. Illinois), and STScI*
-
-## M51 — Whirlpool Galaxy
-
-![M51](m51.png)
-
-- **Center (J2000):** 202.47°, +47.20°  |  **Size:** 11'x7' galaxy pair
-- **Window:** EARLY 22:50-00:00 (sinking NW)  |  **Alt 23:00/01:00/03:00:** 68°/48°/29°
-- **S30 Pro:** IR broadband (deep JC data exists — only the tidal halo is new)
-- **Esprit 80:** LRGB if M101 is taken (PA 000°)
-- **Why at a dark site:** the faint tidal debris around the pair is dark-sky-only
-
-**JWST** ([release](https://esawebb.org/images/potm2308a/)):
-
-![JWST](m51_potm2308a.jpg)
-
-*Credit: ESA/Webb, NASA & CSA, A. Adamo (Stockholm University) and the FEAST JWST team*
-
-**Hubble** ([release](https://esahubble.org/images/heic0506a/)):
-
-![Hubble](m51_heic0506a.jpg)
-
-*Credit: NASA, ESA, S. Beckwith (STScI), and the Hubble Heritage Team (STScI/AURA)*
-
-## M57 — Ring Nebula
-
-![M57](m57.png)
-
-- **Center (J2000):** 283.40°, +33.03°  |  **Size:** 1.4' PN
-- **Window:** QUICK GRAB after 23:00 (climbing all night)  |  **Alt 23:00/01:00/03:00:** 49°/71°/78°
-- **S30 Pro:** dot at 3.66"/px — skip or 15min novelty
-- **Esprit 80:** ~85px at 1.94"/px — quick HOO snack, not a main course (PA 000°)
-- **Why at a dark site:** honestly? small on both rigs. The Webb/Hubble frames below are the show
-
-**JWST** ([release](https://esawebb.org/images/weic2320a/)):
-
-![JWST](m57_weic2320a.jpg)
-
-*Credit: ESA/Webb, NASA, CSA, M. Barlow (UCL), N. Cox (ACRI-ST), R. Wesson (Cardiff University)*
-
-**Hubble** ([release](https://esahubble.org/images/heic1310a/)):
-
-![Hubble](m57_heic1310a.jpg)
-
-*Credit: NASA, ESA, and the Hubble Heritage Team (STScI/AURA)*
+*Credit: NASA and the Hubble Heritage Team (STScI/AURA)*
 
 ## IC 1396 — Elephant Trunk (full shell)
 
@@ -140,6 +78,16 @@ their release pages.
 - **S30 Pro:** combo in ONE frame — spans ~2.2° E-W = exactly the frame, center carefully
 - **Esprit 80:** green box = NA alone (the combo overflows the 80) (PA 000°)
 - **Why at a dark site:** LP makes it work even in JC — at a dark site the Ha goes 3-D; good S30 plan-B
+
+## Sh2-119 — Clamshell Nebula
+
+![Sh2-119](clamshell.png)
+
+- **Center (J2000):** 319.62°, +43.93°  |  **Size:** 90'x90' Ha shell
+- **Window:** ALL NIGHT riser (5° E of NGC 7000, same track)  |  **Alt 23:00/01:00/03:00:** 30°/49°/71°
+- **S30 Pro:** LP single frame with field to spare
+- **Esprit 80:** fits with room — HOO (PA 000°)
+- **Why at a dark site:** a big faint Ha shell almost nobody shoots; LP + dark sky is its entire recipe
 
 ## NGC 6960 — Western Veil (Witch's Broom)
 
@@ -193,22 +141,6 @@ their release pages.
 - **Esprit 80:** OIII-only if feeling brave (PA 000°)
 - **Why at a dark site:** OU4 is one of the faintest OIII objects amateurs image — dark site is table stakes
 
-## NGC 6946 — Fireworks Galaxy + NGC 6939
-
-![NGC 6946](fireworks.png)
-
-- **Center (J2000):** 308.30°, +60.40°  |  **Size:** 11' galaxy + open cluster
-- **Window:** ALL NIGHT (circumpolar)  |  **Alt 23:00/01:00/03:00:** 42°/57°/69°
-- **S30 Pro:** IR broadband, both in frame
-- **Esprit 80:** LRGB — galaxy + cluster pair composition (PA 045°)
-- **Why at a dark site:** low-SB face-on (SB~23) = dark-site-only; 10 SNe in a century
-
-**Hubble** ([release](https://esahubble.org/images/potw2101a/)):
-
-![Hubble](fireworks_potw2101a.jpg)
-
-*Credit: ESA/Hubble & NASA*
-
 ## M16 + M17 — Eagle + Swan, ONE frame
 
 ![M16 + M17](m16_m17.png)
@@ -231,6 +163,16 @@ their release pages.
 
 *Credit: NASA, ESA, and the Hubble Heritage Team (STScI/AURA)*
 
+## M24 — Small Sagittarius Star Cloud + B92/93
+
+![M24](m24.png)
+
+- **Center (J2000):** 274.20°, -18.60°  |  **Size:** ~2°x1° star cloud
+- **Window:** SOUTH WINDOW 00:30-02:30 (transits ~29°)  |  **Alt 23:00/01:00/03:00:** 18°/28°/27°
+- **S30 Pro:** IR broadband — the cloud + dark nebulae fill the frame
+- **Esprit 80:** LRGB; the B92/B93 Bok bites resolve at 1.94"/px (PA 030°)
+- **Why at a dark site:** a naked-eye star cloud that only exists over a dark horizon; LP would gut it
+
 ## M8 + M20 — Lagoon + Trifid
 
 ![M8 + M20](m8_m20.png)
@@ -247,18 +189,29 @@ their release pages.
 
 *Credit: NASA, ESA, STScI*
 
-## M27 — Dumbbell Nebula
+## Rho Ophiuchi — Antares + the colorful clouds + M4
 
-![M27](m27.png)
+![Rho Ophiuchi](rho_oph.png)
 
-- **Center (J2000):** 299.90°, +22.72°  |  **Size:** 8'x6' PN
-- **Window:** LATE 02:00-03:05 (transits ~70° at dawn-end)  |  **Alt 23:00/01:00/03:00:** 32°/54°/70°
-- **S30 Pro:** small
-- **Esprit 80:** HOO quick hit — 250px across, bright, 30-45min is real data (PA 030°)
-- **Why at a dark site:** bright PN cores barely care about sky — but the faint outer shell does
+- **Center (J2000):** 246.70°, -24.90°  |  **Size:** complex spans 4°+; frame gets the core
+- **Window:** SOUTH WINDOW 23:30-01:30, VERY low (peaks ~23°) — horizon-permitting  |  **Alt 23:00/01:00/03:00:** 22°/21°/11°
+- **S30 Pro:** IR broadband — Antares, M4 and the dust columns in one vertical frame
+- **Esprit 80:** skip — this is a wide-field play through 2.5 airmasses (PA 000°)
+- **Why at a dark site:** THE June dark-site object: yellow/blue/red dust no city sky has ever shown you
 
-**Hubble** ([release](https://esahubble.org/images/heic0301a/)):
+**JWST — inside the rho Oph cloud (1st-anniversary image)** ([release](https://esawebb.org/images/weic2316a/)):
 
-![Hubble](m27_heic0301a.jpg)
+![JWST — inside the rho Oph cloud (1st-anniversary image)](rho_oph_weic2316a.jpg)
 
-*Credit: NASA and the Hubble Heritage Team (STScI/AURA)*
+*Credit: NASA, ESA, CSA, STScI, K. Pontoppidan (STScI)*
+
+## Not tonight — seasonal no-gos
+
+- **Pleiades (M45)** — only ~25° from the Sun in mid-June. It's an Oct–Dec evening
+  target, and when it returns it's a *broadband reflection* showpiece made for exactly
+  these two rigs at a dark site.
+- **Horsehead (IC 434/B33)** — Orion is behind the Sun in June; returns Dec–Feb
+  (peak Dec in both general emission books).
+- **Small showpieces** (Ring, Whirlpool, Pinwheel, Dumbbell, M13, Fireworks) are
+  deliberately absent — at 3.66"/px and 1.94"/px they're postage stamps. They're
+  840mm targets: the future Esprit 120 list, not the wide-field trip menu.

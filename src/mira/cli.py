@@ -115,8 +115,8 @@ def main() -> None:
     )
     webapp_parser.add_argument(
         "--output-dir",
-        default="output/s30_pro_jc/tonight",
-        help="Directory where tonight's session outputs live (default output/s30_pro_jc/tonight).",
+        default="output/runs/s30_pro_jc/tonight",
+        help="Directory where tonight's session outputs live (default output/runs/s30_pro_jc/tonight).",
     )
     webapp_parser.add_argument(
         "--captures-root",
@@ -146,8 +146,8 @@ def main() -> None:
     )
     serve_parser.add_argument(
         "--output-dir",
-        default="output/s30_pro_jc/tonight",
-        help="Directory to serve (default output/s30_pro_jc/tonight).",
+        default="output/runs/s30_pro_jc/tonight",
+        help="Directory to serve (default output/runs/s30_pro_jc/tonight).",
     )
     serve_parser.add_argument("--port", type=int, default=8000)
     serve_parser.add_argument("--host", default="0.0.0.0")

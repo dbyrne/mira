@@ -85,14 +85,14 @@ You'll re-import targets into this project each session.
 mira tonight --config config/s30_pro_jc.yaml --hours 4
 ```
 
-This writes `output/s30_pro_jc/tonight/nina_targets.csv` plus the
+This writes `output/runs/s30_pro_jc/tonight/nina_targets.csv` plus the
 session plan markdown for your phone.
 
 ### 2. Import into Target Scheduler
 
 In NINA: Target Scheduler → Targets → Import CSV.
 
-- File: `output/s30_pro_jc/tonight/nina_targets.csv`
+- File: `output/runs/s30_pro_jc/tonight/nina_targets.csv`
 - Project: `Mira` (the one you created above)
 - Template: `S30 Pro OSC 30s` (so each target gets the same exposure plan)
 

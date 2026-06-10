@@ -120,7 +120,7 @@ ztf:
   period_min_peak_power: 0.3
 
 output:
-  directory: output/s30_pro_jc
+  directory: output/runs/s30_pro_jc
   top_packets: 15
 
 # Narrowband DSO planner (`mira dso`) — DISABLED on the S30. This is a

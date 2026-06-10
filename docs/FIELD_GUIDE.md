@@ -85,7 +85,7 @@ Ask Claude Code to run these skills, or run the commands directly.
    ```
    mira tonight --config config/s30_pro_jc.yaml --hours 4
    ```
-   Read `output/s30_pro_jc/tonight/session_schedule.md` on your phone.
+   Read `output/runs/s30_pro_jc/tonight/session_schedule.md` on your phone.
    Import `nina_targets.csv` into NINA's Target Scheduler (project
    "Mira", OSC template). Run the NINA sequence.
 

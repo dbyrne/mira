@@ -11,7 +11,7 @@ shell: powershell
 ```
 mira tonight --config config/s30_pro_jc.yaml --hours 4
 ```
-Writes to `output/s30_pro_jc/tonight/`. The **primary phone doc** is
+Writes to `output/runs/s30_pro_jc/tonight/`. The **primary phone doc** is
 `session_schedule.md` (chronological, prescriptive: time-slot table then
 per-target detail). `session_plan.md` is the full menu if you want to
 override the auto-pick. `nina_targets.csv` is the NINA Target Scheduler

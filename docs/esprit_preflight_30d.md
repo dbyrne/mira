@@ -166,10 +166,10 @@ optical path needed. The point is to catch any plumbing bug while the
 fix cost is "edit code on homebase" not "lose a clear-sky window."
 
 - [ ] `mira tonight --config config\esprit120_jc.yaml --hours 4` —
-      writes a session plan to `output/esprit120_jc/tonight/`. Read
+      writes a session plan to `output/runs/esprit120_jc/tonight/`. Read
       `session_schedule.md` on your phone, sanity-check it.
 - [ ] `mira dso plan --config config\esprit120_jc.yaml --top 10` —
-      writes a DSO queue to `output/esprit120_jc/dso/`. Confirm the
+      writes a DSO queue to `output/runs/esprit120_jc/dso/`. Confirm the
       catalog loads and ranking looks sane.
 - [ ] `mira dso status --config config\esprit120_jc.yaml` — empty
       ledger expected (nothing imaged yet), should print cleanly

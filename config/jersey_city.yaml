@@ -126,5 +126,5 @@ ztf:
   period_min_peak_power: 0.3
 
 output:
-  directory: output
+  directory: output/runs/jersey_city
   top_packets: 20

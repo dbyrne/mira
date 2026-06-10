@@ -47,7 +47,7 @@ def create_app(
         static_folder=str(here / "static"),
     )
 
-    output_dir = (output_dir or Path("output/s30_pro_jc/tonight")).resolve()
+    output_dir = (output_dir or Path("output/runs/s30_pro_jc/tonight")).resolve()
     captures_root = (captures_root or Path("captures")).resolve()
     state_dir = (state_dir or Path("data/webapp_runs")).resolve()
     # Shared with the CLI's `mira finish --progress-dir` default so a

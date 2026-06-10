@@ -144,7 +144,7 @@ ztf:
   period_min_peak_power: 0.3
 
 output:
-  directory: output/esprit120_jc
+  directory: output/runs/esprit120_jc
   top_packets: 20
 
 # DSO / narrowband planner config (consumed by `mira dso plan`). Optional —

@@ -32,7 +32,7 @@ For tonight specifically:
 mira dso plan --config config/esprit120_jc.yaml --start-date 2026-08-15 --top 10
 ```
 
-Output lands in `output/esprit120_jc/dso/dso_plan.md` and `dso_plan.csv`.
+Output lands in `output/runs/esprit120_jc/dso/dso_plan.md` and `dso_plan.csv`.
 The top of the Markdown is a ranked table; below it, every viable
 candidate gets a detail block with coords, size, FOV-fit verdict,
 per-filter budget, and per-site observability.
@@ -232,7 +232,7 @@ mira galaxies plan --config config/s30_pro_jc.yaml --start-date 2026-05-28 --top
 mira galaxies status --config config/s30_pro_jc.yaml
 ```
 
-Writes `output/s30_pro_jc/galaxies/galaxy_plan.md` + `.csv`.
+Writes `output/runs/s30_pro_jc/galaxies/galaxy_plan.md` + `.csv`.
 
 **Why a separate path?** For galaxies on a small OSC scope from a
 light-polluted city, *integrated magnitude lies*. A mag-9 face-on spiral

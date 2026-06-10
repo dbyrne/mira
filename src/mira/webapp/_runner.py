@@ -35,7 +35,7 @@ def execute_tonight(
     output_dir: Path,
 ) -> dict:
     """Webapp wrapper around the shared tonight pipeline. `output_dir` is
-    the *base* directory (e.g. ``output/s30_pro_jc/``); the pipeline writes
+    the *base* directory (e.g. ``output/runs/s30_pro_jc/``); the pipeline writes
     to ``<base>/tonight/``."""
     from ..tonight_pipeline import TonightOptions, run_tonight_pipeline
 

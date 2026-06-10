@@ -32,7 +32,7 @@ output/**/_rejected/
 output/**/tmp/
 # Scratch
 /.fltmp/
-output/_webapp.log
+output/**/_webapp.log
 # Numpy scratch arrays from the curve-shootout / processing experiments —
 # huge (100-200 MB each) and fully regenerable from the linear FITS.
 output/**/*.npy
@@ -57,12 +57,7 @@ output/**/*_prev.png
 # auto stack previews (~40 MB each) + side-by-side compares:
 output/**/*_stack_preview.png
 output/**/*_compare.png
-# per-target stretch iterations (superseded by the committed keeper finals):
-output/m27/m27_v*.png
-output/m27/m27_crop*.png
-output/m27/m27_stars_*.png
-output/m57_20260530/m57_center.png
-output/m97/m97_ghs_handtune.png
-output/ngc4631/v[0-9]*.png
-output/m13_work/w_*.png
-output/ngc6888_work/cr_*.png
+# per-target scratch — post-reorg (2026-06-09) ALL regenerable iteration
+# output lives under processed/<target>/work/; the old per-target patterns
+# (output/m27/m27_v*.png etc.) collapse into this one rule:
+output/processed/**/work/

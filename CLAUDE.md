@@ -29,7 +29,7 @@ By mission — hardware/current-state first, then per-mission workflow docs:
 - **Architecture/invariants:** `docs/architecture.md` (module map), `docs/output_organization.md` (output/ layout convention), `docs/concepts.md`, `docs/getting_started.md`, `docs/FIELD_GUIDE.md`.
 - **Photometry mission:** `docs/photometry.md` (reduce + AAVSO submit), `docs/comp_stars_example.json`, `docs/nina_setup.md` (S30), `docs/nina_setup_esprit.md` (Esprit), `docs/esprit_preflight_30d.md`.
 - **Astrophotography mission:** `docs/dso_planner.md` (planner phases), `docs/rig_workflow.md` (MeLE ↔ homebase split, Siril Live Stack), image books under `output/books/`, trip kits under `output/trips/<trip>/`, finishing recipes baked in `src/mira/finish_presets.py`.
-- **Shared ops:** `docs/troubleshooting.md`, `docs/horizon_profile.md`, `plans/` for open design docs (incl. `plans/pixinsight_evaluation.md`, `plans/storage_plan.md`).
+- **Shared ops:** `docs/troubleshooting.md`, `docs/horizon_profile.md`, `plans/` for open design docs (incl. `plans/pixinsight_evaluation.md`, `plans/storage_plan.md`, `plans/nir_program.md`).
 
 ## Commands
 

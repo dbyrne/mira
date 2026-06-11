@@ -779,6 +779,25 @@ def main() -> None:
         "--top", type=int, default=None, help="Limit the report to the top N candidates.",
     )
 
+    inventory_parser = subparsers.add_parser(
+        "inventory",
+        help="Walk captures/ and write the what-raw-data-do-we-have report "
+             "(Markdown + CSV). Read-only; legacy sidecarless dirs are "
+             "reported from FITS headers, never backfilled.",
+    )
+    inventory_parser.add_argument(
+        "--captures-root", default="captures",
+        help="Captures root to walk (default: captures).",
+    )
+    inventory_parser.add_argument(
+        "--processed-root", default="output/processed",
+        help="Where finished targets live, for session->processed linking.",
+    )
+    inventory_parser.add_argument(
+        "--out", default="output/inventory",
+        help="Report output directory (default: output/inventory).",
+    )
+
     tonight_parser = subparsers.add_parser(
         "tonight",
         help="Show the queue and session plan for what's observable in the next N hours from now.",
@@ -834,6 +853,8 @@ def main() -> None:
         emission(args)
     elif args.command == "transients":
         transients(args)
+    elif args.command == "inventory":
+        inventory(args)
     elif args.command == "webapp":
         webapp(args)
     elif args.command == "serve":
@@ -844,6 +865,24 @@ def main() -> None:
         webapp(args)
     elif args.command in (None, "run"):
         run(args)
+
+
+def inventory(args: argparse.Namespace) -> None:
+    """Walk the captures root and write the inventory report (md + csv)."""
+    from .inventory import build_inventory, write_inventory
+
+    captures_root = Path(args.captures_root)
+    sessions = build_inventory(captures_root, Path(args.processed_root))
+    if not sessions:
+        print(f"No session dirs found under '{captures_root}'.")
+        return
+    md_path, csv_path = write_inventory(sessions, Path(args.out), captures_root)
+    total_frames = sum(s.frames for s in sessions)
+    total_gb = round(sum(s.size_gb for s in sessions), 1)
+    no_sidecar = sum(1 for s in sessions if not s.has_sidecar)
+    print(f"{len(sessions)} sessions, {total_frames} frames, {total_gb} GB "
+          f"({no_sidecar} legacy dirs without sidecars)")
+    print(f"Wrote {md_path} + {csv_path}")
 
 
 def rehearse(args: argparse.Namespace) -> None:

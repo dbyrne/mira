@@ -105,6 +105,15 @@ mira emission research --config config/esprit120_jc.yaml # offline catalog notes
 
 That writes `output/<config>/emission/` (`dso_plan.md` + `.csv`, same DSO report). The curated catalog (`data/dso_catalog/emission_nebulae.yaml`, ~40 emission targets, union of the Esprit 120 + Esprit 80 + S30 image books under `output/books/{esprit,esprit80,s30}_emission_book/`) is rig-agnostic — the per-rig `emission:` config section sets `fov_deg`, so the giant complexes (North America, Heart) are mosaic-flagged on the Esprit 120 single frame but fit one Esprit 80 / S30 frame. `output/books/rig_fit_matrix.md` (regen: `python output/books/make_rig_matrix.py`) is the cross-rig one-pager: per-target fit class on all three rigs + a most-resolution-that-frames-it verdict.
 
+Inventory the raw capture data (walks every `captures/` session dir — sidecars + FITS headers — and writes the committed what-do-we-have report linking sessions to `output/processed/` results):
+
+```powershell
+mira inventory                                   # -> output/inventory/captures_inventory.{md,csv}
+mira inventory --captures-root captures --out output/inventory
+```
+
+Read-only by design: legacy dirs without a `mira_capture.json` are reported from FITS headers/dirnames (filter honestly "?" — FITS carry no FILTER keyword), never backfilled, so `--auto-flats` can never be fed a guessed filter. Regenerate + commit after capture sessions.
+
 Plan a single observing session for tonight (uses today's date, restricts to next N hours, tuned-for-S30-Pro config):
 
 ```powershell

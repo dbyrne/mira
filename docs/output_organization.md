@@ -36,6 +36,9 @@ output/
                              #   e.g. trips/catskills_jun18/
   site/                      # site/hardware studies (rooftop eval, horizon
                              #   compares, mounting-bracket photo annotations)
+  inventory/                 # `mira inventory` reports — the committed answer
+                             #   to "what raw data do we have?" (md + csv);
+                             #   regenerate after capture sessions
   scratch/                   # root-level one-offs pending manual triage
 ```
 

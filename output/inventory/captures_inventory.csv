@@ -1,0 +1,17 @@
+dir,target,date,rig,filter,gain,exposure_s,frames,rejected,solved,total_minutes,size_gb,sidecar,processed
+bias_g80,bias_g80,20260604,S30 Pro,?,,0.004999999888241,25,0,0,0.0,0.39,,
+ic1396_20260608,ic1396,20260608,?,?,,,0,0,0,0.0,0.0,,
+m13_20260531,m13,20260531,S30 Pro,IR,80,10.0,759,68,759,126.5,12.79,yes,output\processed\m13
+m27_20260603,m27,20260603,S30 Pro,LP,80,60.0,219,7,219,219.0,3.49,yes,output\processed\m27
+m51_20260517,m51,20260517,S30 Pro,?,,12.0,1042,128,1042,208.4,18.09,,output\processed\m51
+m51_20260528,M51,20260528,S30 Pro,LP,80,60.0,254,18,254,254.0,4.21,yes,output\processed\m51
+m51_20260608,m51,20260608,S30 Pro,IR,80,60.0,64,6,64,64.0,1.08,yes,output\processed\m51
+m57_20260530,M57,20260530,S30 Pro,LP,80,30.0,152,97,152,76.0,4.08,yes,output\processed\m57
+m81_20260605,m81,20260605,S30 Pro,IR,80,60.0,147,33,147,147.0,2.78,yes,output\processed\m81
+m97_20260530,m97,20260530,S30 Pro,LP,80,20.0,137,32,137,45.7,2.61,yes,output\processed\m97
+ngc4631_20260603,ngc4631,20260603,S30 Pro,IR,80,60.0,59,11,59,59.0,1.08,yes,output\processed\ngc4631
+ngc6888_20260530,ngc6888,20260530,S30 Pro,LP,80,60.0,190,21,190,190.0,3.26,yes,output\processed\ngc6888
+ngc6888_20260601,ngc6888,20260601,S30 Pro,LP,80,60.0,88,2,88,88.0,1.39,yes,output\processed\ngc6888
+ngc6888_combined,ngc6888_combined,20260531,S30 Pro,LP,80,60.0,278,0,278,278.0,4.3,yes,
+ngc7000_20260605,ngc7000,20260605,?,?,,,0,0,0,0.0,0.0,,
+venus_jupiter_20260609,venus_jupiter,20260609,?,?,,,0,0,0,0.0,26.95,,

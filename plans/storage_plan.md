@@ -77,17 +77,25 @@ One Touch 8TB $280. Crunch-market strategy: **buy the minimum that bridges
 to Phase 2, in two copies** — don't park $680 in bubble pricing for capacity
 that sits empty until 2029.
 
-- **Primary play: 2× Seagate One Touch 8TB ($560)** → completes the whole
-  3-2-1 today (copy-2 nightly mirror + copy-3 drawer); 8TB ≈ 2.5–4 years of
-  archive growth. Caveat: 8TB desktop Seagates are often **SMR** —
-  acceptable for this write-mostly sequential duty; if the **12TB tier is
-  ≤ ~$400** prefer it (likely CMR, more headroom, similar $/TB).
-- **Runner-up: IronWolf Pro 16TB ($540) + Sabrent EC-HD2B dual-bay dock
-  w/ offline cloner (~$40)** — back on the table at $/TB parity (NAS-grade
-  CMR, 5-yr warranty, becomes NAS bay-1 at Phase 2); but it's one copy, so
-  redundancy needs a second buy later.
-- The big-capacity purchase moves to Phase 2 on fresh prices; if bare NAS
-  drives still carry no premium then, that simplifies drive shopping.
+**ORDERED 2026-06-11: IronWolf 16TB + dual-bay dock** (the runner-up
+variant — defensible at $/TB parity: NAS-grade CMR that becomes NAS bay-1
+at Phase 2, dock doubles as the future rotation carrier with its offline
+cloner). Known trade: this is ONE copy — **copy-3 is a second bare drive
+later** (the dock's empty bay is waiting; buy on a price dip or fold into
+Phase 2).
+
+**Arrival checklist:**
+1. Initialize GPT, format NTFS, mount (e.g. `E:`).
+2. `powershell -File scripts\backup_mirror.ps1 -Setup -ArchiveRoot E:\` —
+   writes the safety marker, registers the daily 10:00 task, runs the first
+   full mirror (captures/, output/, data/ minus cache; ~150 GB).
+3. Restore-test one session dir + one master back to a temp path.
+4. THEN the policy switches: stop committing keeper TIFFs (archive owns
+   them) and fix the false LFS claim in `docs/output_organization.md`.
+
+(For-the-record alternatives at decision time: 2× sealed One Touch 8TB
+$560 would have completed 3-2-1 in one order but on likely-SMR consumer
+drives; the 12TB sealed tier was the other candidate.)
 
 **Git/TIFF policy change at this point:** stop committing keeper TIFFs
 (they live on the archive; regenerable from masters). PNGs + logs + scripts
@@ -150,8 +158,9 @@ rotating external IS the raws' offsite story.
 
 | Trigger | Action |
 |---|---|
-| Now | Phase 0 cull + order Phase 1 drive |
-| Phase 1 drive in service | Stop committing TIFFs; fix output_organization.md |
+| ~~Now~~ ✅ 2026-06-11 | ~~order Phase 1 drive~~ **ordered: IronWolf 16TB + 2-bay dock**; Phase 0 cull still pending (David's deletions) |
+| Phase 1 drive arrives | Arrival checklist above (format → `backup_mirror.ps1 -Setup` → restore test) |
+| Phase 1 drive in service | Stop committing TIFFs; fix output_organization.md; price-watch a copy-3 second drive |
 | Free space < 500 GB **or** dual-rig cadence sustained | Execute Phase 2 NAS purchase |
 | NAS in service | Repoint Syncthing topology; Phase 3 B2; build `mira archive` |
 | Yearly | Re-run the survey numbers; rotate copy-3 drive; restore-test one session from each copy |

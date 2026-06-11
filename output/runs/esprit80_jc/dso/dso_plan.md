@@ -1,6 +1,6 @@
 # DSO / narrowband plan
 
-Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.yaml` • catalog v2026-05-24 • 18 viable targets • ledger: 2 session(s) over 1 target(s), 1 orphan(s)
+Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.yaml` • catalog v2026-06-11 • 18 viable targets • ledger: 2 session(s) over 1 target(s), 1 orphan(s)
 
 ## Ranked queue
 
@@ -11,19 +11,19 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
 | 3 | `NGC 7023` | Iris Nebula | REF | Cep | 18 × 18 | Jersey City | 210 | 57.2° | 2026-06-24 |  | 0m | 1080m | 0% | 400.8 |
 | 4 | `NGC 6888` | Crescent Nebula | WR | Cyg | 18 × 13 | Jersey City | 180 | 73.5° | 2026-06-24 |  | 0m | 2040m | 0% | 380.3 |
 | 5 | `M27` | Dumbbell Nebula | PN | Vul | 8 × 6 | Jersey City | 180 | 66.4° | 2026-06-24 |  | 0m | 1140m | 0% | 369.7 |
-| 6 | `IC 5070` | Pelican Nebula | HII | Cyg | 60 × 50 | Jersey City | 150 | 66.4° | 2026-06-24 |  | 0m | 1680m | 0% | 324.6 |
-| 7 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 150 | 63.4° | 2026-06-24 |  | 0m | 1680m | 0% | 320.1 |
-| 8 | `NGC 6960` | Western Veil / Witch's Broom | SNR | Cyg | 70 × 6 | Jersey City | 150 | 63.2° | 2026-06-24 |  | 0m | 1680m | 0% | 319.7 |
-| 9 | `IC 1318` | Butterfly / Sadr Region | HII | Cyg | 240 × 180 | Jersey City | 180 | 72.0° | 2026-06-24 | yes | 0m | 1620m | 0% | 302.5 |
+| 6 | `IC 5070` | Pelican Nebula | HII | Cyg | 60 × 50 | Jersey City | 150 | 67.1° | 2026-06-24 |  | 0m | 1680m | 0% | 325.6 |
+| 7 | `NGC 6960` | Western Veil / Witch's Broom | SNR | Cyg | 70 × 6 | Jersey City | 150 | 64.1° | 2026-06-24 |  | 0m | 1680m | 0% | 321.2 |
+| 8 | `IC 1318` | Butterfly / Sadr Region | HII | Cyg | 240 × 180 | Jersey City | 180 | 72.0° | 2026-06-24 | yes | 0m | 1620m | 0% | 302.5 |
+| 9 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 120 | 62.7° | 2026-06-24 |  | 0m | 1680m | 0% | 274.0 |
 | 10 | `M97` | Owl Nebula | PN | UMa | 3 × 3 | Jersey City | 120 | 55.8° | 2026-06-11 |  | 0m | 1320m | 0% | 263.7 |
 | 11 | `NGC 7000` | North America Nebula | HII | Cyg | 120 × 100 | Jersey City | 120 | 65.6° | 2026-06-24 | yes | 0m | 1740m | 0% | 222.8 |
-| 12 | `Abell 78` | Abell 78 | WR | Cyg | 2 × 2 | Jersey City | 90 | 53.2° | 2026-06-24 |  | 0m | 2280m | 0% | 214.8 |
+| 12 | `Abell 78` | Abell 78 | WR | Cyg | 2 × 2 | Jersey City | 90 | 55.3° | 2026-06-24 |  | 0m | 2280m | 0% | 217.9 |
 | 13 | `IC 1396` | Elephant's Trunk Nebula | HII | Cep | 170 × 140 | Jersey City | 120 | 58.2° | 2026-06-24 | yes | 0m | 1740m | 0% | 213.8 |
 | 14 | `Sh2-155` | Cave Nebula | HII | Cep | 50 × 30 | Jersey City | 90 | 48.3° | 2026-06-24 |  | 0m | 1680m | 0% | 207.4 |
 | 15 | `NGC 7380` | Wizard Nebula | HII | Cep | 25 × 25 | Jersey City | 60 | 49.1° | 2026-06-24 |  | 0m | 1680m | 0% | 163.7 |
 | 16 | `NGC 7635` | Bubble Nebula | HII | Cas | 15 × 8 | Jersey City | 60 | 44.9° | 2026-06-24 |  | 0m | 2040m | 0% | 157.4 |
 | 17 | `M52` | M52 + Bubble region | HII | Cas | 60 × 30 | Jersey City | 60 | 44.5° | 2026-06-24 |  | 0m | 1680m | 0% | 156.8 |
-| 18 | `NGC 7822` | Cederblad 214 region | HII | Cep | 60 × 30 | Jersey City | 30 | 41.6° | 2026-06-24 |  | 0m | 1680m | 0% | 107.4 |
+| 18 | `NGC 7822` | Cederblad 214 region | HII | Cep | 60 × 30 | Jersey City | 30 | 41.3° | 2026-06-24 |  | 0m | 1680m | 0% | 107.0 |
 
 ## Per-target detail
 
@@ -101,7 +101,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
 ### 6. IC 5070 — Pelican Nebula
 
 - **Type:** HII in Cyg  
-- **Coords (J2000):** RA 313.6670° / Dec +44.3670°  
+- **Coords (J2000):** RA 312.7500° / Dec +44.3670°  
 - **Size:** 60' × 50'  
 - **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
 - **Per-filter status (captured / budget):**  
@@ -109,27 +109,13 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 150 min above floor, peak 66.4° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 67.1° on 2026-06-24
 - **Notes:** Across the dust lane from NGC 7000; fits single frame
 
-### 7. NGC 6992 — Eastern Veil
+### 7. NGC 6960 — Western Veil / Witch's Broom
 
 - **Type:** SNR in Cyg  
-- **Coords (J2000):** RA 313.0410° / Dec +31.7170°  
-- **Size:** 60' × 8'  
-- **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
-- **Per-filter status (captured / budget):**  
-  - Ha: 0 / 480 min (0% — 480m to go)
-  - OIII: 0 / 720 min (0% — 720m to go)
-  - SII: 0 / 480 min (0% — 480m to go)
-- **Observability per site:**  
-  - Jersey City: 150 min above floor, peak 63.4° on 2026-06-24
-- **Notes:** Eastern strand; complementary to 6960
-
-### 8. NGC 6960 — Western Veil / Witch's Broom
-
-- **Type:** SNR in Cyg  
-- **Coords (J2000):** RA 312.7490° / Dec +30.7170°  
+- **Coords (J2000):** RA 311.4080° / Dec +30.7080°  
 - **Size:** 70' × 6'  
 - **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
 - **Per-filter status (captured / budget):**  
@@ -137,10 +123,10 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 720 min (0% — 720m to go)
   - SII: 0 / 480 min (0% — 480m to go)
 - **Observability per site:**  
-  - Jersey City: 150 min above floor, peak 63.2° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 64.1° on 2026-06-24
 - **Notes:** Western strand of Cygnus Loop; OIII spectacular
 
-### 9. IC 1318 — Butterfly / Sadr Region
+### 8. IC 1318 — Butterfly / Sadr Region
 
 - **Type:** HII in Cyg  
 - **Coords (J2000):** RA 305.5000° / Dec +40.2500°  
@@ -153,6 +139,20 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 72.0° on 2026-06-24
 - **Notes:** Huge complex around Sadr; pick a panel or do 4-panel mosaic
+
+### 9. NGC 6992 — Eastern Veil
+
+- **Type:** SNR in Cyg  
+- **Coords (J2000):** RA 314.0790° / Dec +31.7430°  
+- **Size:** 60' × 8'  
+- **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
+- **Per-filter status (captured / budget):**  
+  - Ha: 0 / 480 min (0% — 480m to go)
+  - OIII: 0 / 720 min (0% — 720m to go)
+  - SII: 0 / 480 min (0% — 480m to go)
+- **Observability per site:**  
+  - Jersey City: 120 min above floor, peak 62.7° on 2026-06-24
+- **Notes:** Eastern strand; complementary to 6960
 
 ### 10. M97 — Owl Nebula
 
@@ -185,7 +185,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
 ### 12. Abell 78 — Abell 78
 
 - **Type:** WR in Cyg  
-- **Coords (J2000):** RA 326.5000° / Dec +31.5000°  
+- **Coords (J2000):** RA 323.8720° / Dec +31.6960°  
 - **Size:** 2' × 2'  
 - **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
 - **Per-filter status (captured / budget):**  
@@ -193,7 +193,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 1200 min (0% — 1200m to go)
   - SII: 0 / 360 min (0% — 360m to go)
 - **Observability per site:**  
-  - Jersey City: 90 min above floor, peak 53.2° on 2026-06-24
+  - Jersey City: 90 min above floor, peak 55.3° on 2026-06-24
 - **Notes:** Very faint WR planetary nebula; OIII shell prominent with long subs
 
 ### 13. IC 1396 — Elephant's Trunk Nebula
@@ -269,7 +269,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
 ### 18. NGC 7822 — Cederblad 214 region
 
 - **Type:** HII in Cep  
-- **Coords (J2000):** RA 0.0830° / Dec +68.5670°  
+- **Coords (J2000):** RA 0.2860° / Dec +67.4210°  
 - **Size:** 60' × 30'  
 - **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
 - **Per-filter status (captured / budget):**  
@@ -277,7 +277,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 30 min above floor, peak 41.6° on 2026-06-24
+  - Jersey City: 30 min above floor, peak 41.3° on 2026-06-24
 - **Notes:** Includes Ced 214 + Sh2-171; high in autumn skies from JC
 
 ## Orphan sessions

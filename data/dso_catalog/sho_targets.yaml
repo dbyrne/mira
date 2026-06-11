@@ -22,7 +22,14 @@
 # enough for plate-solve centering, the actual centering comes from
 # `mira capture --platesolve-center`.
 
-catalog_version: "2026-05-24"
+# 2026-06-11 coordinate audit: every row cross-checked against SIMBAD
+# (scripts/validate_catalog_coords.py) after the Abell 21 phantom-position
+# bug. 11 rows were >30' off and fixed; deliberately offset framing centers
+# (IC 1318 = Sadr, NGC 2237 = cluster center) are commented in place.
+# "Abell N" names are ambiguous in SIMBAD (galaxy clusters!) — PN rows must
+# be resolved as "PN A66 N".
+
+catalog_version: "2026-06-11"
 
 defaults:
   gain: 100
@@ -59,8 +66,8 @@ targets:
   - name: "NGC 1499"
     common_name: "California Nebula"
     object_type: HII
-    ra_deg: 60.000
-    dec_deg: 36.583
+    ra_deg: 60.825
+    dec_deg: 36.422
     size_arcmin: [145, 40]
     constellation: Per
     budget_minutes: {Ha: 600, OIII: 600, SII: 480}
@@ -81,7 +88,7 @@ targets:
   - name: "NGC 2174"
     common_name: "Monkey Head Nebula"
     object_type: HII
-    ra_deg: 91.625
+    ra_deg: 92.425
     dec_deg: 20.500
     size_arcmin: [40, 30]
     constellation: Ori
@@ -147,8 +154,9 @@ targets:
   - name: "Abell 21"
     common_name: "Medusa Nebula"
     object_type: PN
-    ra_deg: 113.000
-    dec_deg: 13.250
+    # PN A66 21 — plain "Abell 21" resolves to a galaxy cluster in SIMBAD
+    ra_deg: 112.261
+    dec_deg: 13.247
     size_arcmin: [10, 10]
     constellation: Gem
     budget_minutes: {Ha: 540, OIII: 900, SII: 360}
@@ -172,8 +180,9 @@ targets:
   - name: "Abell 31"
     common_name: "Abell 31 PN"
     object_type: PN
-    ra_deg: 130.342
-    dec_deg: 8.733
+    # PN A66 31 — plain "Abell 31" resolves to a galaxy cluster in SIMBAD
+    ra_deg: 133.555
+    dec_deg: 8.898
     size_arcmin: [16, 16]
     constellation: Cnc
     budget_minutes: {Ha: 480, OIII: 1200, SII: 360}
@@ -263,8 +272,9 @@ targets:
   - name: "NGC 6960"
     common_name: "Western Veil / Witch's Broom"
     object_type: SNR
-    ra_deg: 312.749
-    dec_deg: 30.717
+    # was 312.749 = the Cygnus Loop CENTER — a 1.6° frame there misses the Broom
+    ra_deg: 311.408
+    dec_deg: 30.708
     size_arcmin: [70, 6]
     constellation: Cyg
     budget_minutes: {Ha: 480, OIII: 720, SII: 480}
@@ -274,8 +284,8 @@ targets:
   - name: "NGC 6992"
     common_name: "Eastern Veil"
     object_type: SNR
-    ra_deg: 313.041
-    dec_deg: 31.717
+    ra_deg: 314.079
+    dec_deg: 31.743
     size_arcmin: [60, 8]
     constellation: Cyg
     budget_minutes: {Ha: 480, OIII: 720, SII: 480}
@@ -307,6 +317,8 @@ targets:
   - name: "IC 1318"
     common_name: "Butterfly / Sadr Region"
     object_type: HII
+    # INTENTIONAL: centered on Sadr (gamma Cyg), the practical frame anchor
+    # for this 4°x3° complex — SIMBAD's "IC 1318" entry is one patch NW of it
     ra_deg: 305.500
     dec_deg: 40.250
     size_arcmin: [240, 180]
@@ -318,7 +330,8 @@ targets:
   - name: "IC 5070"
     common_name: "Pelican Nebula"
     object_type: HII
-    ra_deg: 313.667
+    # was 313.667 — the NGC 7000 side of the dust lane, not the Pelican
+    ra_deg: 312.750
     dec_deg: 44.367
     size_arcmin: [60, 50]
     constellation: Cyg
@@ -442,8 +455,10 @@ targets:
   - name: "NGC 7822"
     common_name: "Cederblad 214 region"
     object_type: HII
-    ra_deg: 0.083
-    dec_deg: 68.567
+    # centered on Ced 214 / Berkeley 59 (the bright pillars core) per the
+    # common_name — the NGC 7822 arc proper is ~1.1 deg N at +68.6
+    ra_deg: 0.286
+    dec_deg: 67.421
     size_arcmin: [60, 30]
     constellation: Cep
     budget_minutes: {Ha: 540, OIII: 600, SII: 540}
@@ -497,8 +512,8 @@ targets:
   - name: "Sh2-188"
     common_name: "Dust Cap PN"
     object_type: PN
-    ra_deg: 19.183
-    dec_deg: 58.300
+    ra_deg: 22.638
+    dec_deg: 58.414
     size_arcmin: [10, 8]
     constellation: Cas
     budget_minutes: {Ha: 480, OIII: 900, SII: 360}
@@ -508,8 +523,8 @@ targets:
   - name: "Sh2-240"
     common_name: "Spaghetti Nebula SNR"
     object_type: SNR
-    ra_deg: 84.167
-    dec_deg: 28.000
+    ra_deg: 85.275
+    dec_deg: 28.083
     size_arcmin: [180, 180]
     constellation: Tau
     budget_minutes: {Ha: 900, OIII: 1200, SII: 720}
@@ -519,8 +534,9 @@ targets:
   - name: "Abell 78"
     common_name: "Abell 78"
     object_type: WR
-    ra_deg: 326.500
-    dec_deg: 31.500
+    # PN A66 78 — plain "Abell 78" resolves to a galaxy cluster in SIMBAD
+    ra_deg: 323.872
+    dec_deg: 31.696
     size_arcmin: [2, 2]
     constellation: Cyg
     budget_minutes: {Ha: 720, OIII: 1200, SII: 360}

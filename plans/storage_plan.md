@@ -70,15 +70,24 @@ and is **not throwaway**: when the NAS lands, this same drive becomes the
 rotating copy-3 (plugged into the NAS for scheduled USB backups, stored
 away between rotations).
 
-**Price reality check (2026-06-11, AI storage crunch):** bare NAS drives
-spiked hardest — David priced the IronWolf 16TB at **$540** (vs ~$250
-pre-crunch), which kills the "pre-buy the NAS drive + dock" variant. Sealed
-externals lag the spike: **Seagate Expansion/One Touch Hub 20TB ~$219–280**
-when on deal. Current play: **buy 1–2 sealed 20TB externals** (two ≈ one
-bare IronWolf, and completes copies 2 AND 3 immediately). Dock for later
-bare-drive rotation: Sabrent EC-HD2B dual-bay w/ offline cloner ~$40.
-Re-price NAS drives at Phase 2; if bare stays ~2.5× sealed, shucking
-becomes a legitimate Phase-2 conversation (warranty trade-off).
+**Price reality (2026-06-11, AI storage crunch — David's observed prices,
+which beat my stale search data):** the market has flattened to **~$34–35/TB
+across the board** — IronWolf Pro 16TB $540, WD Elements 20TB $680, Seagate
+One Touch 8TB $280. Crunch-market strategy: **buy the minimum that bridges
+to Phase 2, in two copies** — don't park $680 in bubble pricing for capacity
+that sits empty until 2029.
+
+- **Primary play: 2× Seagate One Touch 8TB ($560)** → completes the whole
+  3-2-1 today (copy-2 nightly mirror + copy-3 drawer); 8TB ≈ 2.5–4 years of
+  archive growth. Caveat: 8TB desktop Seagates are often **SMR** —
+  acceptable for this write-mostly sequential duty; if the **12TB tier is
+  ≤ ~$400** prefer it (likely CMR, more headroom, similar $/TB).
+- **Runner-up: IronWolf Pro 16TB ($540) + Sabrent EC-HD2B dual-bay dock
+  w/ offline cloner (~$40)** — back on the table at $/TB parity (NAS-grade
+  CMR, 5-yr warranty, becomes NAS bay-1 at Phase 2); but it's one copy, so
+  redundancy needs a second buy later.
+- The big-capacity purchase moves to Phase 2 on fresh prices; if bare NAS
+  drives still carry no premium then, that simplifies drive shopping.
 
 **Git/TIFF policy change at this point:** stop committing keeper TIFFs
 (they live on the archive; regenerable from masters). PNGs + logs + scripts

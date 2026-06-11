@@ -123,12 +123,31 @@ Dew: straps on the Esprit OTA + guide scope (the S30 handles its own).
 manual L-blend per the M51 all-lum recipe. The LRGB combine is a first for
 this kit — budget an evening.
 
+## Field network (no site WiFi)
+
+The MeLE↔laptop link needs a LAN, not the internet — bring the LAN:
+
+- **Plan A — travel router** (USB-powered, no internet behind it): laptop +
+  MeLE + **Seestar** all join one field SSID → RDP, NINA API `:1888`,
+  Syncthing live-stack mirror, and the S30 connection all work exactly as at
+  home. Reserve the MeLE's IP so RDP / `--nina-url` never drift.
+- **Plan B — zero hardware**: Ethernet cable laptop↔MeLE (static IPs
+  192.168.50.1/.2), laptop WiFi joins the Seestar's own AP for the S30.
+- **The trap:** Windows marks unknown networks **Public** → firewall silently
+  kills RDP/Syncthing/NINA API. Set the field network to *Private* on both
+  machines. **Build + test the exact field network at home before leaving.**
+- No internet costs nothing critical: ASTAP solves offline (local indexes),
+  Syncthing uses local discovery, PCC is already deferred to home in
+  `reduce_trip.ps1`. Sync both clocks before departure.
+
 ## Packing deltas vs a JC night
 
 - Esprit 80 OTA + ASI2600MM + wheel + AM7 + MeLE + PHD2 guide kit + dew straps.
 - Paper/tape for Esprit flats (no panel).
+- **Travel router (+ USB power lead) or Ethernet cable + laptop dongle** — see
+  Field network above. Pre-tested at home.
 - Both laptops or just homebase + MeLE (Syncthing share works over the field
-  router; or sneakernet the captures after).
+  LAN; or sneakernet the captures after).
 
 ## Appendix — shelved v1: Veil 2-panel mosaic (S30)
 

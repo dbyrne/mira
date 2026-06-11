@@ -29,7 +29,16 @@ Cross-rig target arbitration: `output/books/rig_fit_matrix.md`.
 One camera train serves both Esprits: **ASI2600MM Pro + ZWO EFW (Antlia
 LRGB-V + Ha/OIII/SII 3nm) at 55mm back-focus**, one guide module (ZWO 30F5 +
 ASI220MM Mini) that transfers between tubes via **Vixen finder shoe**, one
-AM7 + pier, one MeLE running NINA. Swapping OTAs is ~10 minutes: tube +
+AM7 + pier, one MeLE running NINA.
+
+**Back-focus with filters:** 55mm is the *in-air* spec; a filter in the
+converging beam pushes focus back by ~thickness/3. Antlia 36mm substrate =
+1.85mm (uniform across the line — that's what makes the wheel parfocal) →
+target **≈55.6mm: run a 0.5mm M48 shim** in the spacer stack. One shim
+covers every slot, travels with the camera stack between both OTAs (same
+55mm flattener convention), and matters more at the 80's f/5 than the
+120's forgiving f/7. Verify with corner stars / NINA's Aberration
+Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge. Swapping OTAs is ~10 minutes: tube +
 rings + top rail move as a unit; train, guiding, and cabling stay dialed.
 The V slot is a real Johnson-V photometric filter — `mira submit` emits
 true `V` from either Esprit (vs the S30's OSC→TG convention).

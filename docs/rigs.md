@@ -86,7 +86,7 @@ true `V` from either Esprit (vs the S30's OSC→TG convention).
     an M6 tap.
   - Under-plate screw tails/nuts at the forward overhang must clear the
     **sliding dew shield**.
-- First deployment: Catskills trip (`output/trips/catskills_jun18/`) —
+- First deployment: Catskills trip (`output/trips/catskills_jun20/`) —
   Iris+Ghost LRGB. No baked LRGB-combine flow yet; the trip kit's
   `combine_lrgb.py` (WCS-reproject filter masters onto the L grid) is the
   current pattern.

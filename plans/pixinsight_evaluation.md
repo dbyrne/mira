@@ -30,7 +30,7 @@ Documented weaknesses (the targets PI aims at):
    gradient masquerades as sky (94%)"* (`output/processed/ngc6888/PROCESSING_NOTES`).
    On LP widefields where emission fills the frame, GraXpert eats faint signal.
 2. **PCC fragility** — VizieR 503'd on 2026-06-06; fallback is hand-balancing
-   (recorded in `output/trips/catskills_jun18/reduce_veil.ps1`). Also: generic PCC
+   (recorded in `output/trips/catskills_jun20/reduce_veil.ps1`). Also: generic PCC
    has no concept of the S30's LP dual-band passband.
 3. **No real deconvolution** — GraXpert deconv is weak; recipes skip it. S30 data
    is undersampled (3.66"/px) with soft corners; Esprit 80/120 mono data deserves

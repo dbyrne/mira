@@ -1,18 +1,18 @@
-# Catskills trip reduction (plan v2) — IC 1396 on the S30 + Iris LRGB on the
-# Esprit 80. Run from the repo root (C:\mira) after the trip. Each block is
-# independent; run top to bottom. Date stamps assume Sat Jun 13 — rename if the
-# trip shifts. (The shelved Veil mosaic flow lives in reduce_veil.ps1.)
+# Catskills trip reduction (plan v3) — IC 1396 on the S30 + Crescent HOO and
+# Iris LRGB on the Esprit 80. Run from the repo root (C:\mira) after the trip.
+# Each block is independent; run top to bottom. Date stamps assume Sat Jun 20.
+# (The shelved Veil mosaic flow lives in reduce_veil.ps1.)
 
 $ErrorActionPreference = "Stop"
-$work = "output/trips/catskills_jun18"
+$work = "output/trips/catskills_jun20"
 $siril = "C:\Program Files\Siril\bin\siril-cli.exe"
 
 # ============ A. S30 Pro — IC 1396 Elephant Trunk (single frame, LP) ============
 
 # ---- A1. solve -> cull -> stack (debayer, LP_g80 auto-flats) ----
-mira solve --lights "captures/ic1396_20260613" --workers 6
-mira cull  --lights "captures/ic1396_20260613" --from-fits      # drops solve-failed + bad subs
-mira stack --lights "captures/ic1396_20260613" --debayer --auto-flats `
+mira solve --lights "captures/ic1396_20260620" --workers 6
+mira cull  --lights "captures/ic1396_20260620" --from-fits      # drops solve-failed + bad subs
+mira stack --lights "captures/ic1396_20260620" --debayer --auto-flats `
            --out "$work/ic1396_stack.fit"
 
 # ---- A2. PCC in Siril (bg-extract comes AFTER color cal — the ngc6888 lesson;
@@ -31,9 +31,19 @@ save ic1396_cc
 # ---- A3. Finish with the verified emission preset (contact-sheet crop on the
 #          Trunk itself) ----
 mira finish --input "$work/ic1396_cc.fit" `
-  --out "$work/IC1396_elephant_trunk_20260613.png" --preset emission `
+  --out "$work/IC1396_elephant_trunk_20260620.png" --preset emission `
   --ra 324.05 --dec 57.49
 #   If PCC was skipped: --input "$work/ic1396_stack.fit" and expect to hand-tune.
+
+# ====== B0. Esprit 80 — NGC 6888 Crescent HOO (the moon-block target) ======
+# Per-filter stacks only; the deliverable is the combine with the existing JC
+# LP sessions (the OIII-envelope project) in a dedicated processing session.
+foreach ($f in @("Ha","OIII")) {
+    mira solve --lights "captures/crescent_$f" --workers 6
+    mira cull  --lights "captures/crescent_$f" --from-fits
+    mira stack --lights "captures/crescent_$f" --auto-flats `
+               --out "$work/crescent_${f}_stack.fit"
+}
 
 # ============ B. Esprit 80 ED — NGC 7023 Iris + vdB 141 (LRGB, mono) ============
 
@@ -67,7 +77,7 @@ mira finish --input "$work/iris_cc.fit" --out "$work/iris_sheet.png" `
   --contact-sheet --ra 315.40 --dec 68.163
 #   then, e.g.:
 # mira finish --input "$work/iris_cc.fit" `
-#   --out "$work/Iris_Ghost_LRGB_20260613.png" --preset faint-galaxy-deep `
+#   --out "$work/Iris_Ghost_LRGB_20260620.png" --preset faint-galaxy-deep `
 #   --ra 315.40 --dec 68.163
 
 # ---- B5. Luminance blend (manual, the M51 all-lum pattern) ----

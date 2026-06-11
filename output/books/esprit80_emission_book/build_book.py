@@ -166,7 +166,7 @@ md=["# Esprit 80 ED — Emission Nebula Image Book (single-frame)",
  "**Excluded as too low from JC:** Lagoon M8, Trifid M20, Eagle M16, Swan M17. "
  "**Excluded as overflow even here:** full Cygnus Loop, IC 1318 Sadr, Simeis 147, Heart+Soul pair, "
  "NGC 7000+Pelican combo — the round ~3° giants stay S30-crop or **2-panel mosaic** territory "
- "(the `output/trips/catskills_jun18/mosaic_veil.py` reproject+coadd pattern works for any of them). "
+ "(the `output/trips/catskills_jun20/mosaic_veil.py` reproject+coadd pattern works for any of them). "
  "Box = green; DSS2 color (Ha reads brown here — through 3nm filters it's vivid SHO).",
  "",
  "| Target | Common | Type | Size | Fit | Rotation | Palette | maxAlt(JC) | Peak |",

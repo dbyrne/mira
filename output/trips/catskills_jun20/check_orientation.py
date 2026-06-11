@@ -3,7 +3,7 @@
 S30's frame orientation + where the key feature lands before committing the
 night to the pointing.
 
-Usage:  python output/trips/catskills_jun18/check_orientation.py <solved_frame.fits> [ra dec [name]]
+Usage:  python output/trips/catskills_jun20/check_orientation.py <solved_frame.fits> [ra dec [name]]
         (the frame must already carry WCS -> run `mira solve` on the dest dir first;
          default feature = NGC 6960 from the original Veil plan — pass the
          target explicitly, e.g. the Elephant Trunk:  ... 324.05 57.49 IC1396A)

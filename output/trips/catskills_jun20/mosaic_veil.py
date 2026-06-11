@@ -6,7 +6,7 @@ plate-solving. We reproject + coadd both onto a common optimal celestial WCS,
 per channel, averaging in the ~22% overlap. Output is a linear RGB FITS ready
 for GraXpert + PCC + stretch.
 
-Run:  python output/trips/catskills_jun18/mosaic_veil.py
+Run:  python output/trips/catskills_jun20/mosaic_veil.py
 Deps: reproject, astropy (already installed).
 """
 import numpy as np
@@ -15,9 +15,9 @@ from astropy.wcs import WCS
 from reproject import reproject_interp
 from reproject.mosaicking import find_optimal_celestial_wcs, reproject_and_coadd
 
-P1 = "output/trips/catskills_jun18/veil_p1_west_stack.fit"
-P2 = "output/trips/catskills_jun18/veil_p2_east_stack.fit"
-OUT = "output/trips/catskills_jun18/veil_mosaic.fit"
+P1 = "output/trips/catskills_jun20/veil_p1_west_stack.fit"
+P2 = "output/trips/catskills_jun20/veil_p2_east_stack.fit"
+OUT = "output/trips/catskills_jun20/veil_mosaic.fit"
 
 
 def load(path):

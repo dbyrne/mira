@@ -4,7 +4,7 @@
 # run top to bottom. Heavy steps (solve/stack/GraXpert) take minutes.
 
 $ErrorActionPreference = "Stop"
-$work = "output/trips/catskills_jun18"
+$work = "output/trips/catskills_jun20"
 
 # ---- 1. Per-panel: solve -> cull -> stack (debayer, LP_g80 auto-flats) ----
 foreach ($p in @("veil_p1_west","veil_p2_east")) {

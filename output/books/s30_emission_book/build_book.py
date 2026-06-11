@@ -28,7 +28,7 @@ SMAX = S30_S*60                                    # 132'
 # id (SIMBAD), common, const, type, maj', min', palette, fb RA, fb Dec, note
 T = [
  ("NGC 7000","North America (+Pelican)","Cyg","HII",120,100,"Ha+OIII",314.75,44.30,"NGC7000+IC5070 combo spans ~2.2° E-W = exactly the frame — center carefully (test frame first)"),
- ("Cygnus Loop","Veil (full loop)","Cyg","SNR",180,170,"HOO (OIII-rich)",312.50,30.90,"~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped"),
+ ("Cygnus Loop","Veil (full loop)","Cyg","SNR",180,170,"HOO (OIII-rich)",312.50,30.90,"~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun20 kit); one frame = the N-S height, E/W arcs clipped"),
  ("Sh2-119","Clamshell","Cyg","HII",90,90,"Ha+OIII",319.62,43.93,"fits whole; 68 Cyg"),
  ("IC 1318","Sadr / Butterfly","Cyg","HII",180,170,"Ha+OIII",305.55,40.25,"Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel"),
  ("IC 1396","Elephant's Trunk (full)","Cep","HII",170,140,"Ha+OIII",324.74,57.50,"full nebula + cluster + trunk"),

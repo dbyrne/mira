@@ -394,7 +394,7 @@ targets:
     constellation: Cyg
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: true
-    notes: "S30: EW-overflow | ~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped"
+    notes: "S30: EW-overflow | ~3Â° wide E-W vs the 2.20Â° axis â€” full loop is a 2-panel RA split (trips/catskills_jun20 kit); one frame = the N-S height, E/W arcs clipped"
   - name: "IC 1318"
     common_name: "Sadr / Butterfly"
     object_type: HII
@@ -404,7 +404,7 @@ targets:
     constellation: Cyg
     budget_minutes: {Ha: 210, OIII: 90}
     mosaic: true
-    notes: "S30: EW-overflow | Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel"
+    notes: "S30: EW-overflow | Gamma Cyg complex ~3Â° round â€” overflows the 2.20Â° E-W axis; crop the Butterfly or 2-panel"
   - name: "Simeis 147"
     common_name: "Spaghetti (Sh2-240)"
     object_type: SNR
@@ -414,4 +414,4 @@ targets:
     constellation: Tau
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: true
-    notes: "S30: EW-overflow | huge faint SNR ~3° round — overflows E-W; dark-site only; late fall"
+    notes: "S30: EW-overflow | huge faint SNR ~3Â° round â€” overflows E-W; dark-site only; late fall"

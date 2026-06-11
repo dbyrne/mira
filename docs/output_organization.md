@@ -33,7 +33,7 @@ output/
       work/                               # ALL scratch         (gitignored)
   books/                     # curated reference artifacts (emission image books)
   trips/<trip>/              # dark-site trip plans + their reduction scripts
-                             #   e.g. trips/catskills_jun18/
+                             #   e.g. trips/catskills_jun20/
   site/                      # site/hardware studies (rooftop eval, horizon
                              #   compares, mounting-bracket photo annotations)
   inventory/                 # `mira inventory` reports — the committed answer
@@ -116,7 +116,7 @@ All `git mv` (no deletions), reversible, one reorg commit per target group:
 - root-level legacy pipeline files (`candidate_queue.csv`, `best_*.csv`,
   `shared_targets.csv`, `research_notes.md`, `candidate_packets/`) → `runs/_legacy_root/`
 - `esprit_emission_book`, `s30_emission_book` → `books/`
-- `catskills_jun18` → `trips/catskills_jun18/`
+- `catskills_jun20` → `trips/catskills_jun20/`
 - `rooftop_eval` + the mounting/bracket study images (`buckeye_*.png`,
   `_mele_base.png`, `_plate_end.png`, `_b*_*.png`) → `site/`
 - Sh2-119 framing studies (`clamshell_*.png`, `clam_wide.jpg`) →

@@ -151,7 +151,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 90 min (0% — 90m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 73.2° on 2026-06-24
-- **Notes:** S30: EW-overflow | Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel
+- **Notes:** S30: EW-overflow | Gamma Cyg complex ~3Â° round â€” overflows the 2.20Â° E-W axis; crop the Butterfly or 2-panel
 
 ### 10. NGC 7000 — North America
 
@@ -232,7 +232,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit80_jc.ya
   - OIII: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 63.1° on 2026-06-24
-- **Notes:** S30: EW-overflow | ~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped
+- **Notes:** S30: EW-overflow | ~3Â° wide E-W vs the 2.20Â° axis â€” full loop is a 2-panel RA split (trips/catskills_jun20 kit); one frame = the N-S height, E/W arcs clipped
 
 ### 16. IC 5146 — Cocoon
 

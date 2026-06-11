@@ -1,30 +1,30 @@
 qid,common,const,typ,radm,decdm,ra,dec,maj,min,pal,maxalt,peak,fit,src,note,png
-NGC 7000,North America (+Pelican),Cyg,HII,20h58m46s,+44°19',314.696,44.33,120,100,Ha+OIII,86,Aug,fits,SIMBAD,NGC7000+IC5070 combo spans ~2.2° E-W = exactly the frame — center carefully (test frame first),NGC_7000.png
-Cygnus Loop,Veil (full loop),Cyg,SNR,20h51m00s,+30°40',312.75,30.667,180,170,HOO (OIII-rich),80,Aug,EW-overflow,SIMBAD,"~3° wide E-W vs the 2.20° axis — full loop is a 2-panel RA split (trips/catskills_jun18 kit); one frame = the N-S height, E/W arcs clipped",Cygnus_Loop.png
-Sh2-119,Clamshell,Cyg,HII,21h18m30s,+43°56',319.625,43.933,90,90,Ha+OIII,87,Aug,fits,SIMBAD,fits whole; 68 Cyg,Sh2-119.png
-IC 1318,Sadr / Butterfly,Cyg,HII,20h16m47s,+41°57',304.2,41.957,180,170,Ha+OIII,89,Jul,EW-overflow,SIMBAD,Gamma Cyg complex ~3° round — overflows the 2.20° E-W axis; crop the Butterfly or 2-panel,IC_1318.png
-IC 1396,Elephant's Trunk (full),Cep,HII,21h38m58s,+57°30',324.745,57.514,170,140,Ha+OIII,73,Aug,tight,SIMBAD,full nebula + cluster + trunk,IC_1396.png
-IC 1805,Heart,Cas,HII,02h32m50s,+61°28',38.21,61.471,100,90,Ha+OIII,69,Oct,fits,SIMBAD,Heart alone (Heart+Soul pair ~5° overflows),IC_1805.png
-IC 1848,Soul,Cas,HII,02h51m25s,+60°25',42.855,60.419,60,40,Ha+OIII,70,Nov,fits,SIMBAD,pairs with Heart,IC_1848.png
-NGC 1499,California,Per,HII,04h03m17s,+36°25',60.825,36.422,145,40,Ha+OIII,86,Nov,EW-overflow,SIMBAD,E-W elongated — OVERFLOWS the fixed 2.20° E-W axis by ~13'; clip the ends or use a rotatable rig (Esprit 80 book),NGC_1499.png
-IC 405,Flaming Star (+Tadpoles),Aur,HII,05h17m24s,+34°22',79.35,34.383,150,120,Ha+OIII,84,Dec,tight,SIMBAD,IC405+IC410+IC417 Auriga trio; late-fall,IC_405.png
-NGC 2237,Rosette,Mon,HII,06h30m36s,+04°58',97.65,4.981,80,70,Ha+OIII,54,Dec,fits,SIMBAD,fits well; low alt from JC; late fall,NGC_2237.png
-Sh2-129,Flying Bat (Ou4 Squid),Cep,HII,21h11m47s,+59°56',317.95,59.95,150,120,HOO,71,Aug,tight,SIMBAD,OIII Squid very faint — dark-site,Sh2-129.png
-NGC 7822,Ced 214 / Sh2-171,Cep,HII,00h01m08s,+67°25',0.286,67.421,90,60,Ha+OIII,63,Sep,fits,SIMBAD,pillars; circumpolar,NGC_7822.png
-Sh2-157,Lobster Claw (+M52/Bubble),Cas,HII,23h16m03s,+60°02',349.016,60.034,90,60,Ha+OIII,71,Sep,fits,SIMBAD,rich wide field with NGC7635+M52,Sh2-157.png
-Sh2-155,Cave,Cep,HII,22h57m05s,+62°38',344.275,62.636,50,30,Ha+OIII,68,Sep,fits,SIMBAD,fits comfortably,Sh2-155.png
-Sh2-132,Lion,Cep,HII,22h19m08s,+56°04',334.787,56.079,40,30,Ha+OIII,75,Aug,fits,SIMBAD,faint,Sh2-132.png
-Simeis 147,Spaghetti (Sh2-240),Tau,SNR,05h38m28s,+28°00',84.62,28.0,180,180,HOO,77,Dec,EW-overflow,fallback,huge faint SNR ~3° round — overflows E-W; dark-site only; late fall,Simeis_147.png
-IC 443,Jellyfish,Gem,SNR,06h16m59s,+22°34',94.25,22.57,50,40,HOO,72,Dec,fits,SIMBAD,SNR; fall/winter,IC_443.png
-NGC 2174,Monkey Head,Ori,HII,06h09m42s,+20°30',92.425,20.5,40,30,Ha+OIII,70,Dec,fits,SIMBAD,fall/winter,NGC_2174.png
-NGC 2264,Christmas Tree / Cone,Mon,HII,06h40m52s,+09°52',100.217,9.877,40,20,Ha+OIII,59,Dec,fits,SIMBAD,cluster + Cone; late fall,NGC_2264.png
-IC 5146,Cocoon (+B168 trail),Cyg,HII,21h53m29s,+47°14',328.372,47.246,12,12,Ha+OIII,83,Aug,small,SIMBAD,neb small but the dark trail fills the wide frame,IC_5146.png
-NGC 281,Pacman,Cas,HII,00h52m25s,+56°33',13.105,56.565,35,30,Ha+OIII,74,Oct,small,SIMBAD,"borderline small at 4""/px",NGC_281.png
-NGC 6888,Crescent,Cyg,WR bubble,20h12m06s,+38°21',303.027,38.355,18,12,HOO,88,Jul,small,SIMBAD,SMALL — better on Esprit; ok as IC1318 context,NGC_6888.png
-Sh2-101,Tulip,Cyg,HII,19h59m55s,+35°16',299.979,35.277,16,9,Ha+OIII,85,Jul,small,SIMBAD,SMALL — Esprit territory,Sh2-101.png
-M27,Dumbbell,Vul,PN,19h59m36s,+22°43',299.902,22.721,8,6,HOO,72,Jul,small,SIMBAD,SMALL/tiny — long-FL target,M27.png
-M42,Orion Nebula (+Running Man),Ori,HII,05h35m16s,-05°23',83.82,-5.388,90,60,HOO,44,Dec,fits,SIMBAD,flagship winter; M42+M43+NGC1977 one frame,M42.png
-IC 434,Belt: Flame+Horsehead,Ori,HII,05h41m00s,-02°30',85.25,-2.5,90,60,Ha+OIII,47,Dec,fits,SIMBAD,Alnitak/Flame/Horsehead region,IC_434.png
-IC 2177,Seagull,CMa,HII,07h04m24s,-10°27',106.104,-10.455,150,50,Ha+OIII,39,Jan,fits,SIMBAD,low from JC (~39°); spans the wide frame,IC_2177.png
-NGC 2359,Thor's Helmet,CMa,WR bubble,07h18m30s,-13°13',109.625,-13.227,10,8,HOO,36,Jan,small,SIMBAD,SMALL+low — Esprit/long-FL target,NGC_2359.png
-M1,Crab,Tau,SNR,05h34m31s,+22°01',83.632,22.017,6,4,HOO,71,Dec,small,SIMBAD,SMALL/tiny — long-FL target,M1.png
+NGC 7000,North America (+Pelican),Cyg,HII,20h58m46s,+44Â°19',314.696,44.33,120,100,Ha+OIII,86,Aug,fits,SIMBAD,NGC7000+IC5070 combo spans ~2.2Â° E-W = exactly the frame â€” center carefully (test frame first),NGC_7000.png
+Cygnus Loop,Veil (full loop),Cyg,SNR,20h51m00s,+30Â°40',312.75,30.667,180,170,HOO (OIII-rich),80,Aug,EW-overflow,SIMBAD,"~3Â° wide E-W vs the 2.20Â° axis â€” full loop is a 2-panel RA split (trips/catskills_jun20 kit); one frame = the N-S height, E/W arcs clipped",Cygnus_Loop.png
+Sh2-119,Clamshell,Cyg,HII,21h18m30s,+43Â°56',319.625,43.933,90,90,Ha+OIII,87,Aug,fits,SIMBAD,fits whole; 68 Cyg,Sh2-119.png
+IC 1318,Sadr / Butterfly,Cyg,HII,20h16m47s,+41Â°57',304.2,41.957,180,170,Ha+OIII,89,Jul,EW-overflow,SIMBAD,Gamma Cyg complex ~3Â° round â€” overflows the 2.20Â° E-W axis; crop the Butterfly or 2-panel,IC_1318.png
+IC 1396,Elephant's Trunk (full),Cep,HII,21h38m58s,+57Â°30',324.745,57.514,170,140,Ha+OIII,73,Aug,tight,SIMBAD,full nebula + cluster + trunk,IC_1396.png
+IC 1805,Heart,Cas,HII,02h32m50s,+61Â°28',38.21,61.471,100,90,Ha+OIII,69,Oct,fits,SIMBAD,Heart alone (Heart+Soul pair ~5Â° overflows),IC_1805.png
+IC 1848,Soul,Cas,HII,02h51m25s,+60Â°25',42.855,60.419,60,40,Ha+OIII,70,Nov,fits,SIMBAD,pairs with Heart,IC_1848.png
+NGC 1499,California,Per,HII,04h03m17s,+36Â°25',60.825,36.422,145,40,Ha+OIII,86,Nov,EW-overflow,SIMBAD,E-W elongated â€” OVERFLOWS the fixed 2.20Â° E-W axis by ~13'; clip the ends or use a rotatable rig (Esprit 80 book),NGC_1499.png
+IC 405,Flaming Star (+Tadpoles),Aur,HII,05h17m24s,+34Â°22',79.35,34.383,150,120,Ha+OIII,84,Dec,tight,SIMBAD,IC405+IC410+IC417 Auriga trio; late-fall,IC_405.png
+NGC 2237,Rosette,Mon,HII,06h30m36s,+04Â°58',97.65,4.981,80,70,Ha+OIII,54,Dec,fits,SIMBAD,fits well; low alt from JC; late fall,NGC_2237.png
+Sh2-129,Flying Bat (Ou4 Squid),Cep,HII,21h11m47s,+59Â°56',317.95,59.95,150,120,HOO,71,Aug,tight,SIMBAD,OIII Squid very faint â€” dark-site,Sh2-129.png
+NGC 7822,Ced 214 / Sh2-171,Cep,HII,00h01m08s,+67Â°25',0.286,67.421,90,60,Ha+OIII,63,Sep,fits,SIMBAD,pillars; circumpolar,NGC_7822.png
+Sh2-157,Lobster Claw (+M52/Bubble),Cas,HII,23h16m03s,+60Â°02',349.016,60.034,90,60,Ha+OIII,71,Sep,fits,SIMBAD,rich wide field with NGC7635+M52,Sh2-157.png
+Sh2-155,Cave,Cep,HII,22h57m05s,+62Â°38',344.275,62.636,50,30,Ha+OIII,68,Sep,fits,SIMBAD,fits comfortably,Sh2-155.png
+Sh2-132,Lion,Cep,HII,22h19m08s,+56Â°04',334.787,56.079,40,30,Ha+OIII,75,Aug,fits,SIMBAD,faint,Sh2-132.png
+Simeis 147,Spaghetti (Sh2-240),Tau,SNR,05h38m28s,+28Â°00',84.62,28.0,180,180,HOO,77,Dec,EW-overflow,fallback,huge faint SNR ~3Â° round â€” overflows E-W; dark-site only; late fall,Simeis_147.png
+IC 443,Jellyfish,Gem,SNR,06h16m59s,+22Â°34',94.25,22.57,50,40,HOO,72,Dec,fits,SIMBAD,SNR; fall/winter,IC_443.png
+NGC 2174,Monkey Head,Ori,HII,06h09m42s,+20Â°30',92.425,20.5,40,30,Ha+OIII,70,Dec,fits,SIMBAD,fall/winter,NGC_2174.png
+NGC 2264,Christmas Tree / Cone,Mon,HII,06h40m52s,+09Â°52',100.217,9.877,40,20,Ha+OIII,59,Dec,fits,SIMBAD,cluster + Cone; late fall,NGC_2264.png
+IC 5146,Cocoon (+B168 trail),Cyg,HII,21h53m29s,+47Â°14',328.372,47.246,12,12,Ha+OIII,83,Aug,small,SIMBAD,neb small but the dark trail fills the wide frame,IC_5146.png
+NGC 281,Pacman,Cas,HII,00h52m25s,+56Â°33',13.105,56.565,35,30,Ha+OIII,74,Oct,small,SIMBAD,"borderline small at 4""/px",NGC_281.png
+NGC 6888,Crescent,Cyg,WR bubble,20h12m06s,+38Â°21',303.027,38.355,18,12,HOO,88,Jul,small,SIMBAD,SMALL â€” better on Esprit; ok as IC1318 context,NGC_6888.png
+Sh2-101,Tulip,Cyg,HII,19h59m55s,+35Â°16',299.979,35.277,16,9,Ha+OIII,85,Jul,small,SIMBAD,SMALL â€” Esprit territory,Sh2-101.png
+M27,Dumbbell,Vul,PN,19h59m36s,+22Â°43',299.902,22.721,8,6,HOO,72,Jul,small,SIMBAD,SMALL/tiny â€” long-FL target,M27.png
+M42,Orion Nebula (+Running Man),Ori,HII,05h35m16s,-05Â°23',83.82,-5.388,90,60,HOO,44,Dec,fits,SIMBAD,flagship winter; M42+M43+NGC1977 one frame,M42.png
+IC 434,Belt: Flame+Horsehead,Ori,HII,05h41m00s,-02Â°30',85.25,-2.5,90,60,Ha+OIII,47,Dec,fits,SIMBAD,Alnitak/Flame/Horsehead region,IC_434.png
+IC 2177,Seagull,CMa,HII,07h04m24s,-10Â°27',106.104,-10.455,150,50,Ha+OIII,39,Jan,fits,SIMBAD,low from JC (~39Â°); spans the wide frame,IC_2177.png
+NGC 2359,Thor's Helmet,CMa,WR bubble,07h18m30s,-13Â°13',109.625,-13.227,10,8,HOO,36,Jan,small,SIMBAD,SMALL+low â€” Esprit/long-FL target,NGC_2359.png
+M1,Crab,Tau,SNR,05h34m31s,+22Â°01',83.632,22.017,6,4,HOO,71,Dec,small,SIMBAD,SMALL/tiny â€” long-FL target,M1.png

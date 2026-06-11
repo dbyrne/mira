@@ -9,7 +9,7 @@ ready for Siril PCC + `mira finish`. The L master is used as-is for the
 luminance blend later (see the M51 all-lum recipe:
 output/processed/m51/refinish_m51.py).
 
-Run:  python output/trips/catskills_jun18/combine_lrgb.py
+Run:  python output/trips/catskills_jun20/combine_lrgb.py
 Deps: reproject, astropy (already installed).
 """
 import numpy as np
@@ -17,7 +17,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from reproject import reproject_interp
 
-WORK = "output/trips/catskills_jun18"
+WORK = "output/trips/catskills_jun20"
 L = f"{WORK}/iris_L_stack.fit"
 RGB = {c: f"{WORK}/iris_{c}_stack.fit" for c in "RGB"}
 OUT = f"{WORK}/iris_RGB.fit"

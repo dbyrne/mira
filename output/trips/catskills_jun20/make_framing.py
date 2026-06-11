@@ -7,7 +7,7 @@ with the rig FOV box + feature labels drawn on.
   2. iris_framing_dss.png — Iris + Ghost on the Esprit 80 ED / ASI2600MM
      (3.365 deg x 2.249 deg @ 1.94"/px), long axis rotated E-W.
 
-Run:  python output/trips/catskills_jun18/make_framing.py   (needs internet)
+Run:  python output/trips/catskills_jun20/make_framing.py   (needs internet)
 """
 import math
 from pathlib import Path

@@ -7,7 +7,7 @@ Esprit 80 3.37x2.25 at the suggested PA), June-13 altitude tracks, per-rig
 filter/sub recommendations, and — where one exists — the famous JWST/Hubble
 image of the object (downloaded once, credited, linked).
 
-Run:  python output/trips/catskills_jun18/trip_book/build_trip_book.py
+Run:  python output/trips/catskills_jun20/trip_book/build_trip_book.py
 Needs internet (hips2fits + esahubble/esawebb CDNs); astropy for altitudes.
 """
 import io, math, csv
@@ -15,7 +15,7 @@ from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-OUT = Path("output/trips/catskills_jun18/trip_book"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("output/trips/catskills_jun20/trip_book"); OUT.mkdir(parents=True, exist_ok=True)
 LAT, LON = 42.1, -74.4                      # Catskills
 FOV = 5.5; PX = 1100; PPD = PX / FOV
 S30 = (3.91, 2.20, 4.0)                     # long, short, fixed tilt (~N-S)
@@ -31,7 +31,7 @@ WPAGE = "https://esawebb.org/images/{0}/"
 #  s30 rec, e80 rec, why-dark-site,
 #  [(label, id, url_tmpl, page_tmpl, credit)...], [(ra, dec, marklabel)...])
 T = [
- ("markarian","Markarian's Chain","Virgo core galaxy sweep",186.90,13.20,"~1.5° chain of 8+ galaxies; M87 in-frame","EARLY 22:50-00:00 — spring leftover sinking W; hour one or wait till next May",60,
+ ("markarian","Markarian's Chain","Virgo core galaxy sweep",186.90,13.20,"~1.5° chain of 8+ galaxies; M87 in-frame","NOT THIS TRIP — its window (22:55-00:00, sinking W) is fully moonlit on Jun 20; broadband galaxy field = write-off. Back next spring",60,
   "IR broadband — the whole chain + M87 in one frame","LRGB at PA~060: the chain lies along the long axis",
   "a galaxy *field* — the ensemble is the picture, and ensemble = surface brightness = dark sky",
   [("Hubble — M87's jet, at your frame edge","opo0020a",HST,HPAGE,"NASA and the Hubble Heritage Team (STScI/AURA)")],
@@ -56,8 +56,8 @@ T = [
   "single frame, LP — or revive the shelved 2-panel full-loop kit","HOO: ~1.5h Ha + 1.5h OIII fits the window",
   "OIII filaments are urban-LP's first casualty; dark sky doubles the lacework",
   [("Hubble","heic1520a",HST,HPAGE,"NASA, ESA, and the Hubble Heritage Team (STScI/AURA)")],[(311.40,30.72,"52 Cyg")]),
- ("ngc6888","NGC 6888","Crescent Nebula",303.00,38.35,"18'x12' WR bubble","ALL NIGHT (high in Cygnus)",60,
-  "small — context frame only","HOO/SHO — you HAVE JC data; dark site adds the faint OIII envelope",
+ ("ngc6888","NGC 6888","Crescent Nebula",303.00,38.35,"18'x12' WR bubble","ESPRIT MOON BLOCK 22:55-00:30 (3nm ignores the moon; high in Cygnus all night)",60,
+  "small — context frame only","HOO — the committed moon-block target (plan v3); stacks with the JC LP data",
   "the soap-bubble OIII shell around the crescent is the dark-site prize",
   [("Hubble","opo0023a",HST,HPAGE,"NASA, B. D. Moore and J. J. Hester (Arizona State University)")],[]),
  ("cocoon_b168","IC 5146","Cocoon + B168 dark river",327.60,47.40,"12' neb + 1.5° dark lane","RISER 00:30+ (45° at 01:00)",105,
@@ -68,7 +68,7 @@ T = [
   "LP long stare — SAMPLE it (the real Squid wants 6h+ of OIII)","OIII-only if feeling brave",
   "OU4 is one of the faintest OIII objects amateurs image — dark site is table stakes",
   [],[]),
- ("m16_m17","M16 + M17","Eagle + Swan, ONE frame",274.95,-14.97,"pair spans ~2.9° N-S","SOUTH WINDOW 00:30-02:30 (peaks ~33°) — needs the southern horizon",0,
+ ("m16_m17","M16 + M17","Eagle + Swan, ONE frame",274.95,-14.97,"pair spans ~2.9° N-S","SOUTH WINDOW 00:45-02:30, conveniently post-moonset (peaks ~34°) — needs the southern horizon",0,
   "the killer frame: pair is N-S = made for the fixed long axis, LP","fits at PA 0 (2.9° vs 3.37°) if the S30 is on IC 1396",
   "the Pillars of Creation live inside your frame — see below what Webb sees there",
   [("JWST — the Pillars, inside M16","weic2216b",JWST,WPAGE,"NASA, ESA, CSA, STScI; J. DePasquale, A. Koekemoer, A. Pagan (STScI)"),
@@ -160,13 +160,13 @@ def chart(t):
 
 
 def altitudes():
-    """alt at 23:00 / 01:00 / 03:00 EDT for the night of Sat 2026-06-13."""
+    """alt at 23:00 / 01:00 / 03:00 EDT for the night of Sat 2026-06-20."""
     import numpy as np
     from astropy.time import Time
     from astropy.coordinates import EarthLocation, AltAz, SkyCoord
     import astropy.units as u
     site = EarthLocation(lat=LAT*u.deg, lon=LON*u.deg, height=500*u.m)
-    times = Time(["2026-06-14 03:00", "2026-06-14 05:00", "2026-06-14 07:00"])  # UT = EDT+4
+    times = Time(["2026-06-21 03:00", "2026-06-21 05:00", "2026-06-21 07:00"])  # UT = EDT+4
     aa = AltAz(obstime=times, location=site)
     out = {}
     for t in T:
@@ -208,11 +208,12 @@ with open(OUT / "trip_book.csv", "w", newline="", encoding="utf-8") as fcsv:
 
 md = ["# Catskills dark-site trip book — S30 Pro + Esprit 80, one night, one menu",
  "",
- "Built for **Sat June 13, 2026** (astro dark 22:50→03:05 EDT, 2% moon below the horizon",
- "all night — see `../plan.md` for the committed primaries). Every chart carries **both**",
- "rig footprints: **cyan = S30 Pro** (3.91°×2.20° measured, fixed long axis ≈N–S),",
- "**green = Esprit 80 ED** (3.37°×2.25°, rotated to the suggested PA). Same sky, two",
- "instruments — pick per target, not per book.",
+ "Built for **Sat June 20, 2026** (astro dark 22:55→03:05 EDT; **42% moon until it sets",
+ "at 00:30** — LP/narrowband targets run anytime, broadband waits for moonset; see",
+ "`../plan.md` for the committed sequence). Every chart carries **both** rig footprints:",
+ "**cyan = S30 Pro** (3.91°×2.20° measured, fixed long axis ≈N–S), **green = Esprit 80",
+ "ED** (3.37°×2.25°, rotated to the suggested PA). Same sky, two instruments — pick per",
+ "target, not per book.",
  "",
  "Where a famous **JWST / Hubble** frame of the object exists it's included for scale-awe:",
  "your wide field contains the whole object; Webb's contains a couple of light-years of it.",

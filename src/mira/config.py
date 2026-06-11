@@ -184,11 +184,13 @@ DSO_DEFAULTS = DsoConfig(
 # load-bearing ways: a galaxy catalog, moon-STRICT gating (broadband from
 # the city is moon-sensitive — the opposite of narrowband), and a
 # surface-brightness floor for the dark-site-only flag. FOV defaults to the
-# wide S30 Pro field since that's the rig this path was built for.
+# wide S30 Pro field since that's the rig this path was built for — the
+# MEASURED field (3.66"/px plate scale / eff. 163mm fl), matching
+# config/s30_pro_jc.yaml, not the nominal-150mm 4.25x2.39.
 GALAXY_DEFAULTS = DsoConfig(
     enabled=True,
     catalog_path=Path("data/dso_catalog/galaxies.yaml"),
-    fov_deg=(4.2, 2.4),
+    fov_deg=(3.9, 2.2),
     relax_moon=False,
     output_subdir="galaxies",
     captures_root=Path("captures"),

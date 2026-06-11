@@ -1,0 +1,172 @@
+# Tuned for the Sky-Watcher Esprit 80 ED + ASI2600MM Pro + AM7 from Jersey
+# City, NJ. The 80 is the SECOND OTA on the Esprit rig: it shares the 120's
+# entire camera train (2600MM + EFW + Antlia LRGB-V + SHO 3nm), mount, MeLE
+# control core, and finder-shoe-transferred guide module — only the tube
+# swaps (~10 min). See docs/rigs.md for the hardware truth.
+#
+# Role: the in-between field (3.37°×2.25° @ 1.94"/px, 400mm f/5) — dark-site
+# trips, broadband dust/reflection LRGB, and the medium-large emission
+# complexes the 120 must mosaic. Image book:
+# output/books/esprit80_emission_book/.
+#
+# Why these values differ from esprit120_jc.yaml:
+#  - 80mm aperture loses ~1.1 mag vs the 120: prefer_max_mag 15 (not 16).
+#  - Same camera, V filter, guided EQ + dither -> photometric scatter is
+#    comparable, so the amplitude floor stays 0.10 and the fast classes
+#    (EA/EB/EW/RR*/DSCT) stay on the menu.
+#  - dso/emission/galaxies sections carry the 80's FOV so single-frame fit
+#    flags are honest for this tube (the rig-agnostic catalogs stay shared).
+#
+# Use:
+#   mira emission plan --config config/esprit80_jc.yaml
+#   mira dso plan      --config config/esprit80_jc.yaml
+#   mira galaxies plan --config config/esprit80_jc.yaml
+#   mira run           --config config/esprit80_jc.yaml   (photometry, mag<=15)
+sites:
+  - name: Jersey City
+    observer:
+      latitude_deg: 40.7178
+      longitude_deg: -74.0431
+      timezone: America/New_York
+    # Same yard, same pier, same obstructions as the 120 profile.
+    horizon_profile_path: config/horizon_balcony_jc.yaml
+    observing_window:
+      start_hour_local: 20
+      end_hour_local: 2
+      nights: 14
+      sample_minutes: 30
+      min_altitude_deg: 40
+      max_sun_altitude_deg: -12
+      max_moon_altitude_deg: 30
+      max_moon_illumination: 0.7
+    filters:
+      min_galactic_latitude_abs_deg: 12
+      min_catalog_amplitude_mag: 0.10
+      prefer_amplitude_mag: 0.25
+      prefer_max_mag: 15.0
+      reject_saturated_brighter_than_mag: 5.5
+
+vsx_query:
+  row_limit: 1500
+  ra_bin_degrees: 30
+  oversample_factor: 3
+  min_declination_deg: -10
+  # prefer_max_mag + FAINT_TOLERANCE_MAG (1.0) = 16.
+  max_bright_mag: 16.0
+  require_period: false
+  include_types:
+    - "SR*"
+    - "L*"
+    - M
+    - EA
+    - EB
+    - EW
+    - "RR*"
+    - DSCT
+    - "?"
+    - VAR
+    - ROT
+
+scoring:
+  uncertain_type_bonus: 20
+  survey_name_bonus: 6
+  classical_name_bonus: 6
+  sparse_aavso_bonus: 15
+  well_observed_aavso_penalty: 18
+  high_amplitude_bonus: 14
+  moderate_amplitude_bonus: 8
+  bright_target_bonus: 10
+  long_period_bonus: 8
+  time_series_bonus: 5
+  clean_field_bonus: 8
+  period_disagreement_bonus: 18
+  period_discovered_bonus: 10
+  gaia_color_anomaly_bonus: 8
+  gaia_crowding_penalty: 6
+
+aavso:
+  enabled: true
+  enrich_top: 200
+  recent_days: 730
+  sparse_recent_threshold: 5
+  timeout_seconds: 20
+  bands:
+    - V
+    - Vis.
+    - CV
+    - TG
+    - B
+    - R
+    - I
+  period_min_peak_power: 0.3
+
+simbad:
+  enabled: true
+  enrich_top: 30
+  search_radius_arcsec: 5
+  timeout_seconds: 20
+
+gaia:
+  enabled: true
+  enrich_top: 200
+  search_radius_arcsec: 3
+  timeout_seconds: 30
+
+ztf:
+  # mag 14-15 still overlaps ZTF's sensitive range.
+  enabled: true
+  search_radius_arcsec: 5
+  timeout_seconds: 45
+  bad_catflags_mask: 32768
+  bands:
+    - g
+    - r
+  period_min_peak_power: 0.3
+
+output:
+  directory: output/runs/esprit80_jc
+  top_packets: 20
+
+# Narrowband DSO planner — same shared catalog as the 120, this tube's FOV.
+dso:
+  enabled: true
+  catalog_path: data/dso_catalog/sho_targets.yaml
+  # Esprit 80 ED (400mm fl) + ASI2600MM Pro (23.5×15.7mm) = 3.37°×2.25°.
+  fov_deg: [3.37, 2.25]
+  relax_moon: true
+  output_subdir: dso
+
+# Emission-nebula planner — the 80's sweet spot: the medium-large complexes
+# (North America alone, Heart, Soul, California rotated, Sh2-129, full
+# IC 1396 rim-kiss) read single-frame here but mosaic on the 120.
+emission:
+  enabled: true
+  catalog_path: data/dso_catalog/emission_nebulae.yaml
+  fov_deg: [3.37, 2.25]
+  relax_moon: true
+  deficit_weight: 1.0
+  output_subdir: emission
+
+# Bright-galaxy planner — broadband LRGB on the mono train (dark-site trips:
+# M101-class low-SB face-ons; Markarian's Chain along the rotated long axis).
+# Moon-strict like all broadband.
+galaxies:
+  enabled: true
+  catalog_path: data/dso_catalog/galaxies.yaml
+  fov_deg: [3.37, 2.25]
+  relax_moon: false
+  sb_limit_mag_arcsec2: 22.5
+  deficit_weight: 1.0
+  output_subdir: galaxies
+
+# Same MeLE control core as the 120 — these values only matter when this
+# config is loaded on the rig PC. See docs/rig_workflow.md.
+capture_defaults:
+  lat: 40.7178
+  lon: -74.0431
+  nina_url: http://localhost:1888
+  nina_root: "C:/Users/<mele-user>/Documents/N.I.N.A"
+  alt_floor: 30.0
+  sun_max: -15.0
+  settle: 2.0
+  n_max: 2000

@@ -4,16 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-Mira produces a short observing queue of known VSX variable stars worth amateur follow-up. Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog. See `docs/architecture.md` for the module map, storage layout, and implementation invariants.
+Mira is the software side of a **two-mission home observatory**:
+
+1. **Variable-star photometry (the original mission):** produce a short observing queue of known VSX variable stars worth amateur follow-up, then reduce captures into AAVSO submissions (`mira run/tonight` → capture → `mira submit`). Two sites are supported out of the box (Jersey City, NJ urban site; Fairbanks, AK dark site) and a config can list any number. The intentional output is a candidate packet for human triage, not a discovery catalog.
+2. **Deep-sky astrophotography (currently the dominant mode):** plan, capture, and finish pretty-picture targets across five target-finding paths (VSX variables, narrowband DSO, bright galaxies, transients, emission nebulae), with per-rig image books, dark-site trip kits, and a verified finishing pipeline (`mira solve/cull/stack/finish`).
+
+The two missions deliberately share one engine (sites, observability, scoring, ledger, capture/stack tooling) and diverge only at catalogs, scoring surfaces, and output reports — that duality is a feature, not an inconsistency to resolve. See `docs/architecture.md` for the module map, storage layout, and implementation invariants; `docs/rigs.md` for the hardware truth.
 
 ## Rigs
 
-Two rigs share the codebase. Pick the profile that matches what's on the pier tonight.
+Three rigs share the codebase (full hardware truth: **`docs/rigs.md`** — when an older plan doc disagrees with it, `rigs.md` wins). Pick the profile that matches what's on the pier tonight.
 
-- **ZWO Seestar S30 Pro (Jersey City)** — wide-field OSC scout. Config: `config/s30_pro_jc.yaml`. Reaches mag ~12, operated on an equatorial wedge (**EQ mode, not alt-az** — so no field rotation; long subs are fine), single-machine workflow (NINA + Mira on the same laptop). LP/IR filters only — AAVSO submissions emit TG (tri-color green) per the OSC convention, not Johnson V.
-- **Sky-Watcher Esprit 120 EDX + ASI2600MM Pro + AM7 (Jersey City)** — science rig. Config: `config/esprit120_jc.yaml`. Reaches mag ~16 from urban skies, guided EQ with autofocus, Antlia LRGB-V (V is Johnson-V photometric) + SHO 3nm narrowband, motorized Wanderer Cover V4-EC 190mm for unattended flats. Two-machine workflow: MeLE Quieter 4C on the rig drives NINA, homebase plans + processes + submits. See `docs/rig_workflow.md` for the Syncthing-based split and Siril Live Stack integration.
+- **ZWO Seestar S30 Pro (Jersey City)** — wide-field OSC scout. Config: `config/s30_pro_jc.yaml`. **Measured field 3.9°×2.2° @ 3.66″/px (eff. fl ≈ 163mm — use `-focal=163`, not nominal 150)**, fixed frame (long axis ≈ N–S). Reaches mag ~12, operated on an equatorial wedge (**EQ mode, not alt-az** — so no field rotation; long subs are fine), single-machine workflow (NINA + Mira on the same laptop). LP dual-band / IR-cut filters only — AAVSO submissions emit TG (tri-color green) per the OSC convention, not Johnson V.
+- **Sky-Watcher Esprit 80 ED + shared ASI2600MM train + AM7 (Jersey City / trips)** — the in-between field. Config: `config/esprit80_jc.yaml`. 400mm f/5 → 3.37°×2.25° @ 1.94″/px, manual camera rotation (per-target PA in its image book). Shares the 120's *entire* camera train, mount, MeLE, and finder-shoe guide module — only the tube swaps (~10 min). Role: dark-site trips, broadband LRGB dust/reflection, and the medium-large emission complexes the 120 must mosaic. Reaches mag ~15 for photometry (true Johnson V). Flats are paper-mode only (the Wanderer panel doesn't fit the 80).
+- **Sky-Watcher Esprit 120 EDX + ASI2600MM Pro + AM7 (Jersey City)** — science rig. Config: `config/esprit120_jc.yaml`. 840mm f/7 → 1.6°×1.07° @ 0.92″/px. Reaches mag ~16 from urban skies, guided EQ with autofocus, Antlia LRGB-V (V is Johnson-V photometric) + SHO 3nm narrowband, motorized Wanderer Cover V4-EC 190mm for unattended flats. Two-machine workflow: MeLE Quieter 4C on the rig drives NINA, homebase plans + processes + submits. See `docs/rig_workflow.md` for the Syncthing-based split and Siril Live Stack integration.
 
-The Esprit is *primarily a narrowband astrophotography rig* in the medium term. Mira plans only its variable-star photometry nights; narrowband nights run directly through NINA Target Scheduler without going through `mira tonight`. The `esprit120_jc.yaml` profile is for photometry use only.
+The Esprit 120 is *primarily a narrowband astrophotography rig* in the medium term. Mira plans only its variable-star photometry nights; narrowband nights run directly through NINA Target Scheduler without going through `mira tonight`. The `esprit120_jc.yaml` profile is for photometry use only. Cross-rig target arbitration ("which rig owns this object") lives in `output/books/rig_fit_matrix.md`.
+
+## Docs map
+
+By mission — hardware/current-state first, then per-mission workflow docs:
+
+- **Hardware truth:** `docs/rigs.md` (all three rigs, shared-train model, gotchas). `astrophotography_rig_plan_v7/v8.md` are planning **history** only.
+- **Architecture/invariants:** `docs/architecture.md` (module map), `docs/output_organization.md` (output/ layout convention), `docs/concepts.md`, `docs/getting_started.md`, `docs/FIELD_GUIDE.md`.
+- **Photometry mission:** `docs/photometry.md` (reduce + AAVSO submit), `docs/comp_stars_example.json`, `docs/nina_setup.md` (S30), `docs/nina_setup_esprit.md` (Esprit), `docs/esprit_preflight_30d.md`.
+- **Astrophotography mission:** `docs/dso_planner.md` (planner phases), `docs/rig_workflow.md` (MeLE ↔ homebase split, Siril Live Stack), image books under `output/books/`, trip kits under `output/trips/<trip>/`, finishing recipes baked in `src/mira/finish_presets.py`.
+- **Shared ops:** `docs/troubleshooting.md`, `docs/horizon_profile.md`, `plans/` for open design docs (incl. `plans/pixinsight_evaluation.md`).
 
 ## Commands
 
@@ -80,6 +96,7 @@ Plan an emission-nebula session (a *fifth* target-finding path — HII regions, 
 
 ```powershell
 mira emission plan --config config/esprit120_jc.yaml     # single-frame 1.6°×1.07°
+mira emission plan --config config/esprit80_jc.yaml      # mid-field 3.37°×2.25°
 mira emission plan --config config/s30_pro_jc.yaml       # wide-field 3.9°×2.2° (measured)
 mira emission plan --config config/s30_pro_jc.yaml --start-date 2026-08-15 --top 12
 mira emission status --config config/esprit120_jc.yaml   # integration ledger

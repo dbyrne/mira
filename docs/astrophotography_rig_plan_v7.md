@@ -1,3 +1,6 @@
+> **⚠ HISTORICAL — superseded by `astrophotography_rig_plan_v8.md` (v8/v9),
+> which is itself history. Current hardware state: `docs/rigs.md`.**
+
 **ASTROPHOTOGRAPHY RIG PLAN**
 
 Sky-Watcher Esprit 120EDX + ZWO AM7 + Daystar Quark

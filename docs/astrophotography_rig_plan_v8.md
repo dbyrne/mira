@@ -1,3 +1,10 @@
+> **⚠ HISTORICAL PLANNING DOCUMENT.** Current hardware state lives in
+> **`docs/rigs.md`** — when this file disagrees with it, `rigs.md` wins.
+> Biggest delta: the v9 second OTA was planned as an **Askar 65PHQ** but the
+> actual purchase (2026-06) was a **Sky-Watcher Esprit 80 ED** on clearance —
+> same shared-train/swap architecture, different tube (400mm f/5,
+> 3.37°×2.25°). Kept for the decision rationale and BOM history.
+
 **ASTROPHOTOGRAPHY RIG PLAN — v9**
 
 Sky-Watcher Esprit 120EDX + ZWO AM7 + Daystar Quark

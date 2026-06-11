@@ -38,7 +38,15 @@ target **≈55.6mm: run a 0.5mm M48 shim** in the spacer stack. One shim
 covers every slot, travels with the camera stack between both OTAs (same
 55mm flattener convention), and matters more at the 80's f/5 than the
 120's forgiving f/7. Verify with corner stars / NINA's Aberration
-Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge. Swapping OTAs is ~10 minutes: tube +
+Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
+
+**Narrowband bandpass shift:** the 3nm filters are fine on both tubes —
+f/5 cone-averaged blue-shift ≈ 0.3–0.5nm (worst corner marginal ray
+~1.5nm) vs the ±1.5nm half-band + the manufacturer's fast-beam CWL
+offset; f/7 is negligible. Revisit only if a reducer ever pushes below
+~f/4 (high-speed filter territory). Note: emission-line corner loss from
+CWL shift is NOT flat-correctable (flats are continuum) — at f/5 it's
+percent-level, ignore. Swapping OTAs is ~10 minutes: tube +
 rings + top rail move as a unit; train, guiding, and cabling stay dialed.
 The V slot is a real Johnson-V photometric filter — `mira submit` emits
 true `V` from either Esprit (vs the S30's OSC→TG convention).

@@ -63,12 +63,22 @@ Using `output/inventory/captures_inventory.md`:
 (All deletions are David's, per the house rule — `mira inventory` is the
 shopping list.)
 
-### Phase 1 — one external HDD as bridge + future offsite leg (~$150–230, this month)
+### Phase 1 — one external HDD as bridge + future offsite leg (this month)
 One **12–20 TB external USB HDD**, nightly `robocopy /MIR` job for
 `captures/` + masters. This kills the single-copy risk *now*, buys runway,
 and is **not throwaway**: when the NAS lands, this same drive becomes the
 rotating copy-3 (plugged into the NAS for scheduled USB backups, stored
 away between rotations).
+
+**Price reality check (2026-06-11, AI storage crunch):** bare NAS drives
+spiked hardest — David priced the IronWolf 16TB at **$540** (vs ~$250
+pre-crunch), which kills the "pre-buy the NAS drive + dock" variant. Sealed
+externals lag the spike: **Seagate Expansion/One Touch Hub 20TB ~$219–280**
+when on deal. Current play: **buy 1–2 sealed 20TB externals** (two ≈ one
+bare IronWolf, and completes copies 2 AND 3 immediately). Dock for later
+bare-drive rotation: Sabrent EC-HD2B dual-bay w/ offline cloner ~$40.
+Re-price NAS drives at Phase 2; if bare stays ~2.5× sealed, shucking
+becomes a legitimate Phase-2 conversation (warranty trade-off).
 
 **Git/TIFF policy change at this point:** stop committing keeper TIFFs
 (they live on the archive; regenerable from masters). PNGs + logs + scripts

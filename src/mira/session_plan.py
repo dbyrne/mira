@@ -255,24 +255,30 @@ def write_nina_target_scheduler_csv(candidates, path: Path) -> None:
             )
 
 
+def _sexagesimal_parts(value: float, seconds_decimals: int) -> tuple[int, int, float]:
+    """Split a positive value (hours or degrees) into (whole, minutes,
+    seconds) with the seconds ROUNDED to the output precision FIRST and
+    the carry propagated — so 59.995s renders as the next minute, never
+    as '60s' (an invalid sexagesimal that broke NINA Target Scheduler
+    imports; caught in the 2026-06-12 review)."""
+    scale = 10 ** seconds_decimals
+    total = round(value * 3600 * scale)
+    whole, rem = divmod(total, 3600 * scale)
+    m, s_scaled = divmod(rem, 60 * scale)
+    return int(whole), int(m), s_scaled / scale
+
+
 def ra_to_target_scheduler_hms(ra_deg: float) -> str:
     """Format RA as 'HHh MMm SSs' for NINA Target Scheduler."""
-    hours_total = ra_deg / 15.0
-    h = int(hours_total)
-    minutes_total = (hours_total - h) * 60.0
-    m = int(minutes_total)
-    s = (minutes_total - m) * 60.0
+    h, m, s = _sexagesimal_parts((ra_deg % 360.0) / 15.0, 0)
+    h %= 24  # 23h 59m 59.6s rounds up to 24h → wrap to 00h
     return f"{h:02d}h {m:02d}m {s:02.0f}s"
 
 
 def dec_to_target_scheduler_dms(dec_deg: float) -> str:
     """Format Dec as '±DD° MM\\' SS\"' for NINA Target Scheduler."""
     sign = "+" if dec_deg >= 0 else "-"
-    abs_dec = abs(dec_deg)
-    d = int(abs_dec)
-    minutes_total = (abs_dec - d) * 60.0
-    m = int(minutes_total)
-    s = (minutes_total - m) * 60.0
+    d, m, s = _sexagesimal_parts(abs(dec_deg), 0)
     return f"{sign}{d:02d}° {m:02d}' {s:02.0f}\""
 
 
@@ -292,21 +298,14 @@ def recommended_exposure_plan(bright_mag: float | None) -> dict:
 
 
 def ra_to_hms(ra_deg: float) -> str:
-    hours_total = ra_deg / 15.0
-    h = int(hours_total)
-    minutes_total = (hours_total - h) * 60.0
-    m = int(minutes_total)
-    s = (minutes_total - m) * 60.0
+    h, m, s = _sexagesimal_parts((ra_deg % 360.0) / 15.0, 2)
+    h %= 24
     return f"{h:02d}:{m:02d}:{s:05.2f}"
 
 
 def dec_to_dms(dec_deg: float) -> str:
     sign = "+" if dec_deg >= 0 else "-"
-    abs_dec = abs(dec_deg)
-    d = int(abs_dec)
-    minutes_total = (abs_dec - d) * 60.0
-    m = int(minutes_total)
-    s = (minutes_total - m) * 60.0
+    d, m, s = _sexagesimal_parts(abs(dec_deg), 1)
     return f"{sign}{d:02d}:{m:02d}:{s:04.1f}"
 
 

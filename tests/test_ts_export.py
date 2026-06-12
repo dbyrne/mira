@@ -27,6 +27,41 @@ def _row(**overrides):
     return base
 
 
+class SexagesimalCarryTests(unittest.TestCase):
+    """The 60s bug: seconds rounding to the output precision must carry
+    into minutes/hours/degrees (shipped nina_targets.csv carried
+    `+57° 23' 60"` before the 2026-06-12 fix)."""
+
+    def test_ra_seconds_carry(self):
+        from mira.session_plan import ra_to_target_scheduler_hms
+        # 21h 36m 59.9s must carry to 21h 37m 00s, never "60s"
+        self.assertEqual(ra_to_target_scheduler_hms(324.249917), "21h 37m 00s")
+        self.assertNotIn("60s", ra_to_target_scheduler_hms(324.249917))
+        # 23h 59m 59.6s wraps to 00h 00m 00s
+        self.assertEqual(ra_to_target_scheduler_hms(359.99875), "00h 00m 00s")
+
+    def test_dec_seconds_carry(self):
+        from mira.session_plan import dec_to_target_scheduler_dms
+        self.assertEqual(dec_to_target_scheduler_dms(57.39989), "+57° 24' 00\"")
+        self.assertEqual(dec_to_target_scheduler_dms(-0.99993), "-01° 00' 00\"")
+
+    def test_hms_dms_decimal_variants_carry(self):
+        from mira.session_plan import dec_to_dms, ra_to_hms
+        self.assertEqual(ra_to_hms(359.9999999), "00:00:00.00")
+        self.assertEqual(dec_to_dms(29.9999999), "+30:00:00.0")
+
+    def test_shipped_catalogs_emit_no_60(self):
+        from mira.session_plan import (
+            dec_to_target_scheduler_dms,
+            ra_to_target_scheduler_hms,
+        )
+        for cat_path in (CATALOG, Path("data/dso_catalog/sho_targets.yaml"),
+                         Path("data/dso_catalog/galaxies.yaml")):
+            for t in load_dso_catalog(cat_path).targets:
+                self.assertNotIn("60s", ra_to_target_scheduler_hms(t.ra_deg))
+                self.assertNotIn("60\"", dec_to_target_scheduler_dms(t.dec_deg))
+
+
 class PaDegParsingTests(unittest.TestCase):
     def test_absent_pa_is_none(self):
         self.assertIsNone(_parse_target(_row()).pa_deg)

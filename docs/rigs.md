@@ -189,8 +189,16 @@ true `V` from either Esprit (vs the S30's OSC→TG convention).
 | | Flat source | Master reuse | Notes |
 |---|---|---|---|
 | S30 Pro | paper over aperture | **session-to-session** (sealed optics) | masters keyed `<filter>_g<gain>` under `data/flats/` |
-| Esprit 80 | paper (no panel fit) | until focus/rotation change | field flats at dawn pre-teardown |
-| Esprit 120 | Wanderer EL panel (auto) | until focus/rotation/dust change | per-filter brightness via ASCOM driver |
+| Esprit 80 | paper (no panel fit; A4 LED tracing panel = the indoor upgrade) | until focus / disassembly / cleaning change | field flats at dawn pre-teardown |
+| Esprit 120 | Wanderer EL panel (auto) | until focus / disassembly / cleaning change | per-filter brightness via ASCOM driver |
+
+**CAA rotation does NOT invalidate flats** — filter/sensor dust rides the
+rotating half (donuts stay pixel-fixed at any PA) and OTA/flattener
+vignetting is rotationally symmetric; only *flattener* dust doesn't rotate
+(keep upstream glass clean). One flat set covers a multi-PA night.
+What DOES invalidate: refocus, train disassembly (e.g. the CAA install),
+filter cleaning (e.g. the 2026-06 L fingerprint) → full per-filter refresh
+at next setup.
 
 Auto-resolve chain: `mira capture` writes the `mira_capture.json` sidecar
 (NINA FITS carry **no FILTER keyword**) → `mira stack --auto-flats` resolves

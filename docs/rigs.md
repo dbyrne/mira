@@ -40,19 +40,19 @@ covers every slot, travels with the camera stack between both OTAs (same
 120's forgiving f/7. Verify with corner stars / NINA's Aberration
 Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
 
-**Train stack (with the ZWO CAA rotator) — STATUS 2026-06-12: bench-fit
-IN PROGRESS, final spacing pends the CAA-PLATE-M42.** Key bench facts so
-far: David owns the 2mm M54–M48 flanged adapter (scope side solved); it
-threads into the CAA non-flush (stand-off to be quantified: caliper
-adapter+CAA vs nominal 18.5mm); measured EFW+adapter+CAA = 43mm, which
-only closes the 55.6 budget in **ZWO's documented tilt-plate-OFF
-configuration** (ASI2600 tilt plate removed → camera depth 17.5→12.5mm;
-43 + 12.5 = 55.5 ✓; trade = losing the tilt adjustment; ZWO's confirmed
-CAA builds specify this). The 43 still contains the unmateable M48↔M42
-face-rest — expect it to shrink once the M42 plate seats, then tune UP
-with thin spacers. Decision at assembly: external ≤ ~38mm → tilt plate
-stays; ~43mm → tilt plate off. The paper recipe below is the
-pre-bench reference; measurements win.
+**Train stack (with the ZWO CAA rotator) — STATUS 2026-06-12: both
+adapters ORDERED (Agena): CAA-PLATE-M42 (camera side, M42M into the
+EFW's M42F) + ZWO M54M-M48F-2 (OTA side, M48F receives the flattener /
+M54M into the CAA's fixed female, 2.0mm, flange-seats flush).** Build:
+ring 2.0 + CAA 16.5 + EFW 20 + camera 17.5 (tilt plate STAYS ON) =
+**56.0mm**. On-arrival acceptance: CAA+ring = 18.5mm; CAA+ring+EFW
+seated (ring-hold technique) = 38.5mm; corners at first light. Bench
+archaeology that got here: the earlier 43mm stack was the M42M–M42M
+coupler standing proud + an unmateable M48-plate-on-M42-EFW face rest
+(coupler + 5mm M48 spacer now retired to the drawer); the
+tilt-plate-OFF escape hatch (camera 17.5→12.5) remains documented as
+the fallback if measurements surprise again. Measurements win over
+paper.
 
 **Paper recipe (superseded where it disagrees with the bench):**
 flattener (M48 male) → **ZWO M54–M48 flanged adapter, 2.0mm** (M48F→M54M)

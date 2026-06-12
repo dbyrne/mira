@@ -1,13 +1,20 @@
 """DSO plan output: Markdown for humans, CSV for ingestion.
 
-Two files written per run:
+Three files written per run:
 
 - ``dso_plan.md`` — chronological-ish Markdown plan. Top section is the
   ranked queue; per-target sections list filter budgets, observability,
-  notes. Phone-readable.
+  notes. Phone-readable. Footer carries rig-aware NINA/Target Scheduler
+  import + dither guidance.
 - ``dso_plan.csv`` — flat rows (one per candidate) suitable for spreadsheet
-  triage. Columns chosen to be NINA Target Scheduler-friendly so a
-  follow-up step can transform to a true import CSV when Phase 3 lands.
+  triage.
+- ``nina_targets.csv`` — a true NINA **Target Scheduler target-import** CSV
+  (same format the VSX tonight path emits): canonical catalog names (so
+  capture sidecars ledger-match instead of orphaning), TS-format
+  coordinates, Rotation from the catalog's optional ``pa_deg`` (the image
+  books' suggested camera PA — CAA-ready), ROI 100. TS's import creates
+  *targets only*; per-filter exposure plans are attached in the TS UI from
+  each target's budget table in the Markdown.
 """
 from __future__ import annotations
 
@@ -35,6 +42,7 @@ def write_dso_plan(
     When ``ledger`` is provided, the per-target detail section shows
     per-filter captured-vs-budget rows from the ledger so the user can
     see *which* filter is behind, not just that the target is N% done."""
+    candidates = list(candidates)
     out_dir.mkdir(parents=True, exist_ok=True)
     md_path = out_dir / "dso_plan.md"
     csv_path = out_dir / "dso_plan.csv"
@@ -47,6 +55,7 @@ def write_dso_plan(
         ledger=ledger,
     ), encoding="utf-8")
     _write_csv(candidates, csv_path)
+    write_nina_targets_csv(candidates, out_dir / "nina_targets.csv")
     return md_path, csv_path
 
 
@@ -199,7 +208,84 @@ def _render_markdown(
                 f"{mins:.0f} total min"
             )
         lines.append("")
+    lines.extend(_nina_ts_notes(config_path))
     return "\n".join(lines)
+
+
+def _nina_ts_notes(config_path: str) -> list[str]:
+    """Rig-aware NINA / Target Scheduler footer. The dither block exists
+    because the failure mode is SILENT (TS logs 'Guider not connected' and
+    skips dithers → walking noise, the M94 lesson) — generated output is
+    where this warning belongs, not tribal memory."""
+    cfg = config_path.lower()
+    lines = [
+        "## NINA / Target Scheduler import",
+        "",
+        "`nina_targets.csv` (this directory) is a Target Scheduler",
+        "target-import file: canonical catalog names (keeps capture sidecars",
+        "ledger-matched), TS-format coordinates, Rotation = the catalog's",
+        "suggested camera PA (0 = no preference), ROI 100. Import via the TS",
+        "target panel, then attach per-filter **exposure plans** in the TS UI",
+        "from each target's budget table above (TS templates make that fast).",
+        "",
+        "**One conductor per night:** if Target Scheduler runs the session,",
+        "TS owns dithering; never run `mira capture` against the same rig in",
+        "the same session (its anchored slew-dither fights a guide loop).",
+        "",
+    ]
+    if "esprit" in cfg:
+        lines += [
+            "**Esprit dither:** TS dithers through PHD2 — set *dither every",
+            "2–3 exposures* in the TS project template for 120s+ guided subs.",
+        ]
+    elif "s30" in cfg:
+        lines += [
+            "**S30 dither WARNING:** with no guide camera, TS dither",
+            "**silently no-ops** ('Dither - Guider not connected' → walking",
+            "noise). Connect NINA's **Direct Guider** before the session — or",
+            "run the night via `mira capture`, whose anchored slew-dither",
+            "needs no guider.",
+        ]
+    else:
+        lines += [
+            "**Dither:** guided rig → TS dithers via PHD2 (set dither-every-N",
+            "in the project). Guider-less rig → TS dither silently no-ops",
+            "unless NINA's Direct Guider is connected; `mira capture`'s",
+            "anchored slew-dither needs no guider.",
+        ]
+    lines.append("")
+    return lines
+
+
+def write_nina_targets_csv(
+    candidates: Iterable[DsoCandidate], path: Path,
+) -> Path:
+    """NINA Target Scheduler target-import CSV (the same ``Type, Name, Ra,
+    Dec, Rotation, ROI`` format the VSX tonight path emits). Rows are in
+    plan rank order; TS's import UI allows selective add. Targets only —
+    exposure plans are configured in TS."""
+    from ..session_plan import (
+        dec_to_target_scheduler_dms,
+        ra_to_target_scheduler_hms,
+    )
+
+    fields = ["Type", "Name", "Ra", "Dec", "Rotation", "ROI"]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for cand in candidates:
+            target = cand.target
+            writer.writerow({
+                "Type": target.object_type,
+                "Name": target.name,
+                "Ra": ra_to_target_scheduler_hms(target.ra_deg),
+                "Dec": dec_to_target_scheduler_dms(target.dec_deg),
+                "Rotation": (
+                    int(round(target.pa_deg)) if target.pa_deg is not None else 0
+                ),
+                "ROI": 100,
+            })
+    return path
 
 
 def _write_csv(candidates: Iterable[DsoCandidate], path: Path) -> None:

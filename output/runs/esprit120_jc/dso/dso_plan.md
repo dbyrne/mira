@@ -1,29 +1,29 @@
 # DSO / narrowband plan
 
-Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.yaml` • catalog v2026-06-11 • 18 viable targets • ledger: 2 session(s) over 1 target(s), 1 orphan(s)
+Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit120_jc.yaml` • catalog v2026-06-11 • 18 viable targets • ledger: 2 session(s) over 1 target(s), 1 orphan(s)
 
 ## Ranked queue
 
 | # | Target | Common | Type | Const | Size (arcmin) | Best site | Dark min | Peak alt | Best night | Mosaic | Captured | Budget | % Done | Score |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `M57` | Ring Nebula | PN | Lyr | 1 × 1 | Jersey City | 240 | 82.2° | 2026-06-24 |  | 0m | 960m | 0% | 483.3 |
-| 2 | `Sh2-101` | Tulip Nebula | HII | Cyg | 17 × 12 | Jersey City | 210 | 74.7° | 2026-06-24 |  | 0m | 1860m | 0% | 427.1 |
-| 3 | `NGC 7023` | Iris Nebula | REF | Cep | 18 × 18 | Jersey City | 210 | 57.2° | 2026-06-24 |  | 0m | 1080m | 0% | 400.8 |
-| 4 | `NGC 6888` | Crescent Nebula | WR | Cyg | 18 × 13 | Jersey City | 180 | 73.5° | 2026-06-24 |  | 0m | 2040m | 0% | 380.3 |
-| 5 | `M27` | Dumbbell Nebula | PN | Vul | 8 × 6 | Jersey City | 180 | 66.4° | 2026-06-24 |  | 0m | 1140m | 0% | 369.7 |
-| 6 | `IC 5070` | Pelican Nebula | HII | Cyg | 60 × 50 | Jersey City | 150 | 67.1° | 2026-06-24 |  | 0m | 1680m | 0% | 325.6 |
-| 7 | `NGC 6960` | Western Veil / Witch's Broom | SNR | Cyg | 70 × 6 | Jersey City | 150 | 64.1° | 2026-06-24 |  | 0m | 1680m | 0% | 321.2 |
-| 8 | `IC 1318` | Butterfly / Sadr Region | HII | Cyg | 240 × 180 | Jersey City | 180 | 72.0° | 2026-06-24 | yes | 0m | 1620m | 0% | 302.5 |
-| 9 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 120 | 62.7° | 2026-06-24 |  | 0m | 1680m | 0% | 274.0 |
-| 10 | `M97` | Owl Nebula | PN | UMa | 3 × 3 | Jersey City | 120 | 55.8° | 2026-06-11 |  | 0m | 1320m | 0% | 263.7 |
-| 11 | `NGC 7000` | North America Nebula | HII | Cyg | 120 × 100 | Jersey City | 120 | 65.6° | 2026-06-24 | yes | 0m | 1740m | 0% | 222.8 |
-| 12 | `Abell 78` | Abell 78 | WR | Cyg | 2 × 2 | Jersey City | 90 | 55.3° | 2026-06-24 |  | 0m | 2280m | 0% | 217.9 |
-| 13 | `IC 1396` | Elephant's Trunk Nebula | HII | Cep | 170 × 140 | Jersey City | 120 | 58.2° | 2026-06-24 | yes | 0m | 1740m | 0% | 213.8 |
-| 14 | `Sh2-155` | Cave Nebula | HII | Cep | 50 × 30 | Jersey City | 90 | 48.3° | 2026-06-24 |  | 0m | 1680m | 0% | 207.4 |
-| 15 | `NGC 7380` | Wizard Nebula | HII | Cep | 25 × 25 | Jersey City | 60 | 49.1° | 2026-06-24 |  | 0m | 1680m | 0% | 163.7 |
-| 16 | `NGC 7635` | Bubble Nebula | HII | Cas | 15 × 8 | Jersey City | 60 | 44.9° | 2026-06-24 |  | 0m | 2040m | 0% | 157.4 |
-| 17 | `M52` | M52 + Bubble region | HII | Cas | 60 × 30 | Jersey City | 60 | 44.5° | 2026-06-24 |  | 0m | 1680m | 0% | 156.8 |
-| 18 | `NGC 7822` | Cederblad 214 region | HII | Cep | 60 × 30 | Jersey City | 30 | 41.3° | 2026-06-24 |  | 0m | 1680m | 0% | 107.0 |
+| 1 | `M57` | Ring Nebula | PN | Lyr | 1 × 1 | Jersey City | 240 | 82.3° | 2026-06-25 |  | 0m | 960m | 0% | 483.4 |
+| 2 | `Sh2-101` | Tulip Nebula | HII | Cyg | 17 × 12 | Jersey City | 210 | 75.4° | 2026-06-25 |  | 0m | 1860m | 0% | 428.2 |
+| 3 | `NGC 7023` | Iris Nebula | REF | Cep | 18 × 18 | Jersey City | 210 | 57.5° | 2026-06-25 |  | 0m | 1080m | 0% | 401.2 |
+| 4 | `NGC 6888` | Crescent Nebula | WR | Cyg | 18 × 13 | Jersey City | 180 | 74.3° | 2026-06-25 |  | 0m | 2040m | 0% | 381.4 |
+| 5 | `M27` | Dumbbell Nebula | PN | Vul | 8 × 6 | Jersey City | 180 | 67.0° | 2026-06-25 |  | 0m | 1140m | 0% | 370.4 |
+| 6 | `IC 5070` | Pelican Nebula | HII | Cyg | 60 × 50 | Jersey City | 150 | 67.8° | 2026-06-25 |  | 0m | 1680m | 0% | 326.7 |
+| 7 | `NGC 6960` | Western Veil / Witch's Broom | SNR | Cyg | 70 × 6 | Jersey City | 150 | 64.9° | 2026-06-25 |  | 0m | 1680m | 0% | 322.3 |
+| 8 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 150 | 63.4° | 2026-06-25 |  | 0m | 1680m | 0% | 320.1 |
+| 9 | `IC 1318` | Butterfly / Sadr Region | HII | Cyg | 240 × 180 | Jersey City | 180 | 72.8° | 2026-06-25 | yes | 0m | 1620m | 0% | 303.3 |
+| 10 | `M97` | Owl Nebula | PN | UMa | 3 × 3 | Jersey City | 120 | 55.2° | 2026-06-12 |  | 0m | 1320m | 0% | 262.9 |
+| 11 | `NGC 7000` | North America Nebula | HII | Cyg | 120 × 100 | Jersey City | 150 | 66.4° | 2026-06-25 | yes | 0m | 1740m | 0% | 259.6 |
+| 12 | `Abell 78` | Abell 78 | WR | Cyg | 2 × 2 | Jersey City | 90 | 56.0° | 2026-06-25 |  | 0m | 2280m | 0% | 219.0 |
+| 13 | `IC 1396` | Elephant's Trunk Nebula | HII | Cep | 170 × 140 | Jersey City | 120 | 58.7° | 2026-06-25 | yes | 0m | 1740m | 0% | 214.4 |
+| 14 | `Sh2-155` | Cave Nebula | HII | Cep | 50 × 30 | Jersey City | 90 | 48.7° | 2026-06-25 |  | 0m | 1680m | 0% | 208.1 |
+| 15 | `NGC 7380` | Wizard Nebula | HII | Cep | 25 × 25 | Jersey City | 60 | 49.6° | 2026-06-25 |  | 0m | 1680m | 0% | 164.5 |
+| 16 | `NGC 7635` | Bubble Nebula | HII | Cas | 15 × 8 | Jersey City | 60 | 45.4° | 2026-06-25 |  | 0m | 2040m | 0% | 158.1 |
+| 17 | `M52` | M52 + Bubble region | HII | Cas | 60 × 30 | Jersey City | 60 | 45.0° | 2026-06-25 |  | 0m | 1680m | 0% | 157.5 |
+| 18 | `NGC 7822` | Cederblad 214 region | HII | Cep | 60 × 30 | Jersey City | 30 | 41.7° | 2026-06-25 |  | 0m | 1680m | 0% | 107.6 |
 
 ## Per-target detail
 
@@ -38,7 +38,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 540 min (0% — 540m to go)
   - SII: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
-  - Jersey City: 240 min above floor, peak 82.2° on 2026-06-24
+  - Jersey City: 240 min above floor, peak 82.3° on 2026-06-25
 - **Notes:** Tiny — undersampled at 840mm; do for the outer Ha halo
 
 ### 2. Sh2-101 — Tulip Nebula
@@ -52,7 +52,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 720 min (0% — 720m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 210 min above floor, peak 74.7° on 2026-06-24
+  - Jersey City: 210 min above floor, peak 75.4° on 2026-06-25
 - **Notes:** Near Cygnus X-1; OIII reveals shock front
 
 ### 3. NGC 7023 — Iris Nebula
@@ -67,7 +67,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - G: 0 / 240 min (0% — 240m to go)
   - B: 0 / 240 min (0% — 240m to go)
 - **Observability per site:**  
-  - Jersey City: 210 min above floor, peak 57.2° on 2026-06-24
+  - Jersey City: 210 min above floor, peak 57.5° on 2026-06-25
 - **Notes:** Pure reflection — broadband only; embedded in dark dust
 
 ### 4. NGC 6888 — Crescent Nebula
@@ -81,7 +81,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 900 min (0% — 900m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 180 min above floor, peak 73.5° on 2026-06-24
+  - Jersey City: 180 min above floor, peak 74.3° on 2026-06-25
 - **Notes:** Wolf-Rayet bubble — OIII shell is the headline; needs long subs
 
 ### 5. M27 — Dumbbell Nebula
@@ -95,7 +95,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 540 min (0% — 540m to go)
   - SII: 0 / 240 min (0% — 240m to go)
 - **Observability per site:**  
-  - Jersey City: 180 min above floor, peak 66.4° on 2026-06-24
+  - Jersey City: 180 min above floor, peak 67.0° on 2026-06-25
 - **Notes:** Showcase OIII PN; faint outer halo rewards long Ha
 
 ### 6. IC 5070 — Pelican Nebula
@@ -109,7 +109,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 150 min above floor, peak 67.1° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 67.8° on 2026-06-25
 - **Notes:** Across the dust lane from NGC 7000; fits single frame
 
 ### 7. NGC 6960 — Western Veil / Witch's Broom
@@ -123,24 +123,10 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 720 min (0% — 720m to go)
   - SII: 0 / 480 min (0% — 480m to go)
 - **Observability per site:**  
-  - Jersey City: 150 min above floor, peak 64.1° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 64.9° on 2026-06-25
 - **Notes:** Western strand of Cygnus Loop; OIII spectacular
 
-### 8. IC 1318 — Butterfly / Sadr Region
-
-- **Type:** HII in Cyg  
-- **Coords (J2000):** RA 305.5000° / Dec +40.2500°  
-- **Size:** 240' × 180'  
-- **FOV fit:** mosaic candidate (rig FOV 1.60° × 1.07°)  
-- **Per-filter status (captured / budget):**  
-  - Ha: 0 / 540 min (0% — 540m to go)
-  - OIII: 0 / 600 min (0% — 600m to go)
-  - SII: 0 / 480 min (0% — 480m to go)
-- **Observability per site:**  
-  - Jersey City: 180 min above floor, peak 72.0° on 2026-06-24
-- **Notes:** Huge complex around Sadr; pick a panel or do 4-panel mosaic
-
-### 9. NGC 6992 — Eastern Veil
+### 8. NGC 6992 — Eastern Veil
 
 - **Type:** SNR in Cyg  
 - **Coords (J2000):** RA 314.0790° / Dec +31.7430°  
@@ -151,8 +137,22 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 720 min (0% — 720m to go)
   - SII: 0 / 480 min (0% — 480m to go)
 - **Observability per site:**  
-  - Jersey City: 120 min above floor, peak 62.7° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 63.4° on 2026-06-25
 - **Notes:** Eastern strand; complementary to 6960
+
+### 9. IC 1318 — Butterfly / Sadr Region
+
+- **Type:** HII in Cyg  
+- **Coords (J2000):** RA 305.5000° / Dec +40.2500°  
+- **Size:** 240' × 180'  
+- **FOV fit:** mosaic candidate (rig FOV 1.60° × 1.07°)  
+- **Per-filter status (captured / budget):**  
+  - Ha: 0 / 540 min (0% — 540m to go)
+  - OIII: 0 / 600 min (0% — 600m to go)
+  - SII: 0 / 480 min (0% — 480m to go)
+- **Observability per site:**  
+  - Jersey City: 180 min above floor, peak 72.8° on 2026-06-25
+- **Notes:** Huge complex around Sadr; pick a panel or do 4-panel mosaic
 
 ### 10. M97 — Owl Nebula
 
@@ -165,7 +165,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 720 min (0% — 720m to go)
   - SII: 0 / 240 min (0% — 240m to go)
 - **Observability per site:**  
-  - Jersey City: 120 min above floor, peak 55.8° on 2026-06-11
+  - Jersey City: 120 min above floor, peak 55.2° on 2026-06-12
 - **Notes:** Small but bright OIII; useful narrowband target in galaxy season
 
 ### 11. NGC 7000 — North America Nebula
@@ -179,7 +179,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 120 min above floor, peak 65.6° on 2026-06-24
+  - Jersey City: 150 min above floor, peak 66.4° on 2026-06-25
 - **Notes:** Two-panel mosaic for full nebula; Cygnus Wall alone (~30') fits single frame
 
 ### 12. Abell 78 — Abell 78
@@ -193,7 +193,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 1200 min (0% — 1200m to go)
   - SII: 0 / 360 min (0% — 360m to go)
 - **Observability per site:**  
-  - Jersey City: 90 min above floor, peak 55.3° on 2026-06-24
+  - Jersey City: 90 min above floor, peak 56.0° on 2026-06-25
 - **Notes:** Very faint WR planetary nebula; OIII shell prominent with long subs
 
 ### 13. IC 1396 — Elephant's Trunk Nebula
@@ -207,7 +207,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 120 min above floor, peak 58.2° on 2026-06-24
+  - Jersey City: 120 min above floor, peak 58.7° on 2026-06-25
 - **Notes:** Mosaic for full nebula; Trunk itself (~20') fits single frame
 
 ### 14. Sh2-155 — Cave Nebula
@@ -221,7 +221,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 480 min (0% — 480m to go)
 - **Observability per site:**  
-  - Jersey City: 90 min above floor, peak 48.3° on 2026-06-24
+  - Jersey City: 90 min above floor, peak 48.7° on 2026-06-25
 - **Notes:** Strong Ha, modest OIII; fits single frame
 
 ### 15. NGC 7380 — Wizard Nebula
@@ -235,7 +235,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 60 min above floor, peak 49.1° on 2026-06-24
+  - Jersey City: 60 min above floor, peak 49.6° on 2026-06-25
 - **Notes:** Compact HII region; full SHO palette works
 
 ### 16. NGC 7635 — Bubble Nebula
@@ -249,7 +249,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 900 min (0% — 900m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 60 min above floor, peak 44.9° on 2026-06-24
+  - Jersey City: 60 min above floor, peak 45.4° on 2026-06-25
 - **Notes:** OIII bubble is the highlight; pair with M52 if framing wider
 
 ### 17. M52 — M52 + Bubble region
@@ -263,7 +263,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 60 min above floor, peak 44.5° on 2026-06-24
+  - Jersey City: 60 min above floor, peak 45.0° on 2026-06-25
 - **Notes:** Frame to include both M52 open cluster and NGC 7635 Bubble
 
 ### 18. NGC 7822 — Cederblad 214 region
@@ -277,7 +277,7 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
   - OIII: 0 / 600 min (0% — 600m to go)
   - SII: 0 / 540 min (0% — 540m to go)
 - **Observability per site:**  
-  - Jersey City: 30 min above floor, peak 41.3° on 2026-06-24
+  - Jersey City: 30 min above floor, peak 41.7° on 2026-06-25
 - **Notes:** Includes Ced 214 + Sh2-171; high in autumn skies from JC
 
 ## Orphan sessions
@@ -285,3 +285,19 @@ Generated for 14 night(s) starting 2026-06-11 • config: `config/esprit120_jc.y
 _These captures' `target_name` doesn't match any catalog entry. Could be a typo or a one-off non-catalog target._
 
 - `M51` — 1 session(s), 267 total min
+
+## NINA / Target Scheduler import
+
+`nina_targets.csv` (this directory) is a Target Scheduler
+target-import file: canonical catalog names (keeps capture sidecars
+ledger-matched), TS-format coordinates, Rotation = the catalog's
+suggested camera PA (0 = no preference), ROI 100. Import via the TS
+target panel, then attach per-filter **exposure plans** in the TS UI
+from each target's budget table above (TS templates make that fast).
+
+**One conductor per night:** if Target Scheduler runs the session,
+TS owns dithering; never run `mira capture` against the same rig in
+the same session (its anchored slew-dither fights a guide loop).
+
+**Esprit dither:** TS dithers through PHD2 — set *dither every
+2–3 exposures* in the TS project template for 120s+ guided subs.

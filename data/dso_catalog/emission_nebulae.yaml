@@ -7,7 +7,7 @@
 # (3.91x2.20deg, 10% rim tolerance) — single-frame fit per rig is otherwise
 # computed at plan time from fov_deg. Schema = data/dso_catalog/sho_targets.yaml.
 
-catalog_version: "2026-06-10-emission"
+catalog_version: "2026-06-12-emission"
 
 defaults:
   gain: 100
@@ -21,6 +21,7 @@ targets:
     ra_deg: 303.027
     dec_deg: 38.355
     size_arcmin: [18, 12]
+    pa_deg: 60
     constellation: Cyg
     budget_minutes: {Ha: 150, OIII: 150, SII: 90}
     mosaic: false
@@ -31,6 +32,7 @@ targets:
     ra_deg: 299.979
     dec_deg: 35.277
     size_arcmin: [16, 9]
+    pa_deg: 135
     constellation: Cyg
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -41,6 +43,7 @@ targets:
     ra_deg: 311.408
     dec_deg: 30.708
     size_arcmin: [70, 8]
+    pa_deg: 10
     constellation: Cyg
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -51,6 +54,7 @@ targets:
     ra_deg: 314.079
     dec_deg: 31.743
     size_arcmin: [60, 8]
+    pa_deg: 200
     constellation: Cyg
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -61,6 +65,7 @@ targets:
     ra_deg: 328.372
     dec_deg: 47.246
     size_arcmin: [12, 12]
+    pa_deg: 0
     constellation: Cyg
     budget_minutes: {Ha: 210, OIII: 90}
     mosaic: false
@@ -71,6 +76,7 @@ targets:
     ra_deg: 312.750
     dec_deg: 44.367
     size_arcmin: [60, 50]
+    pa_deg: 0
     constellation: Cyg
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -81,6 +87,7 @@ targets:
     ra_deg: 324.000
     dec_deg: 57.400
     size_arcmin: [20, 10]
+    pa_deg: 120
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -91,6 +98,7 @@ targets:
     ra_deg: 341.817
     dec_deg: 58.125
     size_arcmin: [25, 20]
+    pa_deg: 0
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -101,6 +109,7 @@ targets:
     ra_deg: 344.275
     dec_deg: 62.636
     size_arcmin: [50, 30]
+    pa_deg: 90
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -111,6 +120,7 @@ targets:
     ra_deg: 13.105
     dec_deg: 56.565
     size_arcmin: [35, 30]
+    pa_deg: 0
     constellation: Cas
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -121,6 +131,7 @@ targets:
     ra_deg: 350.201
     dec_deg: 61.202
     size_arcmin: [22, 15]
+    pa_deg: 0
     constellation: Cas
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -131,6 +142,7 @@ targets:
     ra_deg: 349.016
     dec_deg: 60.034
     size_arcmin: [60, 30]
+    pa_deg: 40
     constellation: Cas
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -141,6 +153,7 @@ targets:
     ra_deg: 295.616
     dec_deg: 23.087
     size_arcmin: [40, 30]
+    pa_deg: 0
     constellation: Vul
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -151,6 +164,7 @@ targets:
     ra_deg: 299.902
     dec_deg: 22.721
     size_arcmin: [8, 6]
+    pa_deg: 30
     constellation: Vul
     budget_minutes: {Ha: 150, OIII: 150, SII: 90}
     mosaic: false
@@ -161,6 +175,7 @@ targets:
     ra_deg: 283.396
     dec_deg: 33.029
     size_arcmin: [1, 1]
+    pa_deg: 0
     constellation: Lyr
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -171,6 +186,7 @@ targets:
     ra_deg: 334.787
     dec_deg: 56.079
     size_arcmin: [40, 30]
+    pa_deg: 30
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -181,6 +197,7 @@ targets:
     ra_deg: 0.286
     dec_deg: 67.421
     size_arcmin: [60, 60]
+    pa_deg: 0
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -191,6 +208,7 @@ targets:
     ra_deg: 79.350
     dec_deg: 34.383
     size_arcmin: [37, 19]
+    pa_deg: 30
     constellation: Aur
     budget_minutes: {Ha: 210, OIII: 90}
     mosaic: false
@@ -201,6 +219,7 @@ targets:
     ra_deg: 80.500
     dec_deg: 33.483
     size_arcmin: [40, 30]
+    pa_deg: 0
     constellation: Aur
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -211,6 +230,7 @@ targets:
     ra_deg: 97.650
     dec_deg: 4.981
     size_arcmin: [80, 70]
+    pa_deg: 0
     constellation: Mon
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -221,6 +241,7 @@ targets:
     ra_deg: 100.217
     dec_deg: 9.877
     size_arcmin: [40, 20]
+    pa_deg: 0
     constellation: Mon
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -231,6 +252,7 @@ targets:
     ra_deg: 94.250
     dec_deg: 22.570
     size_arcmin: [50, 40]
+    pa_deg: 140
     constellation: Gem
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -241,6 +263,7 @@ targets:
     ra_deg: 92.425
     dec_deg: 20.500
     size_arcmin: [40, 30]
+    pa_deg: 0
     constellation: Ori
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -251,6 +274,7 @@ targets:
     ra_deg: 83.820
     dec_deg: -5.388
     size_arcmin: [85, 60]
+    pa_deg: 0
     constellation: Ori
     budget_minutes: {Ha: 150, OIII: 150, SII: 90}
     mosaic: false
@@ -261,6 +285,7 @@ targets:
     ra_deg: 85.429
     dec_deg: -1.842
     size_arcmin: [30, 30]
+    pa_deg: 0
     constellation: Ori
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -271,6 +296,7 @@ targets:
     ra_deg: 85.250
     dec_deg: -2.500
     size_arcmin: [60, 10]
+    pa_deg: 0
     constellation: Ori
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -281,6 +307,7 @@ targets:
     ra_deg: 83.632
     dec_deg: 22.017
     size_arcmin: [6, 4]
+    pa_deg: 0
     constellation: Tau
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -291,6 +318,7 @@ targets:
     ra_deg: 109.625
     dec_deg: -13.227
     size_arcmin: [10, 8]
+    pa_deg: 0
     constellation: CMa
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -301,6 +329,7 @@ targets:
     ra_deg: 112.261
     dec_deg: 13.247
     size_arcmin: [10, 10]
+    pa_deg: 0
     constellation: Gem
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -311,6 +340,7 @@ targets:
     ra_deg: 314.696
     dec_deg: 44.330
     size_arcmin: [120, 100]
+    pa_deg: 0
     constellation: Cyg
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -321,6 +351,7 @@ targets:
     ra_deg: 319.625
     dec_deg: 43.933
     size_arcmin: [90, 90]
+    pa_deg: 0
     constellation: Cyg
     budget_minutes: {Ha: 210, OIII: 90}
     mosaic: false
@@ -331,6 +362,7 @@ targets:
     ra_deg: 324.745
     dec_deg: 57.514
     size_arcmin: [170, 140]
+    pa_deg: 0
     constellation: Cep
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -341,6 +373,7 @@ targets:
     ra_deg: 317.950
     dec_deg: 59.950
     size_arcmin: [150, 120]
+    pa_deg: 0
     constellation: Cep
     budget_minutes: {Ha: 120, OIII: 180}
     mosaic: false
@@ -351,6 +384,7 @@ targets:
     ra_deg: 38.210
     dec_deg: 61.471
     size_arcmin: [100, 90]
+    pa_deg: 0
     constellation: Cas
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -361,6 +395,7 @@ targets:
     ra_deg: 42.855
     dec_deg: 60.419
     size_arcmin: [60, 40]
+    pa_deg: 90
     constellation: Cas
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -371,6 +406,7 @@ targets:
     ra_deg: 60.825
     dec_deg: 36.422
     size_arcmin: [145, 40]
+    pa_deg: 100
     constellation: Per
     budget_minutes: {Ha: 180, OIII: 120, SII: 120}
     mosaic: false
@@ -381,6 +417,7 @@ targets:
     ra_deg: 106.104
     dec_deg: -10.455
     size_arcmin: [150, 50]
+    pa_deg: 0
     constellation: CMa
     budget_minutes: {Ha: 210, OIII: 90}
     mosaic: false

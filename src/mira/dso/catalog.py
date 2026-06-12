@@ -62,6 +62,10 @@ class DsoTarget:
     mosaic: bool = False
     notes: str = ""
     magnitude: float | None = None
+    # Suggested camera position angle (deg, N->E) from the image books —
+    # feeds the NINA Target Scheduler import's Rotation column (CAA rigs).
+    # Optional: None means "no preference" and exports as Rotation 0.
+    pa_deg: float | None = None
 
     @property
     def total_budget_minutes(self) -> int:
@@ -187,6 +191,7 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
     if any(v < 0 for v in budget.values()):
         raise ValueError("budget_minutes values must be non-negative")
     magnitude = _parse_magnitude(item.get("magnitude"))
+    pa_deg = _parse_pa_deg(item.get("pa_deg"))
     return DsoTarget(
         name=name,
         common_name=str(item.get("common_name", name)),
@@ -199,7 +204,23 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
         mosaic=bool(item.get("mosaic", False)),
         notes=str(item.get("notes", "")).strip(),
         magnitude=magnitude,
+        pa_deg=pa_deg,
     )
+
+
+def _parse_pa_deg(raw: Any) -> float | None:
+    """Optional suggested camera PA. Absent → None. Stored mod 360 is the
+    author's job; we just range-check (framing PA is mod-180 anyway, but
+    the books record 0-360 conventions)."""
+    if raw is None:
+        return None
+    try:
+        pa = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"pa_deg must be a number; got {raw!r}") from exc
+    if not 0.0 <= pa <= 360.0:
+        raise ValueError(f"pa_deg out of range [0, 360]: {pa}")
+    return pa
 
 
 def _parse_magnitude(raw: Any) -> float | None:

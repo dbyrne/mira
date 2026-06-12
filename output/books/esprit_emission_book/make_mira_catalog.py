@@ -44,9 +44,13 @@ for n in names:
     if m: notes.append(f"E80: {m['fit']}")
     if s: notes.append(f"S30: {s['fit']}")
     notes.append(base["note"])
+    # Suggested camera PA for the Rotation column of the TS import CSV —
+    # from the Esprit books' pa column (the S30 book has no pa: fixed frame).
+    pa_raw = (e or {}).get("pa") or (m or {}).get("pa")
     rows.append(dict(
         name=n, common=base["common"], typ=TYPE_MAP.get(base["typ"], "HII"),
         ra=float(base["ra"]), dec=float(base["dec"]), maj=maj, mn=mn,
+        pa=(float(pa_raw) % 360 if pa_raw not in (None, "") else None),
         const=base["const"], pal=pal, budget=budget(pal),
         # Static flag = "mosaic on ANY rig": overflows even the S30's measured
         # 3.91x2.20deg field with the planner's 10% rim tolerance applied
@@ -66,7 +70,7 @@ L = ['# Emission-nebula catalog — union of the Esprit 120 + Esprit 80 + S30 Pr
  '# (3.91x2.20deg, 10% rim tolerance) — single-frame fit per rig is otherwise',
  '# computed at plan time from fov_deg. Schema = data/dso_catalog/sho_targets.yaml.',
  '',
- 'catalog_version: "2026-06-10-emission"',
+ 'catalog_version: "2026-06-12-emission"',
  '',
  'defaults:',
  '  gain: 100',
@@ -83,6 +87,7 @@ for r in rows:
           f'    ra_deg: {r["ra"]:.3f}',
           f'    dec_deg: {r["dec"]:.3f}',
           f'    size_arcmin: [{r["maj"]:.0f}, {r["mn"]:.0f}]',
+          *([f'    pa_deg: {r["pa"]:.0f}'] if r["pa"] is not None else []),
           f'    constellation: {r["const"]}',
           f'    budget_minutes: {{{bud}}}',
           f'    mosaic: {str(r["mosaic"]).lower()}',

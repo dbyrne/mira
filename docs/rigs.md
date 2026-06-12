@@ -41,14 +41,19 @@ covers every slot, travels with the camera stack between both OTAs (same
 Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
 
 **Train stack (with the ZWO CAA rotator, added 2026-06-12):**
-flattener (M48 male) → **M48F→M54M thin ring ~1mm** (likely the one from
-the ASI2600 baggie) → **CAA 16.5mm** (scope side = fixed M54 female half
-with the USB-C port; camera side = rotating half wearing the M48 accessory
-plate) → **EFW 20mm** → 0.5mm filter shim → **ASI2600MM 17.5mm** =
-**55.5mm** (≈ the 55.6 filter-corrected target). Ring thicknesses vary —
-the governing rule is the bench check: flattener-seating shoulder → camera
-flange = **38.0mm** by caliper (juggle ring vs shim to land it). USB-C half
-faces the sky and never rotates; EFW+camera ride the rotating half.
+flattener (M48 male) → **ZWO M54–M48 flanged adapter, 2.0mm** (M48F→M54M;
+NOT included with the CAA or camera — purchased separately 2026-06-12) →
+**CAA 16.5mm** (scope side = fixed M54 female half with the USB-C port;
+camera side = rotating half wearing the M48 accessory plate) → **EFW
+20mm** → **ASI2600MM 17.5mm** = **56.0mm** — 0.38mm over the 55.62
+filter-corrected ideal, inside f/5 tolerance; the 0.5mm filter shim is
+OMITTED in this build (no budget). Bench check: flattener-seating
+shoulder → camera flange = **38.5mm** by caliper. If first-light corners
+object: thinner ~1mm third-party ring + shim back in. USB-C half faces
+the sky and never rotates; EFW+camera ride the rotating half. (CAA box
+contents for the record: M54 + M48 camera-side male plates + hex wrench
++ a 21mm M54 extension for EFW-less trains — nothing for an M48 scope
+side.)
 CAA rotates EFW+camera together → sensor/filter dust rotates with the
 train, so **flats stay valid at any angle** (only *flattener* dust doesn't
 rotate — keep that glass clean). Cabling: EFW into the 2600's rear USB

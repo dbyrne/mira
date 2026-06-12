@@ -40,8 +40,21 @@ covers every slot, travels with the camera stack between both OTAs (same
 120's forgiving f/7. Verify with corner stars / NINA's Aberration
 Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
 
-**Train stack (with the ZWO CAA rotator, finalized 2026-06-12 after the
-bench session):**
+**Train stack (with the ZWO CAA rotator) — STATUS 2026-06-12: bench-fit
+IN PROGRESS, final spacing pends the CAA-PLATE-M42.** Key bench facts so
+far: David owns the 2mm M54–M48 flanged adapter (scope side solved); it
+threads into the CAA non-flush (stand-off to be quantified: caliper
+adapter+CAA vs nominal 18.5mm); measured EFW+adapter+CAA = 43mm, which
+only closes the 55.6 budget in **ZWO's documented tilt-plate-OFF
+configuration** (ASI2600 tilt plate removed → camera depth 17.5→12.5mm;
+43 + 12.5 = 55.5 ✓; trade = losing the tilt adjustment; ZWO's confirmed
+CAA builds specify this). The 43 still contains the unmateable M48↔M42
+face-rest — expect it to shrink once the M42 plate seats, then tune UP
+with thin spacers. Decision at assembly: external ≤ ~38mm → tilt plate
+stays; ~43mm → tilt plate off. The paper recipe below is the
+pre-bench reference; measurements win.
+
+**Paper recipe (superseded where it disagrees with the bench):**
 flattener (M48 male) → **ZWO M54–M48 flanged adapter, 2.0mm** (M48F→M54M)
 → **CAA 16.5mm** (scope side = fixed M54 female half with the USB-C port;
 camera side = rotating half wearing the **CAA-PLATE-M42**, M42 male) →

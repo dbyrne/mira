@@ -54,6 +54,16 @@ the sky and never rotates; EFW+camera ride the rotating half. (CAA box
 contents for the record: M54 + M48 camera-side male plates + hex wrench
 + a 21mm M54 extension for EFW-less trains — nothing for an M48 scope
 side.)
+
+**CAA assembly gotcha (caught on the bench 2026-06-12):** threading
+anything onto the camera-side plate makes the unpowered rotor spin with
+your hand — the joint parks several mm proud of seating (we measured a
+7mm phantom gap; 43mm CAA+EFW vs 36.5 expected). Fix: **unbolt the
+output plate (hex wrench), thread the EFW fully home onto the plate on
+the bench, then bolt the assembly back onto the rotor** — or power the
+CAA via USB-C (energized stepper holds) + grip the ring while
+threading. Scope-side joints are on the fixed half and don't have this
+problem. Acceptance: CAA+EFW calipers ~36–36.5mm seated.
 CAA rotates EFW+camera together → sensor/filter dust rotates with the
 train, so **flats stay valid at any angle** (only *flattener* dust doesn't
 rotate — keep that glass clean). Cabling: EFW into the 2600's rear USB

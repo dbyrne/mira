@@ -40,20 +40,25 @@ covers every slot, travels with the camera stack between both OTAs (same
 120's forgiving f/7. Verify with corner stars / NINA's Aberration
 Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
 
-**Train stack (with the ZWO CAA rotator, added 2026-06-12):**
-flattener (M48 male) → **ZWO M54–M48 flanged adapter, 2.0mm** (M48F→M54M;
-NOT included with the CAA or camera — purchased separately 2026-06-12) →
-**CAA 16.5mm** (scope side = fixed M54 female half with the USB-C port;
-camera side = rotating half wearing the M48 accessory plate) → **EFW
-20mm** → **ASI2600MM 17.5mm** = **56.0mm** — 0.38mm over the 55.62
-filter-corrected ideal, inside f/5 tolerance; the 0.5mm filter shim is
-OMITTED in this build (no budget). Bench check: flattener-seating
-shoulder → camera flange = **38.5mm** by caliper. If first-light corners
-object: thinner ~1mm third-party ring + shim back in. USB-C half faces
-the sky and never rotates; EFW+camera ride the rotating half. (CAA box
-contents for the record: M54 + M48 camera-side male plates + hex wrench
-+ a 21mm M54 extension for EFW-less trains — nothing for an M48 scope
-side.)
+**Train stack (with the ZWO CAA rotator, finalized 2026-06-12 after the
+bench session):**
+flattener (M48 male) → **ZWO M54–M48 flanged adapter, 2.0mm** (M48F→M54M)
+→ **CAA 16.5mm** (scope side = fixed M54 female half with the USB-C port;
+camera side = rotating half wearing the **CAA-PLATE-M42**, M42 male) →
+**EFW 20mm** (scope side is **M42×0.75 FEMALE** — the stock M48/M54 CAA
+plates cannot mate it; this thread mismatch was the root cause of the
+bench's "7mm phantom gap") → **ASI2600MM 17.5mm** = **56.0mm** — 0.38mm
+over the 55.62 filter-corrected ideal, inside f/5 tolerance; the 0.5mm
+filter shim is OMITTED (no budget). Bench checks: CAA+EFW seated =
+36–36.5mm; flattener-seating shoulder → camera flange = **38.5mm**.
+**Neither adapter ships with anything — both purchased separately
+2026-06-12: the 2mm M54–M48 flanged ring (scope side) + CAA-PLATE-M42
+(camera side, iso-thickness with the stock plates, six-hex-screw swap).**
+If first-light corners object: thinner ~1mm scope-side ring + shim back
+in. USB-C half faces the sky and never rotates; EFW+camera ride the
+rotating half. (CAA box for the record: M54 + M48 male plates + hex
+wrench + 21mm M54 extension — none of which mate an M42-female EFW or
+an M48-male flattener.)
 
 **CAA assembly gotcha (caught on the bench 2026-06-12):** threading
 anything onto the camera-side plate makes the unpowered rotor spin with

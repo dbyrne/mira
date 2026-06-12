@@ -58,15 +58,17 @@ side.)
 **CAA assembly gotcha (caught on the bench 2026-06-12):** threading
 anything onto the camera-side plate makes the unpowered rotor spin with
 your hand — the joint parks several mm proud of seating (we measured a
-7mm phantom gap; 43mm CAA+EFW vs 36.5 expected). Fix (the ONLY recommended method — zero torque ever reaches the gear
-train): **unbolt the output plate (hex wrench), thread the EFW fully
-home onto the plate on the bench, then bolt the assembly back onto the
-rotor**, hex screws snugged gently in a cross pattern. Do NOT thread
-against a powered motor — hand torque vs the stepper through its
-reduction gears is an unknown to stay away from. (Slow hand
-back-driving while unpowered is benign — no harm from a failed
-threading attempt.) Scope-side joints are on the fixed half and don't
-have this problem. Acceptance: CAA+EFW calipers ~36–36.5mm seated.
+7mm phantom gap; 43mm CAA+EFW vs 36.5 expected). Fix: **hold the rotating ring itself while threading the EFW on** —
+with the ring externally held (rubber pad / strap wrench / the hex key
+in a ring lock-hole if present), torque flows hand-to-hand through the
+ring bearing and **bypasses the gear train entirely**. M48×0.75 wants
+firm hand-snug, fully seated, nothing more. (The plate-off bench method
+sounds cleaner but the EFW drum covers the plate screws once threaded —
+re-bolting may be blocked, geometry-dependent.) Do NOT thread against a
+*powered* motor — that's the path that loads the gears. Slow unpowered
+back-driving by hand is benign. Scope-side joints are on the fixed half
+and don't have this problem. Acceptance: CAA+EFW calipers ~36–36.5mm
+seated.
 CAA rotates EFW+camera together → sensor/filter dust rotates with the
 train, so **flats stay valid at any angle** (only *flattener* dust doesn't
 rotate — keep that glass clean). Cabling: EFW into the 2600's rear USB

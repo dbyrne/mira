@@ -40,6 +40,20 @@ covers every slot, travels with the camera stack between both OTAs (same
 120's forgiving f/7. Verify with corner stars / NINA's Aberration
 Inspector and iterate ±0.5mm — the arithmetic aims, the corners judge.
 
+**Train stack (with the ZWO CAA rotator, added 2026-06-12):**
+flattener → **CAA 16.5mm** (replaces the 16.5mm spacer 1:1; M48 ring flush
+on the flattener side) → 1.0mm ring → **EFW 20mm** → 0.5mm filter shim →
+**ASI2600MM 17.5mm** = **55.5mm** (≈ the 55.6 filter-corrected target).
+Bench check: front seating face → camera flange = **38.0mm** by caliper.
+CAA rotates EFW+camera together → sensor/filter dust rotates with the
+train, so **flats stay valid at any angle** (only *flattener* dust doesn't
+rotate — keep that glass clean). Cabling: EFW into the 2600's rear USB
+hub so one USB3 + one power lead leave the rotating section, service-loop
+sized for full travel, **rotation limits set in the ASCOM driver** (PA is
+mod-180; limited travel costs nothing). NINA: Rotator device + per-target
+PA in sequences — the trip-book PA suggestions are now automated, not
+setup-time commitments.
+
 **Narrowband bandpass shift:** the 3nm filters are fine on both tubes —
 f/5 cone-averaged blue-shift ≈ 0.3–0.5nm (worst corner marginal ray
 ~1.5nm) vs the ±1.5nm half-band + the manufacturer's fast-beam CWL

@@ -1,0 +1,72 @@
+﻿mira.exe : WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria 
+[photutils.detection.core]
+At C:\mira\output\processed\ngc7000\process_overnight.ps1:53 char:1
++ & mira cull --lights $dest --from-fits 2>&1 |
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: NoDete...detection.core]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+WARNING: NoDetectionsWarning: Sources were found, but none pass the filtering criteria [photutils.detection.core]
+target from sidecar: RA=314.696 Dec=44.33
+Culling C:\mira\captures\ngc7000_20260613 (FITS mode)
+scoring 155 frames from FITS pixels...
+  1/155 scored
+  50/155 scored
+  100/155 scored
+  150/155 scored
+  155/155 scored
+  solve-failed bucket: 61 frame(s) have no WCS in a mostly-solved dir
+medians: stars=128 HFR=1.43 sky=2140 round=0.283
+keep if: stars >= 64, HFR <= 2.14, sky <= 4280, round <= 0.566
+
+rejected — solve-failed (61): no WCS in a mostly-solved dir
+  2026-06-12_01-52-44_LP_32.75_60.00_0000.fits: stars=5 HFR=7.17  [no WCS (solve failed)]
+  2026-06-12_01-54-00_LP_32.81_60.00_0000.fits: stars=1 HFR=?  [no WCS (solve failed)]
+  2026-06-12_01-55-16_LP_32.81_60.00_0000.fits: stars=1 HFR=7.64  [no WCS (solve failed)]
+  2026-06-12_01-56-32_LP_32.88_60.00_0000.fits: stars=0 HFR=?  [no stars detected; no WCS (solve failed)]
+  2026-06-12_01-57-48_LP_32.88_60.00_0000.fits: stars=0 HFR=?  [no stars detected; no WCS (solve failed)]
+  2026-06-12_01-59-04_LP_32.94_60.00_0000.fits: stars=2 HFR=7.93  [no WCS (solve failed)]
+  2026-06-12_02-00-21_LP_32.94_60.00_0000.fits: stars=2 HFR=7.79  [no WCS (solve failed)]
+  2026-06-12_02-01-36_LP_33.00_60.00_0000.fits: stars=0 HFR=?  [no stars detected; no WCS (solve failed)]
+  2026-06-12_02-02-53_LP_33.00_60.00_0000.fits: stars=0 HFR=?  [no stars detected; no WCS (solve failed)]
+  2026-06-12_02-04-09_LP_33.00_60.00_0000.fits: stars=6 HFR=4.74  [no WCS (solve failed)]
+  2026-06-12_02-05-25_LP_33.00_60.00_0000.fits: stars=8 HFR=7.66  [no WCS (solve failed)]
+  2026-06-12_02-06-41_LP_33.00_60.00_0000.fits: stars=4 HFR=7.24  [no WCS (solve failed)]
+  2026-06-12_02-07-57_LP_33.06_60.00_0000.fits: stars=1 HFR=7.23  [no WCS (solve failed)]
+  2026-06-12_02-09-14_LP_33.06_60.00_0000.fits: stars=1 HFR=7.51  [no WCS (solve failed)]
+  2026-06-12_02-10-30_LP_33.06_60.00_0000.fits: stars=3 HFR=7.72  [no WCS (solve failed)]
+  ... and 46 more
+
+rejected — metric thresholds (43): failed stars/HFR/sky/roundness
+  2026-06-12_00-29-47_LP_28.00_60.00_0000.fits: stars=160 HFR=1.21  [round=0.769>0.566]
+  2026-06-12_01-08-03_LP_31.88_60.00_0000.fits: stars=58 HFR=4.03  [stars=58<64, HFR=4.03>2.14, round=0.807>0.566]
+  2026-06-12_01-16-59_LP_32.12_60.00_0000.fits: stars=29 HFR=6.68  [stars=29<64, HFR=6.68>2.14, round=0.675>0.566]
+  2026-06-12_01-18-16_LP_32.19_60.00_0000.fits: stars=55 HFR=4.31  [stars=55<64, HFR=4.31>2.14]
+  2026-06-12_01-19-32_LP_32.25_60.00_0000.fits: stars=59 HFR=3.74  [stars=59<64, HFR=3.74>2.14]
+  2026-06-12_01-20-48_LP_32.25_60.00_0000.fits: stars=69 HFR=4.52  [HFR=4.52>2.14]
+  2026-06-12_01-22-06_LP_32.25_60.00_0000.fits: stars=122 HFR=1.32  [round=0.611>0.566]
+  2026-06-12_01-25-54_LP_32.38_60.00_0000.fits: stars=88 HFR=4.44  [HFR=4.44>2.14]
+  2026-06-12_01-27-11_LP_32.38_60.00_0000.fits: stars=81 HFR=2.96  [HFR=2.96>2.14]
+  2026-06-12_01-28-27_LP_32.38_60.00_0000.fits: stars=61 HFR=3.75  [stars=61<64, HFR=3.75>2.14]
+  2026-06-12_01-29-45_LP_32.44_60.00_0000.fits: stars=54 HFR=4.66  [stars=54<64, HFR=4.66>2.14]
+  2026-06-12_01-31-01_LP_32.44_60.00_0000.fits: stars=75 HFR=3.50  [HFR=3.50>2.14]
+  2026-06-12_01-32-18_LP_32.50_60.00_0000.fits: stars=63 HFR=1.76  [stars=63<64]
+  2026-06-12_01-33-36_LP_32.50_60.00_0000.fits: stars=45 HFR=5.51  [stars=45<64, HFR=5.51>2.14]
+  2026-06-12_01-34-53_LP_32.50_60.00_0000.fits: stars=25 HFR=6.89  [stars=25<64, HFR=6.89>2.14]
+  ... and 28 more
+  -> C:\mira\captures\ngc7000_20260613\_rejected
+
+DONE: 51 kept, 104 rejected (61 solve-failed + 43 metric), 0 unscored (of 155).

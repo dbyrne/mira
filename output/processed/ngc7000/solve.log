@@ -1,0 +1,98 @@
+﻿Solving C:\mira\captures\ngc7000_20260613 with C:\Program Files\astap\astap_cli.exe
+hint RA=314.696° Dec=44.330°, search r=5.0°, FOV=4.6°
+155 frames: 1 already solved, 154 to solve
+  1/154: solved 2026-06-12_00-29-47_LP_28.00_60.00_0000.fits
+  10/154: solved 2026-06-12_00-43-48_LP_30.44_60.00_0000.fits
+  20/154: solved 2026-06-12_00-50-12_LP_31.00_60.00_0000.fits
+  30/154: solved 2026-06-12_01-06-47_LP_31.88_60.00_0000.fits
+  40/154: solved 2026-06-12_01-19-32_LP_32.25_60.00_0000.fits
+  50/154: solved 2026-06-12_01-32-18_LP_32.50_60.00_0000.fits
+  60/154: solved 2026-06-12_01-43-50_LP_32.69_60.00_0000.fits
+  66/154: failed 2026-06-12_01-52-44_LP_32.75_60.00_0000.fits — exit 1: No solution found!  :(
+  67/154: failed 2026-06-12_01-54-00_LP_32.81_60.00_0000.fits — exit 1: No solution found!  :(
+  68/154: failed 2026-06-12_01-55-16_LP_32.81_60.00_0000.fits — exit 1: No solution found!  :(
+  69/154: failed 2026-06-12_01-57-48_LP_32.88_60.00_0000.fits — exit 1: No solution found!  :(
+  70/154: failed 2026-06-12_01-56-32_LP_32.88_60.00_0000.fits — exit 1: No solution found!  :(
+  71/154: failed 2026-06-12_01-59-04_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  72/154: failed 2026-06-12_02-00-21_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  73/154: failed 2026-06-12_02-01-36_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  74/154: failed 2026-06-12_02-02-53_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  75/154: failed 2026-06-12_02-05-25_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  76/154: failed 2026-06-12_02-04-09_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  77/154: failed 2026-06-12_02-07-57_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  78/154: failed 2026-06-12_02-06-41_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  79/154: failed 2026-06-12_02-09-14_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  80/154: failed 2026-06-12_02-10-30_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  81/154: failed 2026-06-12_02-11-47_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  83/154: failed 2026-06-12_02-14-19_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  84/154: failed 2026-06-12_02-15-35_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  85/154: failed 2026-06-12_02-16-52_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  86/154: failed 2026-06-12_02-18-08_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  87/154: failed 2026-06-12_02-19-24_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  88/154: failed 2026-06-12_02-20-40_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  89/154: failed 2026-06-12_02-21-56_LP_33.12_60.00_0000.fits — exit 1: No solution found!  :(
+  90/154: failed 2026-06-12_02-23-12_LP_33.12_60.00_0000.fits — exit 1: No solution found!  :(
+  91/154: failed 2026-06-12_02-25-44_LP_33.12_60.00_0000.fits — exit 1: No solution found!  :(
+  92/154: failed 2026-06-12_02-24-28_LP_33.12_60.00_0000.fits — exit 1: No solution found!  :(
+  93/154: failed 2026-06-12_02-27-00_LP_33.12_60.00_0000.fits — exit 1: No solution found!  :(
+  94/154: failed 2026-06-12_02-28-16_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  95/154: failed 2026-06-12_02-29-33_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  96/154: failed 2026-06-12_02-30-48_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  97/154: failed 2026-06-12_02-32-05_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  98/154: failed 2026-06-12_02-33-21_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  99/154: failed 2026-06-12_02-34-37_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  100/154: failed 2026-06-12_02-35-54_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  101/154: failed 2026-06-12_02-37-10_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  102/154: failed 2026-06-12_02-38-26_LP_33.19_60.00_0000.fits — exit 1: No solution found!  :(
+  106/154: failed 2026-06-12_02-44-48_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  108/154: failed 2026-06-12_02-46-04_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  109/154: failed 2026-06-12_02-47-20_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  110/154: failed 2026-06-12_02-48-36_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  111/154: failed 2026-06-12_02-49-52_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  112/154: failed 2026-06-12_02-51-09_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  113/154: failed 2026-06-12_02-52-26_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  114/154: failed 2026-06-12_02-53-42_LP_33.06_60.00_0000.fits — exit 1: No solution found!  :(
+  115/154: failed 2026-06-12_02-54-59_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  116/154: failed 2026-06-12_02-56-15_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  117/154: failed 2026-06-12_02-57-31_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  118/154: failed 2026-06-12_02-58-47_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  119/154: failed 2026-06-12_03-00-03_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  120/154: failed 2026-06-12_03-01-19_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  121/154: failed 2026-06-12_03-02-34_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  122/154: failed 2026-06-12_03-03-50_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  123/154: failed 2026-06-12_03-05-07_LP_33.00_60.00_0000.fits — exit 1: No solution found!  :(
+  124/154: failed 2026-06-12_03-06-23_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  125/154: failed 2026-06-12_03-07-39_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  126/154: failed 2026-06-12_03-08-55_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  127/154: failed 2026-06-12_03-10-10_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  128/154: failed 2026-06-12_03-11-27_LP_32.94_60.00_0000.fits — exit 1: No solution found!  :(
+  129/154: failed 2026-06-12_03-12-43_LP_32.88_60.00_0000.fits — exit 1: No solution found!  :(
+  130/154: solved 2026-06-12_03-15-16_LP_32.88_60.00_0000.fits
+  132/154: failed 2026-06-12_03-16-33_LP_32.81_60.00_0000.fits — exit 1: No solution found!  :(
+  133/154: failed 2026-06-12_03-17-49_LP_32.81_60.00_0000.fits — exit 1: No solution found!  :(
+  140/154: solved 2026-06-12_03-26-43_LP_32.56_60.00_0000.fits
+  150/154: solved 2026-06-12_03-39-32_LP_32.19_60.00_0000.fits
+
+DONE: 93 solved, 1 already solved, 61 failed (of 155).
+Failed frames:
+  2026-06-12_01-52-44_LP_32.75_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_01-54-00_LP_32.81_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_01-55-16_LP_32.81_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_01-57-48_LP_32.88_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_01-56-32_LP_32.88_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_01-59-04_LP_32.94_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-00-21_LP_32.94_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-01-36_LP_33.00_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-02-53_LP_33.00_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-05-25_LP_33.00_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-04-09_LP_33.00_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-07-57_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-06-41_LP_33.00_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-09-14_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-10-30_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-11-47_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-14-19_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-15-35_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-16-52_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  2026-06-12_02-18-08_LP_33.06_60.00_0000.fits: exit 1: No solution found!  :(
+  ... and 41 more

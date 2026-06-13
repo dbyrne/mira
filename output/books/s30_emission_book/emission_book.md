@@ -4,6 +4,17 @@ Single-frame framing previews for **emission nebulae** that suit the ZWO Seestar
 
 **Fixed frame:** the S30 has no rotator; the long (3.91Â°) axis sits â‰ˆ**Nâ€“S** (~4Â° tilt). So framing is choose-the-center only. **Eâ€“W-elongated targets (California, 145') overflow the narrower 2.20Â° axis** â€” clip the ends or hand them to a rotatable rig. Box = cyan; DSS2 color (Ha reads brown; through the LP it's red/teal HOO).
 
+## Mosaic & stitching workflow (the EW-overflow giants)
+
+Several targets here overflow even the S30's wide frame and need 2+ panels -- the **EW-overflow** rows: NGC 7000+Pelican, full Veil (Cygnus Loop), IC 1318 (Sadr), California, Simeis 147. Stitch them in this order or the seams will show:
+
+1. **Per panel, same settings.** Capture each panel at the same exposure/gain/filter; register + stack each on its own (`mira stack --auto-flats --debayer`). The flat is identical for every panel (sealed optics) -- apply it per panel.
+2. **Stitch FIRST, extract background LAST -- never per panel.** Assemble the registered panels into the full mosaic *before* any background extraction. Per-panel GraXpert (or any model) overshoots at each panel's frame edge, and those dark edge-ramps become visible seams once stitched. (Verified 2026-06-13 on a single NGC 7000 frame: the linear stack was clean edge-to-edge -- 0% coverage holes -- yet per-frame GraXpert carved sharp dark corners; a pure bg-extraction artifact, not optics or tracking.) Extract the gradient ONCE, on the assembled mosaic.
+3. **Overlap 15-20%, crop panel edges.** Plan neighbor centers to overlap ~1/5 of the short (2.20deg / 132') axis so the stitcher feathers the seam; trim each panel's outer few % (the dither / flat roll-off zone) before blending.
+4. **Fixed frame = plan in RA/Dec only.** No rotator (long axis ~N-S), so a mosaic is a grid of center points, not rotated tiles. Pointing repeatability between panels is what matters -- `--platesolve-center` every panel (solved to <0.01deg here on 2026-06-13).
+
+One line: **per-panel stack (with flat) -> stitch with overlap -> background-extract the mosaic -> stretch / finish.** Background extraction and the heavy stretch are mosaic-global, never per-panel.
+
 | Target | Common | Type | Size | Fit | Palette | maxAlt(JC) | Peak |
 |---|---|---|---|---|---|---|---|
 | IC 1318 | Sadr / Butterfly | HII | 180'Ã—170' | EW-overflow | LP Ha+OIII | 89Â° | Jul |

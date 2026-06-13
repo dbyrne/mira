@@ -12,7 +12,10 @@ from mira.webapp.nina_client import NinaStatus
 class WebappRoutesTests(TestCase):
     def setUp(self) -> None:
         self.tmp = TemporaryDirectory()
-        self.output_dir = Path(self.tmp.name) / "out"
+        # Named "tonight" so create_app's resolve_tonight_output_dir uses it
+        # as-is — the app now resolves the tonight convention ONCE at startup
+        # (2026-06-12 review fix), so fixtures must live where it reads.
+        self.output_dir = Path(self.tmp.name) / "tonight"
         self.output_dir.mkdir()
         self.captures_root = Path(self.tmp.name) / "captures"
         self.captures_root.mkdir()

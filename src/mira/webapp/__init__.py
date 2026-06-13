@@ -62,7 +62,12 @@ def create_app(
     from .db import SessionStore
     session_store = SessionStore(state_dir / "sessions.db")
 
-    app.config["OUTPUT_DIR"] = output_dir
+    # Resolve the "tonight" convention ONCE, with the same helper the
+    # pipeline uses — the UI previously read OUTPUT_DIR/ while the pipeline
+    # wrote OUTPUT_DIR/tonight/ whenever the configured dir didn't happen to
+    # end in "tonight" (2026-06-12 review).
+    from ..tonight_pipeline import resolve_tonight_output_dir
+    app.config["OUTPUT_DIR"] = resolve_tonight_output_dir(output_dir)
     app.config["CAPTURES_ROOT"] = captures_root
     app.config["STATE_DIR"] = state_dir
     app.config["FINISH_PROGRESS_DIR"] = finish_progress_dir

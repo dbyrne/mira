@@ -70,6 +70,12 @@ class PaDegParsingTests(unittest.TestCase):
         self.assertEqual(_parse_target(_row(pa_deg=135)).pa_deg, 135.0)
         self.assertEqual(_parse_target(_row(pa_deg=0)).pa_deg, 0.0)
 
+    def test_pa_360_normalizes_to_zero(self):
+        # 360 is accepted as an author convention but must be STORED as 0 —
+        # otherwise the TS export emits `Rotation,360`, outside [0, 360).
+        self.assertEqual(_parse_target(_row(pa_deg=360)).pa_deg, 0.0)
+        self.assertEqual(_parse_target(_row(pa_deg=360.0)).pa_deg, 0.0)
+
     def test_out_of_range_pa_rejected(self):
         with self.assertRaises(ValueError):
             _parse_target(_row(pa_deg=400))

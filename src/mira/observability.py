@@ -72,6 +72,15 @@ def evaluate_observability_at_coords(
                     )
                     if separation < window.min_moon_separation_deg:
                         continue
+            elif moon_alt > 0 and moon_illumination(utc_sample) > window.max_moon_illumination:
+                # A bright moon BELOW the altitude cap used to bypass every
+                # moon check (a 29°-high full moon at the default 30° cap) —
+                # it still scatters; apply the separation gate (2026-06-12
+                # review). Altitude-cap semantics for dim moons unchanged.
+                if window.min_moon_separation_deg > 0:
+                    separation = moon_separation_deg(ra_deg, dec_deg, utc_sample)
+                    if separation < window.min_moon_separation_deg:
+                        continue
             target_alt = altitude_deg(
                 ra_deg,
                 dec_deg,

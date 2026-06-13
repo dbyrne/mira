@@ -86,6 +86,16 @@ class PrintReporter:
         return
 
 
+def resolve_tonight_output_dir(base: Path) -> Path:
+    """The ONE place the "tonight" output-dir convention is decided: a base
+    already named `tonight` is used as-is; anything else gets a `tonight/`
+    subdir. CLI cleanup and the webapp must resolve through this same
+    helper — divergent copies once cleaned `.../tonight/tonight` and made
+    the UI read a directory the pipeline never wrote (2026-06-12 review)."""
+    base = Path(base)
+    return base if base.name == "tonight" else base / "tonight"
+
+
 def run_tonight_pipeline(opts: TonightOptions, reporter: Reporter) -> TonightResult | None:
     """Execute the full tonight workflow. Returns None when nothing in the
     window is observable; otherwise a TonightResult summary."""
@@ -99,7 +109,8 @@ def run_tonight_pipeline(opts: TonightOptions, reporter: Reporter) -> TonightRes
         reporter.log(f"Mode: {opts.mode}")
 
     # Each site is snapped to nights=1 so the standard pipeline runs only
-    # against tonight's date.
+    # against tonight's date. (resolve_tonight_output_dir below is the one
+    # place the output-dir convention lives.)
     new_sites = tuple(
         dc_replace(site, observing_window=dc_replace(site.observing_window, nights=1))
         for site in config.sites
@@ -108,12 +119,19 @@ def run_tonight_pipeline(opts: TonightOptions, reporter: Reporter) -> TonightRes
 
     top_packets = opts.top_packets if opts.top_packets is not None else config.output.top_packets
     base_output = opts.output_dir if opts.output_dir is not None else config.output.directory
-    output_dir = base_output if (opts.output_dir is not None and opts.output_dir.name == "tonight") else base_output / "tonight"
+    output_dir = resolve_tonight_output_dir(base_output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    today = date.today()
     primary_tz = ZoneInfo(config.sites[0].observer.timezone)
     now_local = datetime.now(primary_tz)
+    # "Tonight" is the SESSION's date, in the SITE's timezone — not the
+    # machine's. After midnight (or on a UTC system clock) date.today()
+    # pointed at the wrong night: the window sampler starts at
+    # start_hour_local ON start_date, so every best_local_time landed
+    # tomorrow evening and the post-filter emptied (2026-06-12 review).
+    today = now_local.date()
+    if now_local.hour < config.sites[0].observing_window.end_hour_local:
+        today = today - timedelta(days=1)
     window_end = now_local + timedelta(hours=opts.hours)
     reporter.log(
         f"Tonight = {today.isoformat()}; window = {now_local.strftime('%H:%M')}"
@@ -189,7 +207,15 @@ def run_tonight_pipeline(opts: TonightOptions, reporter: Reporter) -> TonightRes
     packet_count = write_outputs(candidates, output_dir, top_packets, site_names=site_names, metadata=metadata)
     plan_targets = candidates[:top_packets]
     write_session_plan(plan_targets, output_dir, now_local, window_end, config)
-    schedule = build_session_schedule(candidates, window_start=now_local, window_end=window_end)
+    schedule = build_session_schedule(
+        candidates,
+        window_start=now_local,
+        window_end=window_end,
+        # Schedule against the SESSION site — multi-site configs otherwise
+        # mixed each candidate's best site (Fairbanks rows, Anchorage wall
+        # clock) into a Jersey City schedule (2026-06-12 review).
+        primary_site_name=config.sites[0].name,
+    )
     write_session_schedule_outputs(schedule, output_dir, config)
     schedule_html_path = write_session_schedule_html(schedule, output_dir, config, metadata=metadata)
 

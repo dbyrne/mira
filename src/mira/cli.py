@@ -350,7 +350,7 @@ def main() -> None:
     capture_parser.add_argument("--verify-pointing-deg", type=float, default=None, help="After platesolve-center, take one test sub and ASTAP-solve it to verify the mount is actually on target. Abort if solved center is more than this many degrees from nominal. 0 disables. Catches mount-sync drift where NINA reports a wrong position (2026-05-19 M51 disaster).")
     capture_parser.add_argument("--autofocus-every-min", type=int, default=None, help="Run NINA autofocus pre-loop and then every N minutes (wall-clock). 0 disables. Wall-clock — NOT sub-count — because alt-floor/sun guards make session duration dynamic. Fails soft.")
     capture_parser.add_argument("--autofocus-timeout-s", type=float, default=None, help="Per-AF-run timeout. Defaults to 10 min; AF on a fast f/5 typically finishes in 60-120s.")
-    capture_parser.add_argument("--park-at-end", action=argparse.BooleanOptionalAction, default=False, help="At end of run (incl. crash / Ctrl-C), park the mount (stops tracking, slews home) and rotate the wheel to the opaque 'Dark' position to shield the sensor. DEFAULT OFF: parking can drop the Seestar's entire NINA connection (observed 2026-06-06 — cam/mount/FW all disconnect, unrecoverable remotely) and it must never interrupt a target-to-target handoff. Pass --park-at-end on the LAST run of an unattended night to safe the rig against dawn sun. Both steps fail-soft.")
+    capture_parser.add_argument("--park-at-end", action=argparse.BooleanOptionalAction, default=None, help="At end of run (incl. crash / Ctrl-C), park the mount (stops tracking, slews home) and rotate the wheel to the opaque 'Dark' position to shield the sensor. DEFAULT OFF: parking can drop the Seestar's entire NINA connection (observed 2026-06-06 — cam/mount/FW all disconnect, unrecoverable remotely) and it must never interrupt a target-to-target handoff. Pass --park-at-end on the LAST run of an unattended night to safe the rig against dawn sun. Both steps fail-soft.")
 
     flats_parser = subparsers.add_parser(
         "flats",
@@ -863,7 +863,11 @@ def main() -> None:
         args.captures_root = "captures"
         args.nina_url = "http://localhost:1888"
         webapp(args)
-    elif args.command in (None, "run"):
+    elif args.command is None:
+        # Bare `mira` used to fall into run() and crash on the missing run
+        # arguments (the top-level parser doesn't define them).
+        parser.print_help()
+    elif args.command == "run":
         run(args)
 
 
@@ -1248,6 +1252,12 @@ def submit(args: argparse.Namespace) -> None:
         except SirilError as exc:
             print(f"Siril calibrate aborted: {exc}")
             return
+        except ValueError as exc:
+            # The WCS gate raises ValueError when a frame carries no
+            # celestial WCS — previously an unhandled traceback instead of
+            # the designed abort (2026-06-12 review).
+            print(f"Siril calibrate aborted (WCS gate): {exc}")
+            return
         print(f"WCS safety gate passed. Photometry will run on: {captures_dir}")
         print(
             "WARNING: Siril calibration is opt-in and only spot-checked on one "
@@ -1513,8 +1523,26 @@ def _finish_preset(args: argparse.Namespace) -> None:
 
     linear_path = input_path
     if args.do_bg:
+        import json as _json
+
         bg_path = (out_path.parent.resolve() / (input_path.stem + "_bg.fits"))
-        if bg_path.exists() and bg_path.stat().st_mtime >= input_path.stat().st_mtime:
+        # Identity sidecar: stem+mtime alone reused the WRONG input's
+        # background when two stacks shared a name in one out dir, and
+        # mtime-preserving copies reused stale content (2026-06-12 review).
+        ident_path = bg_path.with_suffix(".src.json")
+        src_stat = input_path.stat()
+        identity = {
+            "input": str(input_path),
+            "size": src_stat.st_size,
+            "mtime": src_stat.st_mtime,
+        }
+        cached_identity = None
+        if ident_path.is_file():
+            try:
+                cached_identity = _json.loads(ident_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                cached_identity = None
+        if bg_path.exists() and cached_identity == identity:
             print(f"  reusing background-extracted linear: {bg_path.name}")
             linear_path = bg_path
         else:
@@ -1527,6 +1555,7 @@ def _finish_preset(args: argparse.Namespace) -> None:
                     inv, "background-extraction", input_path,
                     bg_path.with_suffix(""), gpu=args.gpu,
                 )
+                ident_path.write_text(_json.dumps(identity), encoding="utf-8")
             except GraXpertNotFound as exc:
                 print(f"GraXpert not available ({exc}); continuing on the un-flattened "
                       "input — fine ONLY if it is already background-extracted.")
@@ -1702,6 +1731,12 @@ CAPTURE_BUILTIN_DEFAULTS: dict[str, Any] = {
     "verify_pointing_deg": 1.0,
     "autofocus_every_min": 0,
     "autofocus_timeout_s": 600.0,
+    # Default OFF is the pinned invariant (parking can drop the Seestar's
+    # NINA connection); a session/site YAML may opt in for the last run.
+    "park_at_end": False,
+    # ASTAP -fov hint for verify-pointing. None = solver default (the S30
+    # field); the Esprit site configs set their own via capture_defaults.
+    "fov_deg": None,
 }
 CAPTURE_REQUIRED: tuple[str, ...] = ("ra", "dec", "exposure", "dest")
 
@@ -1882,6 +1917,10 @@ def capture(args: argparse.Namespace) -> None:
             filter_name=cfg["filter"],
             platesolve_center=cfg["platesolve_center"],
             verify_pointing_deg=cfg["verify_pointing_deg"],
+            # Rig FOV for the verify-pointing ASTAP solve; None = solver
+            # default (the check silently fail-opened on the Esprit when
+            # it always got the S30 hint — 2026-06-12 review).
+            fov_deg=cfg.get("fov_deg"),
             autofocus_every_min=cfg["autofocus_every_min"],
             autofocus_timeout_s=cfg["autofocus_timeout_s"],
             # Fields the loop itself doesn't see (they're baked into the
@@ -1912,7 +1951,10 @@ def capture(args: argparse.Namespace) -> None:
         # End-of-session safing — fires on a normal guard-stop AND on a
         # crash / Ctrl-C (the 2026-05-30 "left the sensor open into morning
         # light" gap). Parks the mount + shields the sensor; both fail-soft.
-        if args.park_at_end:
+        # Merged value: CLI > session > site > builtin False — a YAML
+        # `park_at_end: true` was silently ignored when the CLI default
+        # was a bare False (2026-06-12 review).
+        if cfg.get("park_at_end"):
             print("\nsafing rig (mount park + sensor shield)...")
             safe_park(client, emit=lambda m: print(m))
 
@@ -2365,6 +2407,10 @@ def galaxies(args: argparse.Namespace) -> None:
         start_date=start_date,
         fov_deg=fov_deg,
         relax_moon=relax_moon,
+        # Galaxies are all broadband, so the narrowband-gated relax above
+        # can never reach them — --relax-moon was a silent no-op until the
+        # engine grew this explicit force (2026-06-12 review).
+        relax_moon_all=relax_moon,
         ledger=ledger,
         deficit_weight=gx_cfg.deficit_weight,
         sb_limit_mag_arcsec2=gx_cfg.sb_limit_mag_arcsec2,
@@ -2392,11 +2438,12 @@ def galaxies(args: argparse.Namespace) -> None:
             f", SB {top.surface_brightness:.1f}"
             if top.surface_brightness is not None else ""
         )
+        mag_note = f", mag {top.magnitude:.1f}" if top.magnitude is not None else ""
         print(
             f"\nTop pick: {top.target.name} ({top.target.common_name}) "
             f"@ {top.best_site_name} — {top.best_observability.minutes_above_minimum} "
             f"min, peak {top.best_observability.max_altitude_deg:.1f}°"
-            f", mag {top.magnitude:.1f}{sb_note}"
+            f"{mag_note}{sb_note}"
         )
 
 
@@ -2670,6 +2717,15 @@ def _render_dso_status(
             )
             total_cap += min(float(budget), captured)
             total_bud += budget
+        for filter_name in sorted(ledger.by_target.get(target.name) or {}):
+            if filter_name in target.budget_minutes:
+                continue
+            ft = ledger.get(target.name, filter_name)
+            lines.append(
+                f"  {filter_name:<8} {ft.total_minutes:>8.0f}m  {'—':>6} "
+                f"{'—':>8}  {'—':>6}   {ft.session_count:>10}  "
+                f"UNBUDGETED — not counted toward completion"
+            )
         lines.append("  " + "-" * 76)
         total_pct = (total_cap / total_bud * 100.0) if total_bud else 0.0
         total_deficit = max(0.0, total_bud - total_cap)
@@ -2718,6 +2774,22 @@ def _render_dso_status(
                     f"{captured:>8.0f}m  {budget:>6}m "
                     f"{pct:>6.0f}%{done_tag:<2}  {last_str}"
                 )
+            # Sessions captured through a filter the catalog doesn't budget
+            # were previously INVISIBLE here (and book no completion) — the
+            # exact silent-progress-loss the 2026-06-12 review flagged.
+            for filter_name in sorted(filters):
+                if filter_name in target.budget_minutes:
+                    continue
+                ft = filters[filter_name]
+                last_str = (
+                    ft.last_capture.date().isoformat()
+                    if ft.last_capture else "—"
+                )
+                lines.append(
+                    f"  {target.name:<22} {filter_name:<6} "
+                    f"{ft.total_minutes:>8.0f}m  {'—':>6}  "
+                    f"{'UNBUDGETED':>9}  {last_str}"
+                )
     if ledger.orphan_target_names:
         lines.append("")
         lines.append("Orphan target_names (no catalog match):")
@@ -2734,14 +2806,20 @@ def _render_dso_status(
 def tonight(args: argparse.Namespace) -> None:
     """Drive the shared tonight pipeline; both this and the webapp's
     `/run` POST end up in the same orchestration to avoid drift."""
-    from .tonight_pipeline import PrintReporter, TonightOptions, run_tonight_pipeline
+    from .tonight_pipeline import (
+        PrintReporter,
+        TonightOptions,
+        resolve_tonight_output_dir,
+        run_tonight_pipeline,
+    )
 
     base_output = Path(args.output_dir) if args.output_dir else None
     if base_output is not None:
-        # Match the historical CLI behavior: --output-dir is a *base* dir,
-        # the pipeline writes into <base>/tonight/. clean_previous_outputs
-        # only on this CLI path; the webapp doesn't clean.
-        clean_previous_outputs(base_output / "tonight")
+        # Clean exactly the directory the pipeline will write — resolved by
+        # the same helper the pipeline uses (a hand-built `/ "tonight"` here
+        # once cleaned `.../tonight/tonight` when the user passed a path
+        # already ending in tonight, leaving stale packets behind).
+        clean_previous_outputs(resolve_tonight_output_dir(base_output))
 
     opts = TonightOptions(
         config_path=args.config,

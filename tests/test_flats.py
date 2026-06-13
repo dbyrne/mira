@@ -13,6 +13,7 @@ from unittest import TestCase
 from mira.flats import (
     CAPTURE_SIDECAR,
     SAT_ADU,
+    _find_capture_file,
     bracket_filter,
     build_master,
     capture_series,
@@ -30,7 +31,8 @@ class FakeClient:
     None means no panel (paper-mode default)."""
 
     def __init__(self, nina_root: Path, responses: dict, mode: str = "",
-                 flat_device: dict | None = None):
+                 flat_device: dict | None = None, fail_close: bool = False,
+                 fail_brightness: bool = False, fail_light_on: bool = False):
         self.nina_root = Path(nina_root)
         self.responses = responses
         self.mode = mode
@@ -39,7 +41,12 @@ class FakeClient:
         self.hist: list[dict] = []
         self.set_calls: list[str] = []
         # Flat-device state. The dict keys mirror what NinaClient returns.
+        # fail_* knobs simulate a half-dead panel: the command is issued
+        # (recorded in panel_calls) but never confirms.
         self._flat = dict(flat_device) if flat_device is not None else None
+        self._fail_close = fail_close
+        self._fail_brightness = fail_brightness
+        self._fail_light_on = fail_light_on
         self.panel_calls: list[tuple[str, object]] = []
 
     # filter wheel
@@ -95,21 +102,21 @@ class FakeClient:
 
     def close_cover(self, *, wait=True, timeout_s=60.0):
         self.panel_calls.append(("close_cover", None))
-        if self._flat is None:
+        if self._flat is None or self._fail_close:
             return False
         self._flat["CoverState"] = "Closed"
         return True
 
     def set_calibrator_on(self, on, *, wait=True, timeout_s=10.0):
         self.panel_calls.append(("set_calibrator_on", bool(on)))
-        if self._flat is None:
+        if self._flat is None or (self._fail_light_on and on):
             return False
         self._flat["LightOn"] = bool(on)
         return True
 
     def set_calibrator_brightness(self, brightness, *, wait=True, timeout_s=10.0):
         self.panel_calls.append(("set_calibrator_brightness", int(brightness)))
-        if self._flat is None:
+        if self._flat is None or self._fail_brightness:
             return False
         self._flat["Brightness"] = int(brightness)
         return True
@@ -437,6 +444,86 @@ class TestRunFlatsPanel(TestCase):
             self.assertEqual(
                 c.panel_calls[-1], ("set_calibrator_on", False)
             )
+
+    def _run_partial_failure(self, d, **client_kw):
+        root = Path(d) / "nina"
+        c = FakeClient(
+            root, {"IR": IR},
+            flat_device={
+                "Connected": True, "CoverState": "Open",
+                "MaxBrightness": 100, "Brightness": 0, "LightOn": False,
+                "SupportsOpenClose": True,
+            },
+            **client_kw,
+        )
+        with self.assertRaises(RuntimeError) as cm:
+            run_flats(
+                c, filters=None, gain=120, target_adu=30000.0, frames=4,
+                out_root=Path(d) / "f", nina_root=root,
+                min_exp=0.005, max_exp=30.0,
+                on_step=lambda m: None, siril_runner=self._siril_stub(),
+            )
+        return c, str(cm.exception)
+
+    def test_brightness_failure_after_close_aborts_run(self):
+        """Partial failure AFTER the cover closed must ABORT — not proceed
+        in 'paper mode' against a shut lid (every filter would bracket as
+        opaque) — and must best-effort kill the light on the way out."""
+        with TemporaryDirectory() as d:
+            c, msg = self._run_partial_failure(d, fail_brightness=True)
+            self.assertIn("half-configured", msg)
+            self.assertIn("--no-panel", msg)
+            # The cover DID close, then the abort tried a light-off.
+            self.assertIn(("close_cover", None), c.panel_calls)
+            self.assertEqual(c.panel_calls[-1], ("set_calibrator_on", False))
+            self.assertEqual(c.hist, [])          # no captures attempted
+
+    def test_light_on_failure_aborts_with_light_off_attempt(self):
+        with TemporaryDirectory() as d:
+            c, msg = self._run_partial_failure(d, fail_light_on=True)
+            self.assertIn("half-configured", msg)
+            # The failed ON attempt came first; the abort then tried OFF.
+            self.assertIn(("set_calibrator_on", True), c.panel_calls)
+            self.assertEqual(c.panel_calls[-1], ("set_calibrator_on", False))
+            self.assertEqual(c.hist, [])
+
+    def test_close_cover_failure_aborts_not_paper(self):
+        """A close-cover that doesn't confirm leaves the lid state unknown:
+        paper mode would be a guess, so the run aborts."""
+        with TemporaryDirectory() as d:
+            c, msg = self._run_partial_failure(d, fail_close=True)
+            self.assertIn("half-configured", msg)
+            self.assertIn("cover state unknown", msg)
+            self.assertEqual(c.hist, [])
+
+
+class TestFindCaptureFile(TestCase):
+    """Filename-basename matching is the documented invariant — NEVER
+    newest-mtime: a concurrent writer in the same tree (Syncthing) would
+    otherwise get its frame banked into a master."""
+
+    def test_exact_basename_match_in_subdir(self):
+        with TemporaryDirectory() as d:
+            sub = Path(d) / "SNAPSHOT"
+            sub.mkdir()
+            target = sub / "flat_0007.fits"
+            target.write_text("x")
+            (sub / "flat_0008.fits").write_text("y")
+            # History Filename can carry NINA's own path; match by basename.
+            self.assertEqual(
+                _find_capture_file(Path(d), "C:/nina/save/flat_0007.fits"),
+                str(target))
+
+    def test_basename_miss_returns_none_despite_newer_file(self):
+        with TemporaryDirectory() as d:
+            (Path(d) / "someone_elses.fits").write_text("x")  # newest by mtime
+            self.assertIsNone(_find_capture_file(Path(d), "expected.fits"))
+
+    def test_missing_filename_returns_none(self):
+        with TemporaryDirectory() as d:
+            (Path(d) / "whatever.fits").write_text("x")
+            self.assertIsNone(_find_capture_file(Path(d), None))
+            self.assertIsNone(_find_capture_file(Path(d), ""))
 
 
 class TestBuildMaster(TestCase):

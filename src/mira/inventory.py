@@ -153,7 +153,15 @@ def inventory_session(session_dir: Path, processed_root: Path) -> SessionInvento
         if rejected_dir.is_dir() else 0
     )
 
-    size_bytes = sum(p.stat().st_size for p in session_dir.rglob("*") if p.is_file())
+    # Per-file guard: one dangling symlink or locked temp file (Syncthing
+    # mid-transfer, OneDrive placeholder) must not abort the whole inventory.
+    size_bytes = 0
+    for p in session_dir.rglob("*"):
+        try:
+            if p.is_file():
+                size_bytes += p.stat().st_size
+        except OSError:
+            continue
 
     slug = target_slug(target)
     processed = ""

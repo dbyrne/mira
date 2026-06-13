@@ -69,7 +69,7 @@ def _galaxy(
     return DsoTarget(
         name=name, common_name=name, object_type="GALAXY",
         ra_deg=ra_deg, dec_deg=dec_deg, size_arcmin=size_arcmin,
-        constellation="Cyg", budget_minutes={"LP": 240}, magnitude=magnitude,
+        constellation="Cyg", budget_minutes={"IR": 240}, magnitude=magnitude,
     )
 
 
@@ -91,7 +91,7 @@ def _write_catalog(dir_path: Path, raw: dict) -> Path:
 _GALAXY_YAML = {
     "name": "M51", "common_name": "Whirlpool", "object_type": "GALAXY",
     "ra_deg": 202.47, "dec_deg": 47.195, "size_arcmin": [11.2, 6.9],
-    "magnitude": 8.4, "constellation": "CVn", "budget_minutes": {"LP": 240},
+    "magnitude": 8.4, "constellation": "CVn", "budget_minutes": {"IR": 240},
 }
 
 
@@ -105,7 +105,7 @@ class GalaxyCatalogTests(TestCase):
             m51 = cat.by_name("M51")
             self.assertTrue(m51.is_galaxy)
             self.assertEqual(m51.magnitude, 8.4)
-            self.assertFalse(m51.is_narrowband)  # LP budget → broadband → moon-strict
+            self.assertFalse(m51.is_narrowband)  # IR budget → broadband → moon-strict
 
     def test_surface_brightness_matches_hand_calc(self) -> None:
         # M51: m 8.4 over an 11.2'×6.9' ellipse → mean SB ≈ 21.7 mag/arcsec².
@@ -230,7 +230,21 @@ class ShippedGalaxyCatalogTests(TestCase):
                 self.assertTrue(t.is_galaxy)
                 self.assertIsNotNone(t.magnitude, f"{t.name} missing magnitude")
                 self.assertIsNotNone(t.surface_brightness)
-                self.assertFalse(t.is_narrowband)  # LP-only → moon-strict
+                self.assertFalse(t.is_narrowband)  # IR-only → moon-strict
+
+    def test_budgets_keyed_ir_per_s30_galaxy_doctrine(self) -> None:
+        # The galaxy doctrine shoots through the S30's IR(-cut) broadband
+        # filter, and the ledger only books minutes against budgeted filter
+        # keys — an LP-keyed budget made every by-the-book galaxy session
+        # invisible (0% complete forever). Pin the key to IR.
+        for t in self.cat.targets:
+            with self.subTest(target=t.name):
+                self.assertEqual(
+                    set(t.budget_minutes), {"IR"},
+                    f"{t.name} budget keys {set(t.budget_minutes)} — galaxy "
+                    "sessions are shot through IR and must be budgeted as IR",
+                )
+                self.assertGreater(t.budget_minutes["IR"], 0)
 
     def test_m51_present_and_sane(self) -> None:
         m51 = self.cat.by_name("M51")

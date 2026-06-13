@@ -123,8 +123,12 @@ def run_graxpert_step(
     Raises GraXpertError on non-zero exit, timeout, or missing output."""
     args = build_graxpert_args(invocation, command, in_path, out_stem, gpu=gpu)
     try:
+        # encoding pinned: text=True alone decodes with the locale codec
+        # (cp1252 on Windows) in strict mode, so a stray byte in GraXpert's
+        # log would raise UnicodeDecodeError mid-run.
         proc = subprocess.run(
-            args, capture_output=True, text=True, timeout=timeout_s, check=False
+            args, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=timeout_s, check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise GraXpertError(
@@ -310,7 +314,16 @@ def run_finish(
         tif_out = out_path if out_path.suffix.lower() in (".tif", ".tiff") else out_path.with_suffix(".tif")
         png.crop(box).save(png_out)
         if stretched_tif.exists():
-            Image.open(stretched_tif).crop(box).save(tif_out)
+            # The .tif is the editable master: Siril's savetif writes 16-bit
+            # (48-bit RGB) and a PIL round-trip silently truncates it to
+            # 8-bit. Crop/write via tifffile to preserve the bit depth. PIL's
+            # crop box (left, upper, right, lower) is exactly the array
+            # slice [upper:lower, left:right].
+            import tifffile  # local: keep CLI startup light
+
+            left, upper, right, lower = box
+            arr_tif = tifffile.imread(str(stretched_tif))
+            tifffile.imwrite(str(tif_out), arr_tif[upper:lower, left:right])
         preview = png_out
 
         return FinishResult(

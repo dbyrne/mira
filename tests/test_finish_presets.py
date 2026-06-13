@@ -12,6 +12,9 @@ established as the *reasons* the recipes are honest:
   * preset registry carries the verified parameter anchors.
 """
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import numpy as np
 
@@ -175,6 +178,62 @@ class DecomposeFallbackTests(unittest.TestCase):
         img = _rng_image(h=64, w=64)
         starless, stars = fp.starnet_decompose(img, exe=None, allow_fallback=False)
         self.assertEqual(starless.shape, img.shape)
+
+
+class StarNetInvocationTests(unittest.TestCase):
+    """The StarNet subprocess wrapper must fail loudly and usefully: a
+    nonzero exit raises RuntimeError carrying the stderr tail (the old
+    check=True let CalledProcessError escape raw with stderr discarded),
+    cv2.imwrite's return value is checked, and decoding is pinned to
+    utf-8/replace so a stray byte can't raise UnicodeDecodeError."""
+
+    def _big_base(self):
+        # >= 512 px on the short side, or starnet_decompose short-circuits
+        # into the morphological fallback before reaching the subprocess.
+        rng = np.random.default_rng(5)
+        return rng.uniform(0.0, 0.3, size=(512, 520, 3))
+
+    def test_starnet_failure_raises_runtimeerror_with_stderr_tail(self):
+        base = self._big_base()
+        captured: dict = {}
+
+        class _Proc:
+            returncode = 3
+            stdout = ""
+            stderr = "\n".join(f"line{i}" for i in range(1, 8))  # 7 lines
+
+        def _run(cmd, **kw):
+            captured.update(kw)
+            return _Proc()
+
+        with TemporaryDirectory() as d:
+            exe = Path(d) / "starnet2.exe"
+            exe.write_text("")
+            with patch("mira.finish_presets.subprocess.run", side_effect=_run):
+                with self.assertRaises(RuntimeError) as ctx:
+                    fp.starnet_decompose(
+                        base, exe=str(exe), cache_dir=Path(d) / "cache"
+                    )
+        msg = str(ctx.exception)
+        self.assertIn("exit 3", msg)
+        self.assertIn("line7", msg)     # stderr tail present
+        self.assertIn("line3", msg)     # last 5 lines = 3..7
+        self.assertNotIn("line1", msg)  # truncated to ~5 lines
+        self.assertFalse(captured.get("check"))
+        self.assertEqual(captured.get("encoding"), "utf-8")
+        self.assertEqual(captured.get("errors"), "replace")
+
+    def test_unwritable_starnet_input_raises_clear_error(self):
+        base = self._big_base()
+        with TemporaryDirectory() as d:
+            exe = Path(d) / "starnet2.exe"
+            exe.write_text("")
+            with patch("cv2.imwrite", return_value=False):
+                with self.assertRaises(RuntimeError) as ctx:
+                    fp.starnet_decompose(
+                        base, exe=str(exe), cache_dir=Path(d) / "cache"
+                    )
+        self.assertIn("StarNet input TIFF", str(ctx.exception))
 
 
 class PresetRegistryTests(unittest.TestCase):

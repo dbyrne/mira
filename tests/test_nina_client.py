@@ -152,6 +152,65 @@ class TestPrepositionMalformedReply(TestCase):
         self.assertIn("did not report a position", r.message)
 
 
+class TestPierSide(TestCase):
+    """pier_side() feeds the capture loop's meridian-flip watch. Contract:
+    a plain string side when the mount reports one, '' for absent /
+    indeterminate / unreachable — and it NEVER raises (a Seestar with no
+    pier concept must read as a silent no-op, and a transport hiccup must
+    not kill a capture session)."""
+
+    def test_reads_side_of_pier(self) -> None:
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": {"SideOfPier": "East"}})):
+            self.assertEqual(c.pier_side(), "East")
+
+    def test_falls_back_to_pierside_key(self) -> None:
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": {"PierSide": "pierWest"}})):
+            self.assertEqual(c.pier_side(), "pierWest")
+
+    def test_numeric_side_is_stringified(self) -> None:
+        # ASCOM enums can arrive as ints (pierEast=0): 0 is a real side,
+        # not "absent" — it must survive as "0" so a 0->1 flip is
+        # detectable.
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   return_value=_resp({"Response": {"SideOfPier": 0}})):
+            self.assertEqual(c.pier_side(), "0")
+
+    def test_absent_or_indeterminate_maps_to_empty(self) -> None:
+        c = NinaClient()
+        for payload in (
+            {"Response": {"Connected": True}},          # key absent (Seestar)
+            {"Response": {"SideOfPier": None}},
+            {"Response": {"SideOfPier": ""}},
+            {"Response": {"SideOfPier": "pierUnknown"}},
+            {"Response": {"SideOfPier": -1}},           # ASCOM pierUnknown
+            {"Response": None},
+        ):
+            with patch("mira.webapp.nina_client.requests.get",
+                       return_value=_resp(payload)):
+                self.assertEqual(c.pier_side(), "", f"payload {payload!r}")
+
+    def test_never_raises_on_transport_error(self) -> None:
+        import requests
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get",
+                   side_effect=requests.RequestException("down")):
+            self.assertEqual(c.pier_side(), "")          # must not raise
+
+    def test_never_raises_on_non_json(self) -> None:
+        bad = MagicMock()
+        bad.status_code = 200
+        bad.raise_for_status.side_effect = None
+        bad.json.side_effect = ValueError("not json")
+        c = NinaClient()
+        with patch("mira.webapp.nina_client.requests.get", return_value=bad):
+            self.assertEqual(c.pier_side(), "")
+
+
 class TestCaptureImaging(TestCase):
     def test_capture_param_contract(self) -> None:
         c = NinaClient(base_url="http://x:1888")

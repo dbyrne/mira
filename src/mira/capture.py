@@ -33,6 +33,12 @@ from pathlib import Path
 from typing import Any, Callable, Protocol
 
 
+# Settle before the end-of-run sweep: NINA can flush the last FITS to disk
+# slightly after capture() returns, so the loop's final in-iteration glob
+# can miss it. Module-level so tests can zero it.
+FINAL_SWEEP_SETTLE_S = 2.0
+
+
 class _Client(Protocol):
     def slew(self, ra_deg: float, dec_deg: float, *, center: bool = ...,
              wait: bool = ..., timeout: float = ...) -> dict: ...
@@ -53,6 +59,7 @@ class CaptureResult:
     dithers: int = 0
     recenters: int = 0
     autofocus_runs: int = 0
+    pier_flips: int = 0
     platesolve_centered: bool = False
     pointing_verified: bool = False
     pointing_offset_deg: float | None = None
@@ -135,8 +142,14 @@ def _verify_pointing(
     nina_root: Path,
     tolerance_deg: float,
     emit: Callable[[str], None],
+    fov_deg: float | None = None,
 ) -> tuple[bool, float | None, str, Path | None]:
     """Take one test sub, ASTAP-solve it, compare solved center to nominal.
+
+    `fov_deg` is the rig's frame height for ASTAP's -fov hint; None means
+    "use the solver default" (the S30 value). Threading the real rig FOV
+    matters: a 4x-wrong hint on the Esprit (1.07 vs ~4.6 deg) makes every
+    solve fail and the check silently fail-open.
 
     Returns (ok, separation_deg, message, keeper_frame). `keeper_frame` is the
     solved test FITS — a real, on-target, science-exposure sub that already
@@ -155,7 +168,7 @@ def _verify_pointing(
     import glob
     import os
 
-    from .solve import AstapNotFound, find_astap_cli, solve_one
+    from .solve import DEFAULT_FOV_DEG, AstapNotFound, find_astap_cli, solve_one
     from .webapp.nina_client import angular_separation_deg
 
     try:
@@ -193,6 +206,7 @@ def _verify_pointing(
     solve_res = solve_one(
         test_frame, astap_cli=astap,
         ra_hint_deg=ra_deg, dec_hint_deg=dec_deg,
+        fov_deg=DEFAULT_FOV_DEG if fov_deg is None else fov_deg,
         radius_deg=5.0,
     )
     if solve_res.status != "solved":
@@ -247,6 +261,7 @@ def run_capture(
     autofocus_every_min: int = 0,
     autofocus_timeout_s: float = 600.0,
     verify_pointing_deg: float = 1.0,
+    fov_deg: float | None = None,
     sidecar_audit: dict[str, Any] | None = None,
     should_continue: Callable[[int], str | None] | None = None,
     on_step: Callable[[str], None] | None = None,
@@ -257,8 +272,8 @@ def run_capture(
     to `dest_dir`. Stops at `n_max`, or when `should_continue(i)` returns a
     reason. Reposition slews are always `center=False`.
 
-    `nina_root` is scanned for new `*<exposure>s*.fit*` files to copy out
-    (NINA saves there; the loop owns the stable copy in `dest_dir`)."""
+    `nina_root` is scanned (snapshot diff) for new `*.fit*` files to copy
+    out (NINA saves there; the loop owns the stable copy in `dest_dir`)."""
     rng = rng or random.Random()
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -311,6 +326,7 @@ def run_capture(
         "slew_timeout_s": slew_timeout_s,
         "platesolve_center": platesolve_center,
         "verify_pointing_deg": verify_pointing_deg,
+        "fov_deg": fov_deg,
         "autofocus_every_min": autofocus_every_min,
         "autofocus_timeout_s": autofocus_timeout_s,
         "nina_root": str(nina_root),
@@ -319,26 +335,34 @@ def run_capture(
     }
     started_utc = datetime.now(timezone.utc).isoformat()
 
-    def _persist_sidecar() -> None:
-        write_capture_sidecar(
-            dest_dir,
+    def _persist_sidecar(*, with_result: bool = True) -> None:
+        fields: dict[str, Any] = dict(
             filter=res.filter_name, gain=gain, exposure_s=exposure_s,
             ra_deg=ra_deg, dec_deg=dec_deg, target_name=target_name,
             config=effective_config,
-            result={
+        )
+        # The pre-loop snapshot OMITS the `result` key entirely: the
+        # integration ledger trusts result["copied"] whenever the key is
+        # present, so a provisional copied=0 would defeat its documented
+        # glob-rescue and book an interrupted session as zero minutes.
+        # No result key == run in progress; the ledger counts *.fit* on
+        # disk instead.
+        if with_result:
+            fields["result"] = {
                 "captured": res.captured,
                 "copied": res.copied,
                 "dithers": res.dithers,
                 "recenters": res.recenters,
                 "autofocus_runs": res.autofocus_runs,
+                "pier_flips": res.pier_flips,
                 "platesolve_centered": res.platesolve_centered,
                 "pointing_verified": res.pointing_verified,
                 "pointing_offset_deg": res.pointing_offset_deg,
                 "stopped_reason": res.stopped_reason,
                 "started_utc": started_utc,
                 "ended_utc": datetime.now(timezone.utc).isoformat(),
-            },
-        )
+            }
+        write_capture_sidecar(dest_dir, **fields)
 
     # Pre-loop plate-solve-center. The in-loop slews are all blind
     # (center=False) by design — that's correct for *staying* on target
@@ -368,6 +392,7 @@ def run_capture(
             client, ra_deg=ra_deg, dec_deg=dec_deg,
             exposure_s=exposure_s, gain=gain, nina_root=nina_root,
             tolerance_deg=verify_pointing_deg, emit=_emit,
+            fov_deg=fov_deg,
         )
         res.pointing_offset_deg = sep
         if ok:
@@ -415,11 +440,11 @@ def run_capture(
         _try_autofocus("pre-loop")
 
     # Pre-loop sidecar snapshot. Written AFTER platesolve/verify/AF so
-    # the persisted res.platesolve_centered, res.pointing_verified,
-    # res.autofocus_runs reflect actual pre-loop state — not pre-pre-loop
-    # zeros. The post-loop write at the end overwrites this with final
-    # tallies.
-    _persist_sidecar()
+    # the persisted config reflects actual pre-loop state — not
+    # pre-pre-loop zeros — and WITHOUT a result block (see
+    # _persist_sidecar). The finally-write at the end records final
+    # tallies even on Ctrl-C / crash.
+    _persist_sidecar(with_result=False)
 
     # New-frame detection is by snapshot diff, NOT filename parsing. NINA's
     # image file pattern is user-configurable (e.g.
@@ -433,68 +458,140 @@ def run_capture(
     seen = set(glob.glob(os.path.join(str(nina_root), "**", "*.fit*"),
                          recursive=True))
 
-    for i in range(1, n_max + 1):
-        # Periodic AF (wall-clock). Skipped on i==1 because pre-loop already
-        # fired one moments ago; from i=2 onward we just check elapsed time.
-        if af_interval_s > 0 and i > 1 and time.monotonic() >= next_af_at:
-            _try_autofocus(f"+{autofocus_every_min}min")
-        if should_continue is not None:
-            reason = should_continue(i)
-            if reason:
-                res.stopped_reason = reason
-                _emit(f"stop: {reason} (after {res.captured} subs)")
-                break
-
-        # Reposition. Dither (every `dither_every` subs) is relative to the
-        # FIXED nominal coords -> also re-centers. Explicit re-center only
-        # matters when not dithering or dithering sparsely.
-        do_dither = dither_arcsec > 0 and ((i - 1) % max(dither_every, 1) == 0)
-        do_recenter = (not do_dither and recenter_every > 0
-                       and (i - 1) % recenter_every == 0)
-        if do_dither:
-            d_ra, d_dec = random_dither_deg(dither_arcsec, dec_deg, rng)
-            try:
-                client.slew(ra_deg + d_ra, dec_deg + d_dec,
-                            center=False, wait=True, timeout=slew_timeout_s)
-                res.dithers += 1
-                time.sleep(settle_s)
-            except Exception as exc:  # a failed nudge must not kill the run
-                _emit(f"  dither slew failed (continuing): {exc}")
-        elif do_recenter:
-            try:
-                client.slew(ra_deg, dec_deg, center=False, wait=True,
-                            timeout=slew_timeout_s)
-                res.recenters += 1
-                time.sleep(settle_s)
-            except Exception as exc:
-                _emit(f"  re-center slew failed (continuing): {exc}")
-
-        client.wait_camera_idle(timeout_s=90.0)
-        try:
-            client.capture(duration=exposure_s, gain=gain, save=True,
-                            solve=False, target_name=target_name,
-                            timeout_s=max(exposure_s * 2 + 60, 120))
-            res.captured += 1
-        except Exception as exc:
-            _emit(f"  capture {i} failed: {exc}")
-
+    def _copy_new_frames() -> None:
+        # A frame joins `seen` only AFTER a successful copy: a locked or
+        # still-flushing file (OneDrive nina_root) raises OSError now but
+        # usually copies fine on a later pass — marking it seen first
+        # would drop the frame permanently and silently.
         for p in glob.glob(os.path.join(str(nina_root), "**", "*.fit*"),
                            recursive=True):
-            if p not in seen:
-                seen.add(p)
+            if p in seen:
+                continue
+            try:
+                shutil.copy2(p, dest_dir)
+            except OSError as exc:
+                _emit(f"  copy failed (will retry): "
+                      f"{os.path.basename(p)} ({exc})")
+                continue
+            seen.add(p)
+            res.copied += 1
+
+    # Meridian-flip watch. Mount firmware can flip pier side during an
+    # anchored GOTO; the field then rotates 180 deg and the blind dither
+    # slews would keep shooting the rotated frame unverified. Poll the
+    # mount's pier side once per sub and, on a change, re-center (only
+    # when the session runs with platesolve_center — same call as the
+    # pre-loop center). A client/mount that doesn't report a side
+    # (Seestar) reads "" and the watch is a silent no-op; the method is
+    # resolved via getattr so older/leaner clients still work.
+    def _poll_pier_side() -> str:
+        getter = getattr(client, "pier_side", None)
+        if getter is None:
+            return ""
+        try:
+            return str(getter() or "")
+        except Exception:  # noqa: BLE001 — a poll hiccup must not kill the run
+            return ""
+
+    last_pier_side = _poll_pier_side()
+
+    try:
+        for i in range(1, n_max + 1):
+            # Periodic AF (wall-clock). Skipped on i==1 because pre-loop
+            # already fired one moments ago; from i=2 onward we just check
+            # elapsed time.
+            if af_interval_s > 0 and i > 1 and time.monotonic() >= next_af_at:
+                _try_autofocus(f"+{autofocus_every_min}min")
+            if should_continue is not None:
+                reason = should_continue(i)
+                if reason:
+                    res.stopped_reason = reason
+                    _emit(f"stop: {reason} (after {res.captured} subs)")
+                    break
+
+            cur_pier_side = _poll_pier_side()
+            if (cur_pier_side and last_pier_side
+                    and cur_pier_side != last_pier_side):
+                res.pier_flips += 1
+                if platesolve_center:
+                    _emit(f"pier flip detected ({last_pier_side}->"
+                          f"{cur_pier_side}): re-centering")
+                    try:
+                        client.slew(ra_deg, dec_deg, center=True, wait=True,
+                                    timeout=max(slew_timeout_s, 300.0))
+                        _emit("  post-flip plate-solve center done")
+                    except Exception as exc:
+                        _emit("  post-flip center FAILED (continuing with "
+                              f"blind slews): {exc}")
+                else:
+                    _emit(f"pier flip detected ({last_pier_side}->"
+                          f"{cur_pier_side})")
+            if cur_pier_side:
+                last_pier_side = cur_pier_side
+
+            # Reposition. Dither (every `dither_every` subs) is relative to
+            # the FIXED nominal coords -> also re-centers. Explicit
+            # re-center only matters when not dithering or dithering
+            # sparsely.
+            do_dither = (dither_arcsec > 0
+                         and (i - 1) % max(dither_every, 1) == 0)
+            do_recenter = (not do_dither and recenter_every > 0
+                           and (i - 1) % recenter_every == 0)
+            if do_dither:
+                d_ra, d_dec = random_dither_deg(dither_arcsec, dec_deg, rng)
                 try:
-                    shutil.copy2(p, dest_dir)
-                    res.copied += 1
-                except OSError:
-                    pass
+                    client.slew(ra_deg + d_ra, dec_deg + d_dec,
+                                center=False, wait=True, timeout=slew_timeout_s)
+                    res.dithers += 1
+                    time.sleep(settle_s)
+                except Exception as exc:  # a failed nudge must not kill the run
+                    _emit(f"  dither slew failed (continuing): {exc}")
+            elif do_recenter:
+                try:
+                    client.slew(ra_deg, dec_deg, center=False, wait=True,
+                                timeout=slew_timeout_s)
+                    res.recenters += 1
+                    time.sleep(settle_s)
+                except Exception as exc:
+                    _emit(f"  re-center slew failed (continuing): {exc}")
 
-        if i == 1 or i % 15 == 0:
-            _emit(f"  {i}/{n_max}: captured={res.captured} copied={res.copied} "
-                  f"dithers={res.dithers}")
+            client.wait_camera_idle(timeout_s=90.0)
+            try:
+                client.capture(duration=exposure_s, gain=gain, save=True,
+                                solve=False, target_name=target_name,
+                                timeout_s=max(exposure_s * 2 + 60, 120))
+                res.captured += 1
+            except Exception as exc:
+                _emit(f"  capture {i} failed: {exc}")
 
-    if not res.stopped_reason:
-        res.stopped_reason = f"reached n_max={n_max}"
-    _persist_sidecar()
+            _copy_new_frames()
+
+            if i == 1 or i % 15 == 0:
+                _emit(f"  {i}/{n_max}: captured={res.captured} "
+                      f"copied={res.copied} dithers={res.dithers}")
+
+        # One final settle + sweep: the last sub of a run races the loop —
+        # NINA can write its FITS after the last in-iteration glob ran, so
+        # without this pass the frame is stranded in nina_root. Also
+        # retries any copy that failed (locked file) during the loop.
+        if FINAL_SWEEP_SETTLE_S > 0:
+            time.sleep(FINAL_SWEEP_SETTLE_S)
+        _copy_new_frames()
+
+        if not res.stopped_reason:
+            res.stopped_reason = f"reached n_max={n_max}"
+    except BaseException as exc:  # noqa: BLE001 — record, then re-raise
+        # Ctrl-C / crash mid-session: record what actually happened so the
+        # finally-persist below books the true tallies (an interrupted
+        # 3-hour run with 150 FITS on disk must not read as 0 copied).
+        if not res.stopped_reason:
+            res.stopped_reason = (
+                "interrupted" if isinstance(exc, KeyboardInterrupt)
+                else f"crashed: {exc}"
+            )
+        raise
+    finally:
+        _persist_sidecar()
     return res
 
 

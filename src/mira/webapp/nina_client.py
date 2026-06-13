@@ -193,6 +193,30 @@ class NinaClient:
         """Raw /equipment/mount/info Response dict. RA is in HOURS here."""
         return self._get("/equipment/mount/info").get("Response", {}) or {}
 
+    def pier_side(self) -> str:
+        """The mount's reported side of pier ('East'/'West'/'pierEast'/...,
+        key name varies by plugin version), or '' when the mount doesn't
+        report one (e.g. the Seestar) or the read fails. Indeterminate
+        values (pierUnknown / -1) also map to '' so a flip detector keying
+        off changes never fires on them. Never raises — the capture loop
+        polls this once per sub and a transport hiccup must not kill a
+        session."""
+        try:
+            info = self.mount_info()
+        except (requests.RequestException, ValueError, TypeError):
+            return ""
+        if not isinstance(info, dict):
+            return ""
+        for key in ("SideOfPier", "PierSide"):
+            v = info.get(key)
+            if v is None:
+                continue
+            s = str(v).strip()
+            if not s or s == "-1" or "unknown" in s.lower():
+                continue
+            return s
+        return ""
+
     def _mount_radec_deg(self) -> tuple[float | None, float | None, bool, bool]:
         info = self.mount_info()
         # A versioned plugin can return "N/A"/null for RA/Dec — never let a

@@ -167,8 +167,11 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
         raise ValueError("name is empty")
     ra_deg = float(item["ra_deg"])
     dec_deg = float(item["dec_deg"])
-    if not -360.0 <= ra_deg <= 360.0:
-        raise ValueError(f"ra_deg out of range: {ra_deg}")
+    # Strict [0, 360): a pasted negative RA (or a 360.0) would survive into
+    # the TS export as a garbage sexagesimal row. Catalogs are J2000 decimal
+    # degrees — normalizing here would hide the paste error, so reject.
+    if not 0.0 <= ra_deg < 360.0:
+        raise ValueError(f"ra_deg out of range [0, 360): {ra_deg}")
     if not -90.0 <= dec_deg <= 90.0:
         raise ValueError(f"dec_deg out of range: {dec_deg}")
     obj_type = str(item["object_type"]).strip().upper()
@@ -187,7 +190,16 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
     budget_raw = item.get("budget_minutes")
     if not isinstance(budget_raw, dict) or not budget_raw:
         raise ValueError("budget_minutes must be a non-empty filter→minutes mapping")
-    budget = {str(k): int(v) for k, v in budget_raw.items()}
+    budget: dict[str, int] = {}
+    for filter_name, minutes_raw in budget_raw.items():
+        # int(90.5) would silently truncate a hand-edited fractional budget;
+        # whole ints and integral floats (90, 90.0) are the only valid spellings.
+        if isinstance(minutes_raw, float) and not minutes_raw.is_integer():
+            raise ValueError(
+                f"budget_minutes['{filter_name}'] must be whole minutes; "
+                f"got {minutes_raw!r}"
+            )
+        budget[str(filter_name)] = int(minutes_raw)
     if any(v < 0 for v in budget.values()):
         raise ValueError("budget_minutes values must be non-negative")
     magnitude = _parse_magnitude(item.get("magnitude"))
@@ -209,9 +221,10 @@ def _parse_target(item: dict[str, Any]) -> DsoTarget:
 
 
 def _parse_pa_deg(raw: Any) -> float | None:
-    """Optional suggested camera PA. Absent → None. Stored mod 360 is the
-    author's job; we just range-check (framing PA is mod-180 anyway, but
-    the books record 0-360 conventions)."""
+    """Optional suggested camera PA. Absent → None. Accepts 0–360 inclusive
+    (the books record 0-360 conventions) but stores it mod 360 — an author's
+    ``pa_deg: 360`` parses as 0.0, so the TS export's Rotation column stays
+    in [0, 360) instead of emitting ``Rotation,360``."""
     if raw is None:
         return None
     try:
@@ -220,7 +233,7 @@ def _parse_pa_deg(raw: Any) -> float | None:
         raise ValueError(f"pa_deg must be a number; got {raw!r}") from exc
     if not 0.0 <= pa <= 360.0:
         raise ValueError(f"pa_deg out of range [0, 360]: {pa}")
-    return pa
+    return pa % 360.0
 
 
 def _parse_magnitude(raw: Any) -> float | None:

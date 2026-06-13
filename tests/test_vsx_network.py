@@ -117,6 +117,76 @@ class FetchVsxTargetsOutageTests(TestCase):
         self.assertEqual(out, [])                  # no raise
 
 
+class FetchVsxTargetsSamplingTests(TestCase):
+    """Small-row-limit behavior: every RA bin must still be queried (the old
+    early break skipped whole high-RA bins once len(targets) hit row_limit),
+    and pooled overflow must be trimmed by a DETERMINISTIC seeded sample —
+    the old tail slice always discarded the highest-RA bin's overflow."""
+
+    def _cfg(self, row_limit: int):
+        from mira.config import VsxQueryConfig
+
+        # ra_bin_degrees=90 -> 4 bins; each bin issues 2 sort queries.
+        return VsxQueryConfig(
+            row_limit=row_limit, ra_bin_degrees=90.0, oversample_factor=1,
+            min_declination_deg=-30.0, max_bright_mag=15.0,
+            require_period=False, include_types=("RR*",),
+        )
+
+    @staticmethod
+    def _bin_tsv(bin_index: int) -> str:
+        header = (
+            "OID\tName\tType\tmax\tn_max\tmin\tn_min\tl_min\tPeriod\tSp\tRAJ2000\tDEJ2000\n"
+            "string\tstring\tstring\tdouble\tstring\tdouble\tstring\tstring\tdouble\tstring\tdouble\tdouble\n"
+            "deg\tdeg\tdeg\tmag\t-\tmag\t-\t-\td\t-\tdeg\tdeg\n"
+            "----\t----\t----\t----\t----\t----\t----\t----\t----\t----\t----\t----\n"
+        )
+        ra = bin_index * 90.0 + 10.0
+        rows = "".join(
+            f"{bin_index * 10 + k}\tV{bin_index}{k} Tst\tRRAB\t9.0\tV\t10.0\tV\t\t"
+            f"0.5\tA\t{ra:.3f}\t42.0\n"
+            for k in (1, 2, 3)
+        )
+        return header + rows
+
+    def _responder(self, params, timeout_seconds):
+        # Both sort queries for a bin return the same 3 targets; OIDs encode
+        # the bin (bin N -> OIDs N*10 + 1..3) so provenance is assertable.
+        bin_index = int(float(params["RAJ2000"].split("..")[0]) // 90.0)
+        return _ok_response(self._bin_tsv(bin_index))
+
+    def test_small_row_limit_queries_every_bin(self) -> None:
+        # row_limit=2 over 4 bins: the old early break stopped after bin 1,
+        # so the RA 180-360 sky could never contribute a target.
+        with patch.object(vsx, "_get_with_retries", side_effect=self._responder) as mock_get:
+            out = vsx.fetch_vsx_targets(self._cfg(row_limit=2))
+        self.assertEqual(mock_get.call_count, 8)  # 4 bins x 2 sorts, no break
+        self.assertEqual(len(out), 2)
+        # With the fixed seeds, a high-RA-bin target survives the pooled
+        # sample — impossible under the break (bins 2-3 were never queried).
+        self.assertTrue(any(target.oid >= 21 for target in out))
+
+    def test_pooled_overflow_is_seeded_sample_not_tail_slice(self) -> None:
+        # 4 bins x 3 targets = 12 pooled, row_limit=10: two must go. The old
+        # [:row_limit] slice deterministically discarded OIDs 32 and 33 (the
+        # highest-RA bin's overflow) on EVERY run.
+        with patch.object(vsx, "_get_with_retries", side_effect=self._responder):
+            out_first = vsx.fetch_vsx_targets(self._cfg(row_limit=10))
+            out_second = vsx.fetch_vsx_targets(self._cfg(row_limit=10))
+        self.assertEqual(len(out_first), 10)
+        # Deterministic: fixed seeds -> identical result across runs.
+        self.assertEqual(
+            [target.oid for target in out_first],
+            [target.oid for target in out_second],
+        )
+        oids = {target.oid for target in out_first}
+        # Dedup-by-OID preserved: 10 rows, 10 unique OIDs.
+        self.assertEqual(len(oids), 10)
+        # The seeded sample (seed=bins=4) keeps OID 32 — a target the tail
+        # slice could never return. Stable because the seed is fixed.
+        self.assertIn(32, oids)
+
+
 class FetchVsxTargetByNameTests(TestCase):
     def test_exact_case_match_wins_when_multiple_results(self) -> None:
         # When VizieR returns multiple matches (e.g. partial-name search),

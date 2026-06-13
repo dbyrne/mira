@@ -13,6 +13,13 @@ from typing import Any
 from .runs import RunRecord, RunRegistry
 
 
+def _set_result(record: RunRecord, **fields: Any) -> None:
+    """Merge fields into record.result via the locked update_result path —
+    direct `record.result[k] = v` writes race `to_dict()` snapshots (the
+    documented torn-state hazard; 2026-06-12 review)."""
+    record.update_result(lambda r: {**(r or {}), **fields})
+
+
 class RecordReporter:
     """Adapt RunRecord.log/set_progress onto the *_pipeline.Reporter
     protocol so the webapp can drive the shared pipelines."""
@@ -238,7 +245,7 @@ def execute_submit(
     observations = result.observations
 
     record.log(f"Median mag {median_mag:.3f}; wrote {upload_path.name}")
-    record.result["aavso_preview"] = read_aavso_preview(upload_path, max_rows=5)
+    _set_result(record, aavso_preview=read_aavso_preview(upload_path, max_rows=5))
 
     # Pull recent AAVSO obs for context overlay; failure is non-fatal.
     aavso_recent = fetch_aavso_recent_samples(target_name)
@@ -248,7 +255,7 @@ def execute_submit(
     from ..anomaly import assess_session_anomaly
 
     assessment = assess_session_anomaly(observations, vsx_target, aavso_recent)
-    record.result["anomaly"] = assessment.to_dict()
+    _set_result(record, anomaly=assessment.to_dict())
     if assessment.level == "anomaly":
         record.log("FLAG: " + " · ".join(assessment.flags))
     elif assessment.level == "watch":
@@ -264,7 +271,7 @@ def execute_submit(
 
     lightcurve_path = target_dir / "lightcurve.png"
     if plot_session_light_curve(observations, target_name, lightcurve_path, aavso_recent, prior_sessions=prior_sessions):
-        record.result["lightcurve_path"] = str(lightcurve_path)
+        _set_result(record, lightcurve_path=str(lightcurve_path))
         record.log(f"Wrote light curve: {lightcurve_path.name}")
 
     if vsx_target.period_days and len(observations) >= 3:
@@ -277,13 +284,12 @@ def execute_submit(
             aavso_recent,
             prior_sessions=prior_sessions,
         ):
-            record.result["folded_path"] = str(folded_path)
+            _set_result(record, folded_path=str(folded_path))
             record.log(f"Wrote phase-folded light curve: {folded_path.name}")
 
     record.set_progress(1.0)
 
-    record.result["median_mag"] = median_mag
-    record.result["upload_path"] = str(upload_path)
+    _set_result(record, median_mag=median_mag, upload_path=str(upload_path))
 
     # Index into the SQLite session store so /data routes can query history.
     if session_store is not None and target_slug:

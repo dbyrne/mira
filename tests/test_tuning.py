@@ -14,12 +14,19 @@ from mira.tuning import (
 
 
 class FakeClient:
-    def __init__(self, stats_for, fail_filter=False):
+    """`stale_after=N` freezes image-history after the Nth capture (the
+    NoState trap: latest_image_stats keeps serving the previous entry and
+    the Filename never advances). Normal mode stamps a unique Filename per
+    capture, like real NINA — the freshness guard keys off that."""
+
+    def __init__(self, stats_for, fail_filter=False, stale_after=None):
         self.calls: list[tuple] = []
         self.filters: list[str] = []
         self._stats_for = stats_for
         self._fail_filter = fail_filter
+        self._stale_after = stale_after
         self._last = None
+        self._n = 0
 
     def set_filter(self, filter_ref, *, wait=True, timeout_s=60.0):
         if self._fail_filter:
@@ -36,6 +43,11 @@ class FakeClient:
         s = self._stats_for(gain, duration)
         if isinstance(s, Exception):
             raise s
+        self._n += 1
+        if self._stale_after is not None and self._n > self._stale_after:
+            return {"Response": "ok"}      # history frozen: _last unchanged
+        s = dict(s)
+        s["Filename"] = f"frame_{self._n:04d}.fits"
         self._last = s
         return {"Response": "ok"}
 
@@ -82,6 +94,30 @@ class TestRunTune(TestCase):
         res = run_tune(c, exposures=[5, 10], gains=[200], filter_name="LP")
         self.assertEqual(res, [])                     # no ramp at all
         self.assertEqual(c.calls, [])                 # no captures
+
+    def test_stale_history_recorded_as_error_not_stats(self) -> None:
+        """The NoState stale-frame trap (flats already guards this):
+        history stops advancing after frame 1, so the second
+        (gain, exposure) point must record an error — NOT silently
+        inherit frame 1's stats and dial in the wrong exposure."""
+        from unittest.mock import patch
+        c = FakeClient(lambda g, e: _stats(30000), stale_after=1)
+        with patch("mira.tuning.time.sleep"):         # skip retry backoff
+            res = run_tune(c, exposures=[5, 10], gains=[200])
+        self.assertEqual(len(res), 2)                 # ramp didn't abort
+        self.assertFalse(res[0].error)
+        self.assertEqual(res[0].max_adu, 30000)       # fresh frame kept
+        self.assertIn("stale frame", res[1].error)
+        self.assertIn("did not advance", res[1].error)
+        self.assertIsNone(res[1].max_adu)             # stats NOT attributed
+        self.assertIsNone(res[1].hfr)
+
+    def test_no_stats_at_all_is_distinct_error(self) -> None:
+        from unittest.mock import patch
+        c = FakeClient(lambda g, e: _stats(1000), stale_after=0)  # never any
+        with patch("mira.tuning.time.sleep"):
+            res = run_tune(c, exposures=[5], gains=[200])
+        self.assertIn("no image stats", res[0].error)
 
 
 class TestRecommend(TestCase):

@@ -11,6 +11,7 @@ import random
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
 from mira.capture import (
     _target_alt_deg,
@@ -80,6 +81,34 @@ class FakeClient:
         return {"Response": "Parked"}
 
 
+class PierClient(FakeClient):
+    """FakeClient + a scripted pier side per poll (the last value repeats
+    once the script is exhausted). Base FakeClient deliberately has NO
+    pier_side method — that's the legacy/Seestar shape every other test
+    exercises against the flip watch."""
+
+    def __init__(self, pier_script, **kw):
+        super().__init__(**kw)
+        self._pier_script = list(pier_script)
+        self.pier_polls = 0
+
+    def pier_side(self):
+        i = min(self.pier_polls, len(self._pier_script) - 1)
+        self.pier_polls += 1
+        return self._pier_script[i]
+
+
+class RunCaptureTestBase(TestCase):
+    """Base for tests that drive run_capture: zero the end-of-run sweep
+    settle so unit tests don't sleep 2s per run. The sweep's COPY
+    behavior itself is pinned in TestCopyLoop."""
+
+    def setUp(self) -> None:
+        p = patch("mira.capture.FINAL_SWEEP_SETTLE_S", 0.0)
+        p.start()
+        self.addCleanup(p.stop)
+
+
 class TestDitherMath(TestCase):
     def test_zero_when_disabled(self) -> None:
         self.assertEqual(random_dither_deg(0, 45.0, random.Random(1)), (0.0, 0.0))
@@ -102,7 +131,7 @@ class TestDitherMath(TestCase):
         self.assertTrue(-90.0 <= a <= 90.0)
 
 
-class TestRunCaptureDither(TestCase):
+class TestRunCaptureDither(RunCaptureTestBase):
     def _run(self, d, **kw):
         c = FakeClient(**kw.pop("client_kw", {}))
         nina = Path(d) / "nina"
@@ -275,7 +304,7 @@ class TestRunCaptureDither(TestCase):
             self.assertEqual(res.captured, 2)             # loop continued
 
 
-class TestVerifyPointing(TestCase):
+class TestVerifyPointing(RunCaptureTestBase):
     """Patch the verify_pointing helper directly. Real `_verify_pointing`
     is exercised against fake astap_cli + fake FITS in test_solve.py;
     here we care about the *integration* with run_capture — does the loop
@@ -394,6 +423,286 @@ class TestVerifyPointing(TestCase):
             self.assertFalse(meta["result"]["pointing_verified"])
             self.assertEqual(meta["result"]["pointing_offset_deg"], 5.0)
             self.assertIn("FAILED", meta["result"]["stopped_reason"])
+
+    def test_fov_deg_threaded_from_run_capture_to_verifier(self) -> None:
+        """run_capture must hand its rig FOV to the verifier (the Esprit
+        bug: the S30 default FOV made every Esprit solve fail and the
+        check fail-open)."""
+        got = {}
+
+        def verifier(client, **kw):
+            got.update(kw)
+            return True, 0.1, "verified", None
+
+        with TemporaryDirectory() as d:
+            self._run_with_verifier(d, verifier=verifier, n_max=1,
+                                    dither_arcsec=0.0, fov_deg=1.07)
+            meta = json.loads(
+                (Path(d) / "dest" / "mira_capture.json").read_text())
+            self.assertEqual(meta["config"]["fov_deg"], 1.07)  # audited
+        self.assertEqual(got.get("fov_deg"), 1.07)
+
+    def _run_real_verifier(self, fov_deg):
+        """Drive the REAL _verify_pointing with solve_one mocked; returns
+        the kwargs solve_one was called with."""
+        from types import SimpleNamespace
+
+        from mira.capture import _verify_pointing
+
+        with TemporaryDirectory() as d:
+            nina = Path(d) / "nina"
+            nina.mkdir()
+            c = FakeClient()
+            c.nina_root = nina
+            seen_kwargs = []
+
+            def fake_solve_one(path, **kw):
+                seen_kwargs.append(kw)
+                return SimpleNamespace(status="failed", note="mock")
+
+            with patch("mira.solve.find_astap_cli", return_value="astap_cli"), \
+                 patch("mira.solve.solve_one", side_effect=fake_solve_one):
+                ok, _, _, keeper = _verify_pointing(
+                    c, ra_deg=83.8, dec_deg=-5.4, exposure_s=30.0,
+                    gain=100, nina_root=nina, tolerance_deg=1.0,
+                    emit=lambda m: None, fov_deg=fov_deg,
+                )
+            self.assertTrue(ok)          # solve-failed -> fail-open skip
+            self.assertIsNone(keeper)
+            return seen_kwargs[0]
+
+    def test_real_verifier_passes_fov_to_solve_one(self) -> None:
+        self.assertEqual(self._run_real_verifier(1.07)["fov_deg"], 1.07)
+
+    def test_real_verifier_none_fov_uses_solver_default(self) -> None:
+        from mira.solve import DEFAULT_FOV_DEG
+        self.assertEqual(self._run_real_verifier(None)["fov_deg"],
+                         DEFAULT_FOV_DEG)
+
+
+class TestSidecarLifecycle(RunCaptureTestBase):
+    """The interrupted-session-books-0-minutes bug: the pre-loop sidecar
+    persist must OMIT the result block entirely (the ledger trusts
+    result['copied'] whenever the key exists, which defeats its
+    glob-rescue), and the final result-bearing persist must fire from a
+    finally so Ctrl-C / crash still records the true tallies."""
+
+    def _setup(self, d):
+        c = FakeClient()
+        nina = Path(d) / "nina"
+        nina.mkdir()
+        c.nina_root = nina
+        return c, nina, Path(d) / "dest" / "mira_capture.json"
+
+    def _run(self, c, nina, d, **kw):
+        return run_capture(
+            c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+            dest_dir=Path(d) / "dest", nina_root=nina,
+            rng=random.Random(7), settle_s=0.0, dither_arcsec=0.0,
+            verify_pointing_deg=0, **kw,
+        )
+
+    def test_preloop_sidecar_has_no_result_block(self) -> None:
+        with TemporaryDirectory() as d:
+            c, nina, sidecar = self._setup(d)
+            mid_run = {}
+
+            def guard(i):
+                if i == 1:                 # pre-loop persist already happened
+                    mid_run.update(json.loads(sidecar.read_text()))
+                return None
+
+            self._run(c, nina, d, n_max=2, should_continue=guard)
+            self.assertIn("config", mid_run)       # intent IS persisted
+            self.assertNotIn("result", mid_run)    # but no provisional result
+            # Normal exit still writes the full result block.
+            final = json.loads(sidecar.read_text())
+            self.assertEqual(final["result"]["copied"], 2)
+            self.assertIn("n_max=2", final["result"]["stopped_reason"])
+
+    def test_interrupt_persists_accurate_result(self) -> None:
+        with TemporaryDirectory() as d:
+            c, nina, sidecar = self._setup(d)
+
+            def guard(i):
+                if i >= 3:
+                    raise KeyboardInterrupt
+                return None
+
+            with self.assertRaises(KeyboardInterrupt):
+                self._run(c, nina, d, n_max=99, should_continue=guard)
+            meta = json.loads(sidecar.read_text())
+            self.assertEqual(meta["result"]["copied"], 2)   # true tally, not 0
+            self.assertEqual(meta["result"]["captured"], 2)
+            self.assertEqual(meta["result"]["stopped_reason"], "interrupted")
+
+    def test_crash_persists_result_with_reason(self) -> None:
+        with TemporaryDirectory() as d:
+            c, nina, sidecar = self._setup(d)
+
+            def guard(i):
+                if i >= 2:
+                    raise RuntimeError("NINA went away")
+                return None
+
+            with self.assertRaises(RuntimeError):
+                self._run(c, nina, d, n_max=99, should_continue=guard)
+            meta = json.loads(sidecar.read_text())
+            self.assertEqual(meta["result"]["copied"], 1)
+            self.assertIn("NINA went away", meta["result"]["stopped_reason"])
+
+
+class TestCopyLoop(RunCaptureTestBase):
+    """Frames must survive a transiently-locked nina_root (OneDrive) and
+    the last-sub race: a frame joins `seen` only after a successful copy
+    (so a failed copy retries), failures warn with the filename, and a
+    final settle+sweep runs after the loop."""
+
+    def _run(self, d, c, **kw):
+        nina = Path(d) / "nina"
+        nina.mkdir()
+        c.nina_root = nina
+        msgs: list[str] = []
+        kw.setdefault("verify_pointing_deg", 0)
+        res = run_capture(
+            c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+            dest_dir=Path(d) / "dest", nina_root=nina,
+            rng=random.Random(7), settle_s=0.0, on_step=msgs.append, **kw,
+        )
+        return res, msgs
+
+    def test_locked_frame_is_retried_not_lost(self) -> None:
+        import shutil as _shutil
+        real_copy2 = _shutil.copy2
+        failed: list[str] = []
+
+        def flaky_copy2(src, dst, **kw):
+            # First attempt on frame 0001 fails (locked); later passes work.
+            if "0001" in str(src) and not failed:
+                failed.append(str(src))
+                raise OSError("locked by another process")
+            return real_copy2(src, dst, **kw)
+
+        with TemporaryDirectory() as d:
+            c = FakeClient()
+            with patch("mira.capture.shutil.copy2", side_effect=flaky_copy2):
+                res, msgs = self._run(d, c, n_max=3, dither_arcsec=0.0)
+            self.assertEqual(res.copied, 3)               # nothing lost
+            self.assertEqual(
+                len(list((Path(d) / "dest").glob("*.fits"))), 3)
+            warns = [m for m in msgs if "copy failed" in m]
+            self.assertEqual(len(warns), 1)
+            self.assertIn("0001", warns[0])               # names the frame
+
+    def test_final_sweep_copies_late_landing_frame(self) -> None:
+        with TemporaryDirectory() as d:
+            c = FakeClient()
+
+            def guard(i):
+                if i >= 3:
+                    # A frame NINA flushes after the loop's last copy pass —
+                    # no in-loop glob ever sees it.
+                    p = c.nina_root / "SNAPSHOT" / "late_flush.fits"
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_text("late")
+                    return "stop"
+                return None
+
+            res, _ = self._run(d, c, n_max=99, dither_arcsec=0.0,
+                               should_continue=guard)
+            self.assertEqual(res.captured, 2)
+            # 2 loop frames + the late-flushed one, swept post-loop.
+            self.assertEqual(res.copied, 3)
+            self.assertTrue((Path(d) / "dest" / "late_flush.fits").exists())
+
+
+class TestPierFlip(RunCaptureTestBase):
+    """Meridian-flip awareness: pier side is polled once per sub; a change
+    re-centers (platesolve_center sessions), is reported, and is counted
+    in the result/sidecar. Mounts that don't report a side (Seestar) make
+    the whole feature a silent no-op."""
+
+    def _run(self, d, c, **kw):
+        nina = Path(d) / "nina"
+        nina.mkdir()
+        c.nina_root = nina
+        msgs: list[str] = []
+        kw.setdefault("verify_pointing_deg", 0)
+        res = run_capture(
+            c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+            dest_dir=Path(d) / "dest", nina_root=nina,
+            rng=random.Random(7), settle_s=0.0, on_step=msgs.append, **kw,
+        )
+        return res, msgs
+
+    def test_flip_recenters_when_platesolve_center(self) -> None:
+        with TemporaryDirectory() as d:
+            # Polls: pre-loop, then one per sub -> the flip lands on sub 3.
+            c = PierClient(["East", "East", "East", "West"])
+            res, msgs = self._run(d, c, n_max=4, dither_arcsec=0.0,
+                                  platesolve_center=True)
+            self.assertEqual(res.pier_flips, 1)
+            self.assertTrue(any(
+                "pier flip detected (East->West): re-centering" in m
+                for m in msgs))
+            # Exactly two center=True slews, both on exact nominal coords:
+            # the pre-loop platesolve center and the post-flip re-center.
+            centers = [s for s in c.slews if s[2]]
+            self.assertEqual(centers, [(200.0, 40.0, True),
+                                       (200.0, 40.0, True)])
+            self.assertEqual(res.captured, 4)             # loop unaffected
+
+    def test_flip_without_platesolve_center_reports_but_no_slew(self) -> None:
+        with TemporaryDirectory() as d:
+            c = PierClient(["East", "West"])
+            res, msgs = self._run(d, c, n_max=3, dither_arcsec=0.0)
+            self.assertEqual(res.pier_flips, 1)
+            self.assertTrue(any("pier flip detected (East->West)" in m
+                                for m in msgs))
+            self.assertFalse(any("re-centering" in m for m in msgs))
+            self.assertEqual([s for s in c.slews if s[2]], [])  # no Center
+
+    def test_failed_postflip_center_does_not_kill_run(self) -> None:
+        with TemporaryDirectory() as d:
+            # Slew #1 is the pre-loop center; #2 is the post-flip center.
+            c = PierClient(["East", "West"], fail_slew_on=(2,))
+            res, msgs = self._run(d, c, n_max=3, dither_arcsec=0.0,
+                                  platesolve_center=True)
+            self.assertEqual(res.pier_flips, 1)
+            self.assertTrue(any("post-flip center FAILED" in m for m in msgs))
+            self.assertEqual(res.captured, 3)             # loop continued
+
+    def test_empty_pier_side_is_silent_noop(self) -> None:
+        with TemporaryDirectory() as d:
+            c = PierClient([""])                  # Seestar-style: no side
+            res, msgs = self._run(d, c, n_max=3, dither_arcsec=10.0)
+            self.assertEqual(res.pier_flips, 0)
+            self.assertFalse(any("pier flip" in m for m in msgs))
+            self.assertEqual(res.captured, 3)
+
+    def test_client_without_pier_side_method_is_silent_noop(self) -> None:
+        with TemporaryDirectory() as d:
+            c = FakeClient()                      # no pier_side at all
+            res, msgs = self._run(d, c, n_max=2, dither_arcsec=10.0)
+            self.assertEqual(res.pier_flips, 0)
+            self.assertFalse(any("pier flip" in m for m in msgs))
+
+    def test_side_becoming_available_midrun_is_not_a_flip(self) -> None:
+        with TemporaryDirectory() as d:
+            # "" -> "West": the first non-empty read seeds the baseline.
+            c = PierClient(["", "West", "West", "West"])
+            res, msgs = self._run(d, c, n_max=3, dither_arcsec=0.0)
+            self.assertEqual(res.pier_flips, 0)
+            self.assertFalse(any("pier flip" in m for m in msgs))
+
+    def test_flip_count_lands_in_sidecar_result(self) -> None:
+        with TemporaryDirectory() as d:
+            c = PierClient(["East", "West"])
+            res, _ = self._run(d, c, n_max=2, dither_arcsec=0.0)
+            self.assertEqual(res.pier_flips, 1)
+            meta = json.loads(
+                (Path(d) / "dest" / "mira_capture.json").read_text())
+            self.assertEqual(meta["result"]["pier_flips"], 1)
 
 
 class TestSafePark(TestCase):

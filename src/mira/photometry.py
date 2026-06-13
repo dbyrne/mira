@@ -19,6 +19,7 @@ from typing import Callable, Iterable
 
 import numpy as np
 from astropy.io import fits
+from astropy.stats import SigmaClip
 from astropy.wcs import WCS
 from photutils.aperture import (
     ApertureStats,
@@ -186,7 +187,10 @@ def aperture_flux_at_radec(
     pixel_aperture = aperture.to_pixel(wcs)
     pixel_annulus = annulus.to_pixel(wcs)
 
-    annulus_stats = ApertureStats(image, pixel_annulus, sigma_clip=None)
+    # Sigma-clip the annulus (the documented contract): a field star sitting
+    # in the annulus would otherwise inflate sky_std — and through it MERR —
+    # on every frame.
+    annulus_stats = ApertureStats(image, pixel_annulus, sigma_clip=SigmaClip(sigma=3.0))
     sky_median = float(annulus_stats.median)
     sky_std = float(annulus_stats.std)
 

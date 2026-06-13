@@ -88,7 +88,10 @@ def render_research_notes(catalog: DsoCatalog) -> str:
         for target in by_season[season]:
             mosaic = "yes" if target.mosaic else ""
             size = f"{target.size_arcmin[0]:.0f}' × {target.size_arcmin[1]:.0f}'"
-            anchor = _slug(target.name)
+            # Anchor must slug the FULL detail-heading text ("name — common"),
+            # not just the name — GitHub-style renderers derive the anchor
+            # from the whole heading, so a name-only slug is a dead link.
+            anchor = _slug(_heading_text(target))
             lines.append(
                 f"| [`{target.name}`](#{anchor}) | {target.common_name} | "
                 f"{target.object_type} | {target.constellation} | "
@@ -116,7 +119,7 @@ def render_research_notes(catalog: DsoCatalog) -> str:
 
 def _render_target(target: DsoTarget) -> list[str]:
     lines: list[str] = []
-    lines.append(f"### {target.name} — {target.common_name}")
+    lines.append(f"### {_heading_text(target)}")
     lines.append("")
     # Header line: quick orient
     type_full = _type_long_name(target.object_type)
@@ -231,14 +234,26 @@ def _type_long_name(code: str) -> str:
     return _TYPE_LONG_NAMES.get(code, code)
 
 
-def _slug(name: str) -> str:
+def _heading_text(target: DsoTarget) -> str:
+    """The exact per-target detail heading. The index anchors slug THIS
+    string — heading and anchor must be built from the same text or every
+    TOC link goes dead."""
+    return f"{target.name} — {target.common_name}"
+
+
+def _slug(heading: str) -> str:
     """Markdown anchor slug — what GitHub-style renderers turn a heading
-    into. Lowercase, replace spaces with hyphens, drop punctuation."""
+    into: lowercase; keep word chars (alnum + underscore) and hyphens; turn
+    spaces into hyphens; drop all other punctuation. The em-dash in our
+    "name — common" headings is itself dropped but both flanking spaces
+    survive as hyphens, so the anchor carries a double hyphen — verified by
+    hand against GitHub: "NGC 6888 — Crescent Nebula" →
+    "ngc-6888--crescent-nebula"."""
     out: list[str] = []
-    for ch in name.lower():
-        if ch.isalnum():
+    for ch in heading.lower():
+        if ch.isalnum() or ch in ("_", "-"):
             out.append(ch)
-        elif ch in (" ", "-", "_"):
+        elif ch == " ":
             out.append("-")
         # other punctuation dropped
     return "".join(out)

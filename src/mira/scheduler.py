@@ -69,6 +69,15 @@ def build_session_schedule(
 
             obs_start, obs_end = _observable_window(obs)
 
+            # Only candidates observable NOW compete for this pick. A
+            # future-opening target used to win on raw score and "leapfrog"
+            # the clock past still-open windows, dropping observable-now
+            # targets whose windows closed during the idle jump (2026-06-12
+            # review). The idle step below is how the clock reaches future
+            # openings.
+            if obs_start > current_time:
+                continue
+
             integration_min = recommended_exposure_plan(candidate.target.bright_mag)["total_min"]
             integration_dt = timedelta(minutes=integration_min)
 

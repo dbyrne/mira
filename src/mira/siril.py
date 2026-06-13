@@ -179,6 +179,17 @@ def build_stack_script(
         lines.append("stack bias rej 3 3 -nonorm -out=bias_stacked")
     if flat_master is not None:
         # Prebuilt master (mira flats): apply as-is, no convert/re-stack.
+        # It rides a `-flat=` OPTION arg, which (like -out=, see _outarg)
+        # Siril can't quote — a space would fail cryptically mid-script, so
+        # fail early and actionably instead. Directory inputs (flats_dir,
+        # darks_dir, …) don't need this: they're only used via quoted
+        # positional `cd` args, which handle spaces fine.
+        if " " in str(flat_master):
+            raise SirilError(
+                f"Master flat path contains a space ({flat_master}); Siril "
+                "`-flat=` cannot handle it. Move/copy the master to a "
+                "space-free path and retry."
+            )
         light_master += f" -flat={_outarg(flat_master)}"
     elif flats_dir is not None:
         convert("flat", flats_dir)
@@ -224,7 +235,8 @@ def build_stack_script(
     # forward; downstream photometry (mira submit, AAVSO uploads) needs a
     # solved WCS. TIFF can't carry FITS headers. The PNG is a stretched
     # preview only. cwd is the destination dir, so bare names land the
-    # files at result_stem.with_suffix(...).
+    # files at <result_stem> + the appended extension (NOT with_suffix —
+    # a multi-dot stem like M51.lrgb keeps its dots).
     lines.append(f"save {_q(Path(result_stem.name))}")
     if preview_path is not None:
         if stretch:
@@ -319,10 +331,15 @@ def run_siril(
         with os.fdopen(fd, "w", encoding="ascii", newline="\n") as fh:
             fh.write(script)
         try:
+            # encoding pinned: text=True alone decodes with the locale
+            # codec (cp1252 on Windows) in strict mode, so a stray byte in
+            # Siril's log would raise UnicodeDecodeError mid-run.
             proc = subprocess.run(
                 [str(cli), "-s", script_path],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout_s,
                 cwd=str(work_dir),
                 check=False,

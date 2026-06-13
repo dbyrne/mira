@@ -48,6 +48,18 @@ class ColorTypeDisagreementTests(TestCase):
     def test_l_family_too_blue_flagged(self) -> None:
         self.assertIsNotNone(color_type_disagreement("LB", 0.5))
 
+    def test_l_family_members_are_exactly_l_lb_lc(self) -> None:
+        for var_type in ("L", "LB", "LC"):
+            self.assertIsNotNone(color_type_disagreement(var_type, 0.5))
+
+    def test_lpb_blue_pulsator_not_flagged_as_l_family(self) -> None:
+        # LPB (long-period B-type pulsators) are blue by nature: BP-RP < 1.0
+        # is their NORMAL color. The old startswith("L") prefix test lumped
+        # them into the red slow-irregular L-family and handed out a false
+        # color-anomaly bonus.
+        self.assertIsNone(color_type_disagreement("LPB", 0.5))
+        self.assertIsNone(color_type_disagreement("LPB:", 0.5))
+
     def test_short_period_too_red_flagged(self) -> None:
         for var_type in ("RRAB", "EA", "EB", "EW", "DSCT"):
             self.assertIsNotNone(color_type_disagreement(var_type, 2.0))

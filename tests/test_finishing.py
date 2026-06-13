@@ -114,6 +114,30 @@ class TestGraxpertArgs(TestCase):
                 with self.assertRaises(GraXpertError):
                     run_graxpert_step(["gx"], "denoising", Path(d) / "i.fits", Path(d) / "o")
 
+    def test_subprocess_decoding_is_utf8_replace(self) -> None:
+        # text=True without encoding= decodes with the locale codec (cp1252
+        # on Windows) in STRICT mode — a stray byte in GraXpert's log would
+        # raise UnicodeDecodeError mid-run.
+        with TemporaryDirectory() as d:
+            stem = Path(d) / "gx_bg"
+            captured: dict = {}
+
+            class _P:
+                returncode = 0
+                stdout = "ok"
+                stderr = ""
+
+            def _run(args, **kw):
+                captured.update(kw)
+                Path(str(stem) + ".fits").write_text("x")
+                return _P()
+
+            with patch("mira.finishing.subprocess.run", side_effect=_run):
+                run_graxpert_step(["gx"], "denoising", Path(d) / "in.fits", stem)
+        self.assertTrue(captured.get("text"))
+        self.assertEqual(captured.get("encoding"), "utf-8")
+        self.assertEqual(captured.get("errors"), "replace")
+
 
 class TestCrop(TestCase):
     def test_autocrop_trims_dark_border(self) -> None:
@@ -204,3 +228,38 @@ class TestRunFinishOrchestration(TestCase):
         with TemporaryDirectory() as d:
             with self.assertRaises(FileNotFoundError):
                 run_finish(Path(d) / "nope.tif", Path(d) / "o.png")
+
+    def test_16bit_tiff_master_preserved_through_crop(self) -> None:
+        # The .tif is the editable master. Siril writes it 16-bit; the old
+        # PIL round-trip (open -> crop -> save) silently truncated it to
+        # 8-bit. Pin: values >255 survive bit-exact, and the PIL crop box
+        # (left, upper, right, lower) maps to slices [upper:lower,
+        # left:right] exactly.
+        import tifffile
+
+        with TemporaryDirectory() as d:
+            src = Path(d) / "master.tif"
+            Image.new("RGB", (64, 80), (30, 30, 30)).save(src)
+            out = Path(d) / "final.png"
+            rng = np.random.default_rng(3)
+            arr16 = rng.integers(0, 65536, size=(80, 64, 3), dtype=np.uint16)
+
+            def _fake_siril(script, *, work_dir, cli_path=None):
+                Image.new("RGB", (64, 80), (40, 40, 40)).save(work_dir / "stretched.png")
+                tifffile.imwrite(work_dir / "stretched.tif", arr16)
+                return "log: ok"
+
+            with patch("mira.finishing.run_siril", side_effect=_fake_siril):
+                res = run_finish(
+                    src, out, do_bg=False, do_denoise=False, do_deconv=False,
+                    crop="0.1", saturation=0.0,
+                )
+            tif_out = out.with_suffix(".tif")
+            self.assertTrue(tif_out.exists())
+            round_tripped = tifffile.imread(str(tif_out))
+            self.assertEqual(round_tripped.dtype, np.uint16)
+            # fixed_margin_box(0.1) on (h=80, w=64) -> box (6, 8, 57, 72)
+            np.testing.assert_array_equal(round_tripped, arr16[8:72, 6:57])
+            self.assertEqual(res.output_path, tif_out.resolve())
+            # The PNG preview stays 8-bit PIL — that path is correct as-is.
+            self.assertTrue(out.exists())

@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 from astropy.io import fits
@@ -128,6 +129,27 @@ class InventorySessionTests(unittest.TestCase):
         self.assertEqual(s.frames, 1)
         self.assertEqual(s.solved, 0)
         self.assertIsNone(s.exposure_s)
+
+    def test_unstatable_file_skipped_in_size_sum(self):
+        # One dangling symlink / locked temp (Syncthing mid-transfer) in a
+        # session dir must not abort the whole inventory run — the per-file
+        # stat is guarded and the bad file simply contributes no bytes.
+        d = self._session("locked_20260101")
+        _write_fits(d / "a.fits")
+        (d / "locked.tmp").write_bytes(b"x" * 64)
+        real_stat = Path.stat
+
+        def fake_stat(path_self, *args, **kwargs):
+            if path_self.name == "locked.tmp":
+                raise OSError("file is locked by another process")
+            return real_stat(path_self, *args, **kwargs)
+
+        with mock.patch.object(Path, "stat", fake_stat):
+            s = inventory_session(d, self.processed)
+        self.assertEqual(s.frames, 1)
+        # Size still counted for the healthy file (a 4x4 FITS > 0 bytes,
+        # though it rounds to 0.0 GB) — the point is no exception escaped.
+        self.assertGreaterEqual(s.size_gb, 0.0)
 
     def test_build_inventory_walks_dirs_sorted(self):
         for name in ("b_20260102", "a_20260101"):

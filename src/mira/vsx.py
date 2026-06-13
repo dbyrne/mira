@@ -77,8 +77,6 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
         sampled = _sample_bin(list(bin_rows.values()), per_bin_target, seed=index)
         for target in sampled:
             targets[target.oid] = target
-        if len(targets) >= config.row_limit:
-            break
 
     # Total outage: every request failed and none succeeded. Fail loudly
     # instead of returning [] -> an empty schedule the user only notices
@@ -91,7 +89,13 @@ def fetch_vsx_targets(config: VsxQueryConfig, timeout_seconds: int = 60) -> list
             "(VSX is required to build a queue). No schedule was produced."
         )
 
-    return list(targets.values())[: config.row_limit]
+    # Trim pooled overflow with a deterministic seeded sample instead of a
+    # tail slice: bins fill in RA order, so slicing always discarded the
+    # highest-RA bin's overflow (and the removed early break used to skip
+    # whole high-RA bins on small --limit runs). Seed follows the per-bin
+    # convention — bins use their index 0..bins-1, the pooled pass uses the
+    # next value.
+    return _sample_bin(list(targets.values()), config.row_limit, seed=bins)
 
 
 def _sample_bin(rows: list[VsxTarget], target_count: int, seed: int) -> list[VsxTarget]:

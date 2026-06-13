@@ -82,6 +82,25 @@ class EmissionCatalogTests(TestCase):
         for n in ("NGC 6888", "NGC 7000", "M42", "Cygnus Loop"):
             self.assertIn(n, names)
 
+    def test_every_target_budgets_lp_for_s30_sessions(self):
+        # The S30 shoots emission targets through its dual-band LP filter,
+        # and the ledger only books minutes against budgeted filter keys —
+        # without an LP budget, by-the-book S30 emission sessions booked
+        # zero progress forever. Every target must carry LP alongside its
+        # narrowband budget, and adding LP must NOT flip is_narrowband
+        # (which checks Ha/OIII/SII only) — moon-relax behavior unchanged.
+        cat = load_dso_catalog(CATALOG)
+        for t in cat.targets:
+            with self.subTest(target=t.name):
+                self.assertIn("LP", t.budget_minutes, f"{t.name} missing LP")
+                self.assertGreater(t.budget_minutes["LP"], 0)
+                self.assertTrue(t.is_narrowband, f"{t.name} lost narrowband")
+                # total budget includes LP — completion math counts it.
+                self.assertEqual(
+                    t.total_budget_minutes,
+                    sum(t.budget_minutes.values()),
+                )
+
 
 class EmissionFovBehaviorTests(TestCase):
     """The rig-agnostic payoff: one catalog, FOV decides single-frame fit."""

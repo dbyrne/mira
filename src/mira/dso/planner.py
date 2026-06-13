@@ -7,7 +7,10 @@ bits are:
 - Moon-relax for narrowband: Ha/SII punch through moonlight; OIII less so
   but still acceptable. Default behavior is to disable the moon filter
   for any target with narrowband budget. Set the planner's ``relax_moon``
-  argument to False to apply the VSX-style moon gate.
+  argument to False to apply the VSX-style moon gate. ``relax_moon_all``
+  force-relaxes *every* target, broadband included — the engine half of
+  ``mira galaxies plan --relax-moon`` (galaxies are all broadband, so the
+  narrowband-only relax never touches them).
 - FOV-fit flag: compares ``target.size_arcmin`` against the configured rig
   FOV. Oversized targets are kept in the ranking but down-weighted and
   flagged as mosaic candidates.
@@ -116,6 +119,7 @@ def build_dso_candidates(
     start_date: date | None = None,
     fov_deg: tuple[float, float] = DEFAULT_FOV_DEG,
     relax_moon: bool = True,
+    relax_moon_all: bool = False,
     ledger: Ledger | None = None,
     deficit_weight: float = 1.0,
     sb_limit_mag_arcsec2: float | None = None,
@@ -131,6 +135,12 @@ def build_dso_candidates(
     moon-separation filters with permissive values for any target whose
     ``budget_minutes`` includes a narrowband filter. Broadband-only targets
     (REF/galaxies with L+RGB only) still apply the VSX-style moon gate.
+
+    ``relax_moon_all=True`` forces the relax for *every* target, broadband
+    included — the explicit escape hatch behind
+    ``mira galaxies plan --relax-moon`` (every shipped galaxy is broadband,
+    so the narrowband-gated relax above can never reach them). Default
+    False preserves the pinned narrowband-only behavior bit-for-bit.
 
     ``ledger`` (Phase 2): when provided, every candidate's observability
     score is multiplied by ``0.5 + deficit_weight * deficit_fraction``
@@ -149,7 +159,7 @@ def build_dso_candidates(
     preserved bit-for-bit."""
     candidates: list[DsoCandidate] = []
     for target in catalog.targets:
-        relax_for_target = relax_moon and target.is_narrowband
+        relax_for_target = (relax_moon and target.is_narrowband) or relax_moon_all
         observabilities: list[Observability] = []
         for site in config.sites:
             effective_site = _maybe_relax_moon(site) if relax_for_target else site
@@ -363,7 +373,13 @@ def _build_reasons(
             f"vs rig FOV {fov_deg[0]:.2f}°×{fov_deg[1]:.2f}°"
         )
     if relax_for_target:
-        reasons.append("moon-relaxed (narrowband)")
+        # Narrowband targets relax because of what they are; broadband ones
+        # only ever get here via relax_moon_all — label it as the override
+        # it is so the report doesn't claim a galaxy is narrowband.
+        reasons.append(
+            "moon-relaxed (narrowband)" if target.is_narrowband
+            else "moon-relaxed (forced)"
+        )
     if ledger is not None and budget_minutes > 0:
         pct = completion_fraction * 100.0
         reasons.append(

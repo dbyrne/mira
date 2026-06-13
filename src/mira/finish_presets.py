@@ -321,10 +321,25 @@ def starnet_decompose(base: np.ndarray, exe: str | None = None,
     tif_in = cache_dir / f"in_{key}.tif"
     tif_sl = cache_dir / f"starless_{key}.tif"
     tif_st = cache_dir / f"stars_{key}.tif"
-    cv2.imwrite(str(tif_in), q[..., ::-1])
+    if not cv2.imwrite(str(tif_in), q[..., ::-1]):
+        raise RuntimeError(f"failed to write StarNet input TIFF: {tif_in}")
     cmd = [exe_path, "--input", str(tif_in), "--output", str(tif_sl),
            "--unscreen", str(tif_st), "--quiet"]
-    subprocess.run(cmd, cwd=str(Path(exe_path).parent), check=True, capture_output=True)
+    # check=False + explicit raise: check=True would let CalledProcessError
+    # escape raw with the captured stderr discarded. encoding pinned because
+    # text=True alone decodes with the locale codec (cp1252 on Windows) in
+    # strict mode — a stray byte in StarNet's output would raise
+    # UnicodeDecodeError mid-run.
+    proc = subprocess.run(cmd, cwd=str(Path(exe_path).parent), check=False,
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace")
+    if proc.returncode != 0:
+        err = (proc.stderr or "").strip() or (proc.stdout or "").strip()
+        tail = "\n".join(err.splitlines()[-5:])
+        raise RuntimeError(
+            f"StarNet2 failed (exit {proc.returncode}).\n"
+            f"--- stderr tail ---\n{tail}"
+        )
     sl = cv2.imread(str(tif_sl), cv2.IMREAD_UNCHANGED)
     st = cv2.imread(str(tif_st), cv2.IMREAD_UNCHANGED)
     if sl is None or st is None:

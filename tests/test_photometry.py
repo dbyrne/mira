@@ -93,6 +93,42 @@ class AperturePhotometryTests(TestCase):
             self.assertGreater(err, 0)
 
 
+class SkyAnnulusSigmaClipTests(TestCase):
+    """The sky annulus must be sigma-clipped (the module's documented
+    contract). A field star sitting inside the annulus would otherwise
+    inflate sky_std — and through it MERR on every AAVSO row."""
+
+    def test_star_in_annulus_does_not_inflate_error(self) -> None:
+        with TemporaryDirectory() as tmp:
+            clean = Path(tmp) / "clean.fits"
+            contaminated = Path(tmp) / "contaminated.fits"
+            _make_synthetic_fits(clean, (128, 128), 1000, [], [], seed=9)
+            # Annulus defaults are 10-16 arcsec = 10-16 px on this 1"/px
+            # WCS: plant a bright field star 13 px from the target, squarely
+            # inside the annulus.
+            _make_synthetic_fits(
+                contaminated, (128, 128), 1000, [(141, 128)], [5000.0], seed=9
+            )
+
+            image_c, wcs_c, _ = read_fits_with_wcs(clean)
+            sky = wcs_c.pixel_to_world(128, 128)
+            flux_clean, err_clean = aperture_flux_at_radec(
+                image_c, wcs_c, sky.ra.deg, sky.dec.deg
+            )
+            image_x, wcs_x, _ = read_fits_with_wcs(contaminated)
+            flux_cont, err_cont = aperture_flux_at_radec(
+                image_x, wcs_x, sky.ra.deg, sky.dec.deg
+            )
+
+        # Same seed -> identical noise field; the only difference is the
+        # annulus contaminant. With sigma-clipping the flux and error stay
+        # close to the clean-annulus values; without it the contaminant
+        # drives sky_std (and the error) up by well over an order of
+        # magnitude (~50x measured).
+        self.assertLess(abs(flux_cont - flux_clean), 0.15 * abs(flux_clean))
+        self.assertLess(err_cont, 3.0 * err_clean)
+
+
 class DifferentialMagnitudeTests(TestCase):
     def test_equal_flux_means_equal_mag(self) -> None:
         target_mag, _ = differential_magnitude(1000, 32, 1000, 32, 10.0)

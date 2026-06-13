@@ -6,45 +6,32 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 
 | # | Target | Common | Type | Const | Size (arcmin) | Best site | Dark min | Peak alt | Best night | Mosaic | Captured | Budget | % Done | Score |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `M57` | Ring | PN | Lyr | 1 × 1 | Jersey City | 240 | 82.3° | 2026-06-25 |  | 0m | 300m | 0% | 483.4 |
-| 2 | `Sh2-101` | Tulip | HII | Cyg | 16 × 9 | Jersey City | 210 | 75.5° | 2026-06-25 |  | 0m | 420m | 0% | 428.2 |
-| 3 | `NGC 6888` | Crescent | WR | Cyg | 18 × 12 | Jersey City | 180 | 74.3° | 2026-06-25 |  | 0m | 390m | 0% | 381.4 |
-| 4 | `NGC 6820` | Sh2-86 | HII | Vul | 40 × 30 | Jersey City | 180 | 69.3° | 2026-06-25 |  | 0m | 420m | 0% | 374.0 |
-| 5 | `M27` | Dumbbell | PN | Vul | 8 × 6 | Jersey City | 180 | 67.0° | 2026-06-25 |  | 0m | 390m | 0% | 370.4 |
-| 6 | `Sh2-129` | Flying Bat (+OU4 Squid) | HII | Cep | 150 × 120 | Jersey City | 180 | 61.1° | 2026-06-25 |  | 0m | 300m | 0% | 361.6 |
-| 7 | `IC 5070` | Pelican | HII | Cyg | 60 × 50 | Jersey City | 150 | 67.8° | 2026-06-25 |  | 0m | 420m | 0% | 326.7 |
-| 8 | `NGC 7000` | North America | HII | Cyg | 120 × 100 | Jersey City | 150 | 66.4° | 2026-06-25 |  | 0m | 420m | 0% | 324.6 |
-| 9 | `NGC 6960` | Western Veil | SNR | Cyg | 70 × 8 | Jersey City | 150 | 64.9° | 2026-06-25 |  | 0m | 300m | 0% | 322.3 |
-| 10 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 150 | 63.4° | 2026-06-25 |  | 0m | 300m | 0% | 320.1 |
-| 11 | `IC 1318` | Sadr / Butterfly | HII | Cyg | 180 × 170 | Jersey City | 180 | 73.9° | 2026-06-25 | yes | 0m | 300m | 0% | 304.7 |
-| 12 | `Sh2-119` | Clamshell | HII | Cyg | 90 × 90 | Jersey City | 120 | 62.8° | 2026-06-25 |  | 0m | 300m | 0% | 274.2 |
-| 13 | `IC 1396A` | Elephant's Trunk | HII | Cep | 20 × 10 | Jersey City | 120 | 59.0° | 2026-06-25 |  | 0m | 420m | 0% | 268.5 |
-| 14 | `IC 1396` | Elephant's Trunk (full) | HII | Cep | 170 × 140 | Jersey City | 120 | 58.6° | 2026-06-25 |  | 0m | 420m | 0% | 267.8 |
-| 15 | `Cygnus Loop` | Veil (full loop) | SNR | Cyg | 180 × 170 | Jersey City | 150 | 63.9° | 2026-06-25 | yes | 0m | 300m | 0% | 256.6 |
-| 16 | `IC 5146` | Cocoon | HII | Cyg | 12 × 12 | Jersey City | 90 | 57.1° | 2026-06-25 |  | 0m | 300m | 0% | 220.6 |
-| 17 | `Sh2-155` | Cave | HII | Cep | 50 × 30 | Jersey City | 90 | 48.2° | 2026-06-25 |  | 0m | 420m | 0% | 207.3 |
-| 18 | `Sh2-132` | Lion | HII | Cep | 40 × 30 | Jersey City | 60 | 53.3° | 2026-06-25 |  | 0m | 420m | 0% | 170.0 |
-| 19 | `NGC 7380` | Wizard | HII | Cep | 25 × 20 | Jersey City | 60 | 49.5° | 2026-06-25 |  | 0m | 420m | 0% | 164.2 |
-| 20 | `Sh2-157` | Lobster Claw | HII | Cas | 60 × 30 | Jersey City | 60 | 45.9° | 2026-06-25 |  | 0m | 420m | 0% | 158.8 |
-| 21 | `NGC 7635` | Bubble | HII | Cas | 22 × 15 | Jersey City | 60 | 45.4° | 2026-06-25 |  | 0m | 420m | 0% | 158.1 |
-| 22 | `NGC 7822` | Sh2-171 | HII | Cep | 60 × 60 | Jersey City | 30 | 41.7° | 2026-06-25 |  | 0m | 420m | 0% | 107.6 |
+| 1 | `Sh2-101` | Tulip | HII | Cyg | 16 × 9 | Jersey City | 210 | 75.5° | 2026-06-25 |  | 0m | 600m | 0% | 428.2 |
+| 2 | `M57` | Ring | PN | Lyr | 1 × 1 | Jersey City | 240 | 82.3° | 2026-06-25 |  | 121m | 480m | 25% | 402.2 |
+| 3 | `NGC 6888` | Crescent | WR | Cyg | 18 × 12 | Jersey City | 180 | 74.3° | 2026-06-25 |  | 0m | 570m | 0% | 381.4 |
+| 4 | `NGC 6820` | Sh2-86 | HII | Vul | 40 × 30 | Jersey City | 180 | 69.3° | 2026-06-25 |  | 0m | 600m | 0% | 374.0 |
+| 5 | `M27` | Dumbbell | PN | Vul | 8 × 6 | Jersey City | 180 | 67.0° | 2026-06-25 |  | 0m | 570m | 0% | 370.4 |
+| 6 | `Sh2-129` | Flying Bat (+OU4 Squid) | HII | Cep | 150 × 120 | Jersey City | 180 | 61.1° | 2026-06-25 |  | 0m | 480m | 0% | 361.6 |
+| 7 | `IC 5070` | Pelican | HII | Cyg | 60 × 50 | Jersey City | 150 | 67.8° | 2026-06-25 |  | 0m | 600m | 0% | 326.7 |
+| 8 | `NGC 7000` | North America | HII | Cyg | 120 × 100 | Jersey City | 150 | 66.4° | 2026-06-25 |  | 0m | 600m | 0% | 324.6 |
+| 9 | `NGC 6960` | Western Veil | SNR | Cyg | 70 × 8 | Jersey City | 150 | 64.9° | 2026-06-25 |  | 0m | 480m | 0% | 322.3 |
+| 10 | `NGC 6992` | Eastern Veil | SNR | Cyg | 60 × 8 | Jersey City | 150 | 63.4° | 2026-06-25 |  | 0m | 480m | 0% | 320.1 |
+| 11 | `IC 1318` | Sadr / Butterfly | HII | Cyg | 180 × 170 | Jersey City | 180 | 73.9° | 2026-06-25 | yes | 0m | 480m | 0% | 304.7 |
+| 12 | `Sh2-119` | Clamshell | HII | Cyg | 90 × 90 | Jersey City | 120 | 62.8° | 2026-06-25 |  | 0m | 480m | 0% | 274.2 |
+| 13 | `IC 1396A` | Elephant's Trunk | HII | Cep | 20 × 10 | Jersey City | 120 | 59.0° | 2026-06-25 |  | 0m | 600m | 0% | 268.5 |
+| 14 | `IC 1396` | Elephant's Trunk (full) | HII | Cep | 170 × 140 | Jersey City | 120 | 58.6° | 2026-06-25 |  | 0m | 600m | 0% | 267.8 |
+| 15 | `Cygnus Loop` | Veil (full loop) | SNR | Cyg | 180 × 170 | Jersey City | 150 | 63.9° | 2026-06-25 | yes | 0m | 480m | 0% | 256.6 |
+| 16 | `IC 5146` | Cocoon | HII | Cyg | 12 × 12 | Jersey City | 90 | 57.1° | 2026-06-25 |  | 0m | 480m | 0% | 220.6 |
+| 17 | `Sh2-155` | Cave | HII | Cep | 50 × 30 | Jersey City | 90 | 48.2° | 2026-06-25 |  | 0m | 600m | 0% | 207.3 |
+| 18 | `Sh2-132` | Lion | HII | Cep | 40 × 30 | Jersey City | 60 | 53.3° | 2026-06-25 |  | 0m | 600m | 0% | 170.0 |
+| 19 | `NGC 7380` | Wizard | HII | Cep | 25 × 20 | Jersey City | 60 | 49.5° | 2026-06-25 |  | 0m | 600m | 0% | 164.2 |
+| 20 | `Sh2-157` | Lobster Claw | HII | Cas | 60 × 30 | Jersey City | 60 | 45.9° | 2026-06-25 |  | 0m | 600m | 0% | 158.8 |
+| 21 | `NGC 7635` | Bubble | HII | Cas | 22 × 15 | Jersey City | 60 | 45.4° | 2026-06-25 |  | 0m | 600m | 0% | 158.1 |
+| 22 | `NGC 7822` | Sh2-171 | HII | Cep | 60 × 60 | Jersey City | 30 | 41.7° | 2026-06-25 |  | 0m | 600m | 0% | 107.6 |
 
 ## Per-target detail
 
-### 1. M57 — Ring
-
-- **Type:** PN in Lyr  
-- **Coords (J2000):** RA 283.3960° / Dec +33.0290°  
-- **Size:** 1' × 1'  
-- **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
-- **Per-filter status (captured / budget):**  
-  - Ha: 0 / 120 min (0% — 120m to go)
-  - OIII: 0 / 180 min (0% — 180m to go)
-- **Observability per site:**  
-  - Jersey City: 240 min above floor, peak 82.3° on 2026-06-25
-- **Notes:** Esprit: fits, PA 000° (long axis) | tiny — better long-FL/cropped
-
-### 2. Sh2-101 — Tulip
+### 1. Sh2-101 — Tulip
 
 - **Type:** HII in Cyg  
 - **Coords (J2000):** RA 299.9790° / Dec +35.2770°  
@@ -54,9 +41,24 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 210 min above floor, peak 75.5° on 2026-06-25
 - **Notes:** Esprit: fits, PA 135° (long axis) | E80: small | S30: small | near Cyg X-1
+
+### 2. M57 — Ring
+
+- **Type:** PN in Lyr  
+- **Coords (J2000):** RA 283.3960° / Dec +33.0290°  
+- **Size:** 1' × 1'  
+- **FOV fit:** single frame (rig FOV 3.37° × 2.25°)  
+- **Per-filter status (captured / budget):**  
+  - Ha: 0 / 120 min (0% — 120m to go)
+  - OIII: 0 / 180 min (0% — 180m to go)
+  - LP: 121 / 180 min (67% — 59m to go)
+- **Observability per site:**  
+  - Jersey City: 240 min above floor, peak 82.3° on 2026-06-25
+- **Notes:** Esprit: fits, PA 000° (long axis) | tiny — better long-FL/cropped
 
 ### 3. NGC 6888 — Crescent
 
@@ -68,6 +70,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 150 min (0% — 150m to go)
   - OIII: 0 / 150 min (0% — 150m to go)
   - SII: 0 / 90 min (0% — 90m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 74.3° on 2026-06-25
 - **Notes:** Esprit: fits, PA 060° (long axis) | E80: small | S30: small | OIII shell + Ha; classic
@@ -82,6 +85,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 69.3° on 2026-06-25
 - **Notes:** Esprit: fits, PA 000° (long axis) | E80: fits | pillar + NGC6823 cluster
@@ -96,6 +100,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 150 min (0% — 150m to go)
   - OIII: 0 / 150 min (0% — 150m to go)
   - SII: 0 / 90 min (0% — 90m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 67.0° on 2026-06-25
 - **Notes:** Esprit: fits, PA 030° (long axis) | E80: small | S30: small | bright PN; OIII strong
@@ -109,6 +114,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 120 min (0% — 120m to go)
   - OIII: 0 / 180 min (0% — 180m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 61.1° on 2026-06-25
 - **Notes:** E80: fits | S30: tight | Bat+Squid fit together; the OIII Squid is dark-site-deep
@@ -123,6 +129,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 67.8° on 2026-06-25
 - **Notes:** Esprit: fits, any (round) | E80: fits | fits tight; pairs w/ NGC7000
@@ -137,6 +144,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 66.4° on 2026-06-25
 - **Notes:** E80: fits | S30: fits | NA alone fits with room (mosaic on the 120); +Pelican combo ~2.2°+ E-W = S30 or 2-panel
@@ -150,6 +158,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 120 min (0% — 120m to go)
   - OIII: 0 / 180 min (0% — 180m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 64.9° on 2026-06-25
 - **Notes:** Esprit: fits, PA 010° (long axis) | E80: fits | Witch's Broom / 52 Cyg; long thin
@@ -163,6 +172,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 120 min (0% — 120m to go)
   - OIII: 0 / 180 min (0% — 180m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 63.4° on 2026-06-25
 - **Notes:** Esprit: fits, PA 200° (long axis) | E80: fits | Network; OIII-rich filament
@@ -176,6 +186,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 210 min (0% — 210m to go)
   - OIII: 0 / 90 min (0% — 90m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 180 min above floor, peak 73.9° on 2026-06-25
 - **Notes:** S30: EW-overflow | Gamma Cyg complex ~3Â° round â€” overflows the 2.20Â° E-W axis; crop the Butterfly or 2-panel
@@ -189,6 +200,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 210 min (0% — 210m to go)
   - OIII: 0 / 90 min (0% — 90m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 120 min above floor, peak 62.8° on 2026-06-25
 - **Notes:** E80: fits | S30: fits | whole shell + 68 Cyg, with field
@@ -203,6 +215,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 120 min above floor, peak 59.0° on 2026-06-25
 - **Notes:** Esprit: fits, PA 120° (long axis) | trunk only (full IC1396 too big)
@@ -217,6 +230,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 120 min above floor, peak 58.6° on 2026-06-25
 - **Notes:** E80: tight | S30: tight | tight: 140' across vs 135' short axis — rim kiss; mu Cep + trunk + full shell
@@ -230,6 +244,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 120 min (0% — 120m to go)
   - OIII: 0 / 180 min (0% — 180m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 150 min above floor, peak 63.9° on 2026-06-25
 - **Notes:** S30: EW-overflow | ~3Â° wide E-W vs the 2.20Â° axis â€” full loop is a 2-panel RA split (trips/catskills_jun20 kit); one frame = the N-S height, E/W arcs clipped
@@ -243,6 +258,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
 - **Per-filter status (captured / budget):**  
   - Ha: 0 / 210 min (0% — 210m to go)
   - OIII: 0 / 90 min (0% — 90m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 90 min above floor, peak 57.1° on 2026-06-25
 - **Notes:** Esprit: fits, any (round) | E80: small | S30: small | small; emission core + dust
@@ -257,6 +273,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 90 min above floor, peak 48.2° on 2026-06-25
 - **Notes:** Esprit: fits, PA 090° (long axis) | E80: fits | S30: fits | dark cave rim
@@ -271,6 +288,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 60 min above floor, peak 53.3° on 2026-06-25
 - **Notes:** Esprit: fits, PA 030° (long axis) | E80: fits | S30: fits | faint; SHO rewards it
@@ -285,6 +303,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 60 min above floor, peak 49.5° on 2026-06-25
 - **Notes:** Esprit: fits, any (round) | E80: fits | open cluster + neb
@@ -299,6 +318,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 60 min above floor, peak 45.9° on 2026-06-25
 - **Notes:** Esprit: fits, PA 040° (long axis) | E80: fits | S30: fits | 60' fits long axis
@@ -313,6 +333,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 60 min above floor, peak 45.4° on 2026-06-25
 - **Notes:** Esprit: fits, PA 000° (long axis) | E80: small | bubble + M52 nearby
@@ -327,6 +348,7 @@ Generated for 14 night(s) starting 2026-06-12 • config: `config/esprit80_jc.ya
   - Ha: 0 / 180 min (0% — 180m to go)
   - OIII: 0 / 120 min (0% — 120m to go)
   - SII: 0 / 120 min (0% — 120m to go)
+  - LP: 0 / 180 min (0% — 180m to go)
 - **Observability per site:**  
   - Jersey City: 30 min above floor, peak 41.7° on 2026-06-25
 - **Notes:** Esprit: tight, any (round) | E80: fits | S30: fits | fills frame; pillars

@@ -3,8 +3,21 @@
 *Five parallel review agents over the full codebase (capture/NINA chain,
 VSX pipeline core, DSO family, stack/finish/photometry, CLI/webapp),
 findings adversarially spot-verified before recording. Hunt scope:
-correctness bugs + operational foot-guns; style excluded. Items are
-checked off as fixed.*
+correctness bugs + operational foot-guns; style excluded.*
+
+**STATUS — same-day fix wave (2026-06-12): every item below is FIXED**
+(four parallel fix agents + a main-line batch; 804 tests pass, +71 new
+pins) **except** the DST-transition sampling note inside item 33, which
+is accepted-as-documented (±60 min on the two transition nights/year).
+Bonus shipped in the same wave: **meridian-flip awareness in `mira
+capture`** — the loop polls the mount's pier side each iteration; on a
+flip it emits, re-centers via plate solve (when `--platesolve-center`
+is active), and counts `pier_flips` in the sidecar; guider-less/
+Seestar rigs (empty pier side) are a silent no-op. The catalog/doctrine
+half of item 2 means: emission targets now budget **LP 180m** for S30
+sessions, and `galaxies.yaml` budgets are keyed **IR** per the filter
+doctrine; off-budget filters now surface as UNBUDGETED rows in
+`mira dso status`.
 
 ## Critical — fix first
 

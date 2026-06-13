@@ -164,7 +164,11 @@ def color_type_disagreement(var_type: str, bp_rp: float | None) -> str | None:
         return f"VSX type 'M' (Mira) but Gaia BP-RP={bp_rp:.2f} (expected >1.5)"
     if any(t.startswith("SR") for t in tokens) and bp_rp < 1.0:
         return f"VSX type SR-family but Gaia BP-RP={bp_rp:.2f} (expected >1.0 for red giants)"
-    if any(t.startswith("L") for t in tokens) and bp_rp < 1.0:
+    # Explicit membership, not startswith("L"): the prefix test also caught
+    # LPB (long-period B-type pulsators), which are blue by nature and were
+    # handed a false color-anomaly bonus.
+    l_family = {"L", "LB", "LC"}
+    if any(t in l_family for t in tokens) and bp_rp < 1.0:
         return f"VSX type L-family but Gaia BP-RP={bp_rp:.2f} (expected >1.0)"
     short_period = {"DSCT", "EA", "EB", "EW"}
     if (any(t.startswith("RR") for t in tokens) or any(t in short_period for t in tokens)) and bp_rp > 1.8:

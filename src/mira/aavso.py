@@ -3,10 +3,11 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import unquote_plus
+from urllib.parse import parse_qs, urlsplit
 
 from .cache import cached_get
 from .config import AavsoConfig, ScoutConfig
@@ -60,10 +61,13 @@ def fetch_recent_observation_count(
     config: AavsoConfig,
     catalog_period: float | None = None,
 ) -> AavsoStats:
-    to_dt = datetime.now(timezone.utc)
-    from_dt = to_dt - timedelta(days=config.recent_days)
-    from_jd = julian_date(from_dt)
-    to_jd = julian_date(to_dt)
+    # Floor the query window to whole JDs so the request URL — and therefore
+    # the cache key — is stable across runs within the same day. JDs at
+    # second resolution made every run's URL unique: the cache never hit
+    # (TTL dead) and data/cache/aavso/ grew without bound.
+    now_jd = julian_date(datetime.now(timezone.utc))
+    from_jd = float(math.floor(now_jd) - config.recent_days)
+    to_jd = float(math.ceil(now_jd))
     params = {
         "view": "api.object",
         "ident": name,
@@ -87,7 +91,12 @@ def fetch_recent_observation_count(
         peak_power: float | None = None
         period_disagrees: bool | None = None
         period_note = ""
-        if catalog_period is not None and count > 0:
+        if count > 0:
+            # Run the period analysis even when VSX has no catalog period:
+            # that is the only path to the "period discovered" bonus in
+            # apply_aavso_score (gating on catalog_period made it dead code).
+            # assess_period_disagreement returns (None, "") when
+            # catalog_period is None, so the disagreement logic is unaffected.
             times = [obs[0] for obs in observations]
             mags = [obs[1] for obs in observations]
             bands = [obs[2] for obs in observations]
@@ -231,21 +240,30 @@ def find_cached_response_for_name(name: str) -> str | None:
     """Fallback used when the live AAVSO API request fails: scan the cache
     directory for a previously-successful response keyed by the same target
     name. Returns the cached XML text or None if nothing usable is on disk.
+
+    The cached URL's query string is parsed and its ``ident`` parameter
+    compared exactly. A substring test would let "ident=ZTF J123" match a
+    cached "ZTF J1234..." entry and report the WRONG star's observations
+    as ok-cached.
     """
     if not AAVSO_CACHE_DIR.exists():
         return None
-    encoded_name = f"ident={name.replace(' ', '+')}"
-    plain_name = f"ident={name}"
     for path in sorted(AAVSO_CACHE_DIR.glob("*.json"), reverse=True):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        url = unquote_plus(str(payload.get("url", "")))
-        if payload.get("status_code") == 200 and (encoded_name in url or plain_name in url):
-            text = str(payload.get("text", ""))
-            if text.startswith("<?xml"):
-                return text
+        if payload.get("status_code") != 200:
+            continue
+        # parse_qs decodes exactly what requests' urlencode produced for the
+        # original request ('+' for spaces, %XX escapes), so equality against
+        # the raw name is an exact round-trip match.
+        query = urlsplit(str(payload.get("url", ""))).query
+        if name not in parse_qs(query).get("ident", []):
+            continue
+        text = str(payload.get("text", ""))
+        if text.startswith("<?xml"):
+            return text
     return None
 
 

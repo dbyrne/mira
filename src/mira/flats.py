@@ -147,22 +147,20 @@ def _read_last(client: _Client) -> dict[str, Any]:
     return hist[-1] if hist else {}
 
 
-def _find_capture_file(
-    root: Path, filename: str | None, after_mtime: float
-) -> str | None:
-    """Resolve the FITS this capture wrote. Prefer an exact basename match
-    against the image-history Filename (how NINA ties history to the saved
-    file — deterministic, collision-free). Fall back to newest-by-mtime
-    only if the name can't be matched (defensive; real NINA always names
-    them)."""
-    files = glob.glob(os.path.join(str(root), "**", "*.fit*"), recursive=True)
-    if filename:
-        base = os.path.basename(str(filename))
-        for p in files:
-            if os.path.basename(p) == base:
-                return p
-    cands = [p for p in files if os.path.getmtime(p) > after_mtime]
-    return max(cands, key=os.path.getmtime) if cands else None
+def _find_capture_file(root: Path, filename: str | None) -> str | None:
+    """Resolve the FITS this capture wrote by exact basename match against
+    the image-history Filename (how NINA ties history to the saved file —
+    deterministic, collision-free). NO mtime fallback: newest-by-mtime can
+    grab a concurrent writer's file (e.g. Syncthing mirroring into the
+    same tree) and contaminate a master. A basename miss returns None and
+    the caller rejects the frame."""
+    if not filename:
+        return None
+    base = os.path.basename(str(filename))
+    for p in glob.glob(os.path.join(str(root), "**", "*.fit*"), recursive=True):
+        if os.path.basename(p) == base:
+            return p
+    return None
 
 
 def shoot(
@@ -192,7 +190,7 @@ def shoot(
         stars = int(last.get("Stars"))
     except (TypeError, ValueError):
         stars = 9999
-    newest = _find_capture_file(nina_root, fn, t0 - 1.0) if fresh else None
+    newest = _find_capture_file(nina_root, fn) if fresh else None
     return fresh, med, stars, newest, t0
 
 
@@ -451,22 +449,30 @@ def resolve_master_for_lights(
 def _setup_panel(
     client: _Client, *, use_panel: bool, panel_brightness: int | None,
     emit: Callable[[str], None],
-) -> tuple[bool, int | None]:
-    """Best-effort: prep a motorized flat panel (close cover, set
-    brightness, light on). Returns (panel_driven, commanded_brightness).
-    `panel_driven=False` falls back to paper mode — the bracket loop
-    doesn't care which is illuminating the aperture."""
+) -> tuple[bool, int | None, bool]:
+    """Prep a motorized flat panel (close cover, set brightness, light on).
+    Returns (panel_driven, commanded_brightness, commands_issued).
+
+    Falling back to paper mode is legitimate only BEFORE any panel command
+    has gone out (no device on the bus, or it reports Error at rest). Once
+    a command has been issued, a failure leaves the panel half-configured —
+    most dangerously a closed lid with the light state unknown. "Paper
+    mode" would then bracket every filter against the shut cover (all read
+    opaque) and the gated teardown would never kill the EL light. That
+    case raises instead of proceeding, after a best-effort light-off.
+    `commands_issued` is what teardown gates on — not `panel_driven` — so
+    any partially-driven panel still gets its light turned off."""
     if not use_panel:
         emit("flat source: paper (--no-panel)")
-        return False, None
+        return False, None, False
     info = client.flat_device_info()
     if not info or not info.get("Connected"):
         emit("flat source: paper (no flat device reported by NINA)")
-        return False, None
+        return False, None, False
     cover_state = str(info.get("CoverState", ""))
     if cover_state in ("Error", "NotPresent"):
         emit(f"flat source: paper (flat device reports CoverState={cover_state})")
-        return False, None
+        return False, None, False
     # Pick brightness: explicit override > fraction of MaxBrightness.
     if panel_brightness is None:
         try:
@@ -476,6 +482,20 @@ def _setup_panel(
         commanded = max(1, int(round(mx * PANEL_BRIGHTNESS_DEFAULT_FRAC)))
     else:
         commanded = int(panel_brightness)
+
+    def _abort(detail: str) -> RuntimeError:
+        # Best-effort light-off first; never proceed against a panel in an
+        # unknown state. set_calibrator_on never raises by contract, but
+        # the abort message must survive even a misbehaving client.
+        try:
+            client.set_calibrator_on(False, wait=True)
+        except Exception:  # noqa: BLE001
+            pass
+        return RuntimeError(
+            f"flat panel half-configured ({detail}) — fix the panel or run "
+            "--no-panel with the cover OPEN"
+        )
+
     # Close cover (a flat panel illuminates the aperture only when the
     # lid is shut over the OTA; an open lid points the EL film at the
     # ceiling, not down the tube).
@@ -483,17 +503,17 @@ def _setup_panel(
     if supports_open_close and cover_state != "Closed":
         emit("flat panel: closing cover...")
         if not client.close_cover(wait=True, timeout_s=60.0):
-            emit("flat panel: close-cover FAILED -> falling back to paper mode")
-            return False, None
+            emit("flat panel: close-cover did NOT confirm — aborting")
+            raise _abort("close-cover did not confirm; cover state unknown")
     emit(f"flat panel: setting brightness {commanded} and light on...")
     if not client.set_calibrator_brightness(commanded, wait=True):
-        emit("flat panel: set-brightness FAILED -> falling back to paper mode")
-        return False, None
+        emit("flat panel: set-brightness FAILED — aborting")
+        raise _abort("cover closed, light state unknown")
     if not client.set_calibrator_on(True, wait=True):
-        emit("flat panel: set-light-on FAILED -> falling back to paper mode")
-        return False, None
+        emit("flat panel: set-light-on FAILED — aborting")
+        raise _abort("cover closed, light state unknown")
     emit(f"flat source: motorized panel (brightness={commanded})")
-    return True, commanded
+    return True, commanded, True
 
 
 def _teardown_panel(client: _Client, *, emit: Callable[[str], None]) -> None:
@@ -541,7 +561,7 @@ def run_flats(
             on_step(m)
 
     out_root = Path(out_root)
-    panel_driven, commanded_brightness = _setup_panel(
+    panel_driven, commanded_brightness, panel_commanded = _setup_panel(
         client, use_panel=use_panel, panel_brightness=panel_brightness,
         emit=emit,
     )
@@ -644,6 +664,8 @@ def run_flats(
             run.results.append(res)
             emit(f"[{name}] DONE -> {master or '(master build failed)'}")
     finally:
-        if panel_driven:
+        # Gate on commands-issued, not panel_driven: if the panel was even
+        # partially driven, the light must be killed at teardown.
+        if panel_commanded:
             _teardown_panel(client, emit=emit)
     return run

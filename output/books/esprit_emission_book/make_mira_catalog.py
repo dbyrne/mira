@@ -19,6 +19,16 @@ OUT = Path("data/dso_catalog/emission_nebulae.yaml")
 TYPE_MAP = {"HII":"HII","HII+refl":"HII","WR bubble":"WR","PN":"PN","SNR":"SNR","WR":"WR"}
 
 def budget(pal):
+    nb = _narrowband_budget(pal)
+    # Every emission target ALSO budgets LP: the S30 shoots these through its
+    # dual-band (Ha+OIII) LP filter, and the ledger only books minutes against
+    # budgeted filter keys — without LP, by-the-book S30 emission sessions
+    # would be invisible (0% complete forever). Doesn't flip is_narrowband
+    # (that checks Ha/OIII/SII only), so moon-relax behavior is unchanged.
+    nb["LP"] = 180
+    return nb
+
+def _narrowband_budget(pal):
     p = pal.lower()
     if "sii" in p or ("sho" in p and "hoo" not in p): return {"Ha":180,"OIII":120,"SII":120}
     if "sho" in p and "hoo" in p:                       return {"Ha":150,"OIII":150,"SII":90}
@@ -69,6 +79,9 @@ L = ['# Emission-nebula catalog — union of the Esprit 120 + Esprit 80 + S30 Pr
  '# mosaic=true flags objects that overflow even the S30\'s measured wide field',
  '# (3.91x2.20deg, 10% rim tolerance) — single-frame fit per rig is otherwise',
  '# computed at plan time from fov_deg. Schema = data/dso_catalog/sho_targets.yaml.',
+ '# Budgets: Ha/OIII/SII from the palette (the Esprit mono side) + LP for the',
+ '# S30, which shoots emission through its dual-band LP filter — the ledger',
+ '# only books minutes against budgeted keys, so LP must be listed here.',
  '',
  'catalog_version: "2026-06-12-emission"',
  '',

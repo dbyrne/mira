@@ -11,7 +11,7 @@ from mira.period_analysis import (
     assess_period_disagreement,
     period_disagreement,
 )
-from mira.ztf import estimate_period_from_rows
+from mira.ztf import estimate_period_from_rows, parse_ipac_table, parse_light_curve_table
 
 
 class PeriodEstimationTests(TestCase):
@@ -114,6 +114,52 @@ class AssessPeriodDisagreementTests(TestCase):
         )
         self.assertFalse(result)
         self.assertEqual(note, "")
+
+
+class IpacTableParseTests(TestCase):
+    def test_short_subheader_keeps_leading_data_rows(self) -> None:
+        # Only ONE "|"-prefixed sub-header line after the column names: the
+        # old hardcoded header_index + 4 start silently dropped the first
+        # two data rows. The loop skips "|"/"\\" lines itself, so parsing
+        # must start right after the header.
+        text = (
+            "\\catalog = ztf_objects\n"
+            "|     mjd|    mag|filtercode|\n"
+            "|  double| double|      char|\n"
+            " 59000.10  15.20  zg\n"
+            " 59001.20  15.30  zg\n"
+            " 59002.30  15.40  zr\n"
+        )
+        rows = parse_ipac_table(text)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0]["mjd"], "59000.10")
+        self.assertEqual(rows[0]["filtercode"], "zg")
+        self.assertEqual(rows[2]["filtercode"], "zr")
+
+    def test_full_four_line_header_still_parses(self) -> None:
+        # The classic IRSA shape: name/type/unit/null header lines.
+        text = (
+            "|     mjd|    mag|filtercode|\n"
+            "|  double| double|      char|\n"
+            "|    days|    mag|          |\n"
+            "|    null|   null|      null|\n"
+            " 59000.10  15.20  zg\n"
+            " 59001.20  15.30  zr\n"
+        )
+        rows = parse_ipac_table(text)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1]["mjd"], "59001.20")
+        self.assertEqual(rows[1]["filtercode"], "zr")
+
+    def test_dispatch_routes_ipac_text_through_ipac_parser(self) -> None:
+        text = (
+            "\\fixlen = T\n"
+            "|     mjd|    mag|filtercode|\n"
+            " 59000.10  15.20  zg\n"
+        )
+        rows = parse_light_curve_table(text)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["mag"], "15.20")
 
 
 class PeriodDisagreementTests(TestCase):

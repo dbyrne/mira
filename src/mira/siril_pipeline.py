@@ -82,7 +82,10 @@ def run_siril_stack(
             stretch=stretch,
         )
         log = run_siril(script, work_dir=work_dir, cli_path=cli_path)
-        produced = result_stem.with_suffix(".fit")
+        # Append, don't with_suffix: for a multi-dot out name (M51.lrgb.tif
+        # -> stem M51.lrgb) with_suffix would REPLACE ".lrgb" and look for
+        # M51.fit while Siril wrote M51.lrgb.fit.
+        produced = result_stem.parent / (result_stem.name + ".fit")
         if not produced.exists():
             raise SirilError(
                 "Siril reported success but no FITS was written "
@@ -99,10 +102,10 @@ def run_siril_stack(
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
-def _brightest_star_xy(image: np.ndarray) -> tuple[float, float] | None:
-    """(x, y) of the brightest detected star, or None if none found.
-    DAOStarFinder mirrors what the existing m3/rehearsal code already
-    relies on, so no new dependency."""
+def _detected_stars_xy(image: np.ndarray) -> np.ndarray | None:
+    """(N, 2) array of (x, y) for every detected star, brightest first, or
+    None if none found. DAOStarFinder mirrors what the existing
+    m3/rehearsal code already relies on, so no new dependency."""
     from astropy.stats import sigma_clipped_stats
     from photutils.detection import DAOStarFinder
 
@@ -120,7 +123,17 @@ def _brightest_star_xy(image: np.ndarray) -> tuple[float, float] | None:
     cols = tbl.colnames
     xcol = "x_centroid" if "x_centroid" in cols else "xcentroid"
     ycol = "y_centroid" if "y_centroid" in cols else "ycentroid"
-    return float(tbl[xcol][0]), float(tbl[ycol][0])
+    return np.column_stack(
+        [np.asarray(tbl[xcol], dtype=float), np.asarray(tbl[ycol], dtype=float)]
+    )
+
+
+def _brightest_star_xy(image: np.ndarray) -> tuple[float, float] | None:
+    """(x, y) of the brightest detected star, or None if none found."""
+    stars = _detected_stars_xy(image)
+    if stars is None:
+        return None
+    return float(stars[0, 0]), float(stars[0, 1])
 
 
 def verify_wcs_preserved(original: Path, calibrated: Path) -> None:
@@ -145,21 +158,27 @@ def verify_wcs_preserved(original: Path, calibrated: Path) -> None:
     sky = wcs0.pixel_to_world(star0[0], star0[1])
     px, py = wcs1.world_to_pixel(sky)
 
-    star1 = _brightest_star_xy(img1)
-    if star1 is None:
+    stars1 = _detected_stars_xy(img1)
+    if stars1 is None:
         raise SirilError(
             f"WCS safety gate: no stars detectable in calibrated {calibrated.name}. "
             "Refusing to proceed."
         )
     # Compare the predicted position of the brightest original star to the
-    # brightest calibrated star. For a well-behaved calibrate they are the
-    # same physical star; a flip makes them disagree by ~image height.
-    dist = float(np.hypot(px - star1[0], py - star1[1]))
+    # NEAREST detected star in the calibrated frame — not the brightest:
+    # calibration can legitimately reorder brightness between near-equal
+    # stars, which would make a brightest-vs-brightest comparison a false
+    # "flipped" abort. For a well-behaved calibrate a real star still sits
+    # at the prediction; a flip leaves the prediction in empty sky (the
+    # nearest detection lands ~image-height away).
+    nearest = stars1[int(np.argmin(np.hypot(stars1[:, 0] - px, stars1[:, 1] - py)))]
+    dist = float(np.hypot(px - nearest[0], py - nearest[1]))
     if dist > _WCS_TOLERANCE_PX:
         raise SirilError(
-            "WCS safety gate FAILED: brightest star's WCS-predicted pixel "
-            f"({px:.1f}, {py:.1f}) is {dist:.1f}px from the actual brightest "
-            f"star ({star1[0]:.1f}, {star1[1]:.1f}) in {calibrated.name}. "
+            "WCS safety gate FAILED: the brightest original star's "
+            f"WCS-predicted pixel ({px:.1f}, {py:.1f}) is {dist:.1f}px from "
+            f"the nearest detected star ({nearest[0]:.1f}, {nearest[1]:.1f}) "
+            f"in {calibrated.name}. "
             "Siril likely flipped the image while keeping the NINA WCS "
             "keywords — photometry on this would be silently wrong. Aborting. "
             "Run photometry on the raw frames instead (drop --siril-calibrate)."
@@ -184,6 +203,20 @@ def run_siril_calibrate_for_photometry(
         raise SirilError(
             f"--siril-calibrate needs FITS lights with a WCS in {lights_dir}; "
             "none found (photometry requires NINA's plate-solved FITS)."
+        )
+    # Siril's `convert` ingests EVERY readable image in the directory, while
+    # the original↔calibrated pairing below assumes FITS-only (sorted index
+    # N ↔ pp_light_NNNNN). One stray JPG would silently shift the indices
+    # and the WCS gate would compare the wrong frames — refuse instead.
+    non_fits = [p for p in lights if p.suffix.lower() not in (".fit", ".fits", ".fts")]
+    if non_fits:
+        names = ", ".join(p.name for p in non_fits[:8])
+        more = f" (+{len(non_fits) - 8} more)" if len(non_fits) > 8 else ""
+        raise SirilError(
+            f"--siril-calibrate: {lights_dir} contains non-FITS image files "
+            f"Siril would also convert ({names}{more}), which would shift the "
+            "original<->calibrated frame pairing. Move them out of the "
+            "lights directory and retry."
         )
 
     out_dir = lights_dir.resolve().parent / (lights_dir.name + "_siril_cal")

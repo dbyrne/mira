@@ -78,7 +78,13 @@ def register_routes(app: Flask) -> None:
     def trigger_run():
         runs: RunRegistry = current_app.config["RUNS"]
         config_path = request.form.get("config", "config/s30_pro_jc.yaml")
-        hours = float(request.form.get("hours", "4"))
+        try:
+            hours = float(request.form.get("hours", "4"))
+        except (TypeError, ValueError):
+            hours = 4.0
+        # Same clamp the settings page applies — a negative/garbage value
+        # otherwise silently yields an empty window (2026-06-12 review).
+        hours = max(0.5, min(14.0, hours))
         mode = request.form.get("mode") or None
         output_dir: Path = current_app.config["OUTPUT_DIR"]
 
@@ -353,15 +359,15 @@ def register_routes(app: Flask) -> None:
         record = runs.latest(submit_kind(target_slug, resolved_date))
         if record is None or record.status != "done":
             abort(404)
-        if record.result is None:
-            record.result = {}
-        record.result["submitted_at"] = datetime.now(timezone.utc).isoformat()
+        submitted_at = datetime.now(timezone.utc).isoformat()
+        # Locked merge — direct record.result writes race to_dict snapshots.
+        record.update_result(lambda r: {**(r or {}), "submitted_at": submitted_at})
         record.log("Marked as submitted to AAVSO WebObs.")
         runs.persist(record)
         # Also flush submission to SQLite if available.
         store = current_app.config.get("SESSION_STORE")
         if store is not None:
-            store.mark_submitted(record.run_id, record.result["submitted_at"])
+            store.mark_submitted(record.run_id, submitted_at)
         return redirect(url_for("photometry_target", target_slug=target_slug, date=resolved_date))
 
     @app.route("/photometry/<target_slug>/download-with-selection", methods=["POST"])

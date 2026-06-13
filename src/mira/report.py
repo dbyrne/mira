@@ -466,8 +466,12 @@ def write_candidate_packet(candidate: Candidate, packet_dir: Path) -> Path:
         "",
     ]
 
-    for index, obs in enumerate(candidate.observabilities):
-        heading_suffix = " (best)" if index == 0 else ""
+    # "(best)" must tag the canonical score-best site (best_site_name, the
+    # same site the unified CSV's primary_site reflects) — observabilities[0]
+    # is the geometric best, which can diverge from it.
+    best_obs = candidate.best_observability
+    for obs in candidate.observabilities:
+        heading_suffix = " (best)" if obs is best_obs else ""
         lines.extend(
             [
                 f"## Observability from {obs.site_name}{heading_suffix}",

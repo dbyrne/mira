@@ -98,6 +98,50 @@ class LoadDsoCatalogTests(TestCase):
                 load_dso_catalog(path)
             self.assertIn("ra_deg", str(cm.exception))
 
+    def test_negative_ra_rejected(self) -> None:
+        # The old -360..360 range let a pasted negative RA through, which
+        # survived into the TS export as a garbage sexagesimal row. Strict
+        # [0, 360) now: negative RA and 360.0 itself are both errors.
+        for bad_ra in (-10.0, -0.001, 360.0, 360):
+            with self.subTest(ra_deg=bad_ra):
+                with TemporaryDirectory() as tmp:
+                    path = _write_catalog(Path(tmp), {
+                        "targets": [{**VALID_TARGET, "ra_deg": bad_ra}],
+                    })
+                    with self.assertRaises(ValueError) as cm:
+                        load_dso_catalog(path)
+                    self.assertIn("ra_deg", str(cm.exception))
+
+    def test_ra_zero_accepted(self) -> None:
+        # The boundary that must stay valid: RA 0 is a real coordinate.
+        with TemporaryDirectory() as tmp:
+            path = _write_catalog(Path(tmp), {
+                "targets": [{**VALID_TARGET, "ra_deg": 0.0}],
+            })
+            cat = load_dso_catalog(path)
+            self.assertEqual(cat.targets[0].ra_deg, 0.0)
+
+    def test_fractional_budget_rejected(self) -> None:
+        # int(90.5) used to silently truncate to 90 — a hand-edit typo the
+        # strict loader elsewhere would have caught. Now a ValueError.
+        with TemporaryDirectory() as tmp:
+            path = _write_catalog(Path(tmp), {
+                "targets": [{**VALID_TARGET, "budget_minutes": {"Ha": 90.5}}],
+            })
+            with self.assertRaises(ValueError) as cm:
+                load_dso_catalog(path)
+            self.assertIn("whole minutes", str(cm.exception))
+            self.assertIn("90.5", str(cm.exception))
+
+    def test_integral_float_budget_accepted(self) -> None:
+        # 90.0 is a valid spelling of 90 — only truly fractional values reject.
+        with TemporaryDirectory() as tmp:
+            path = _write_catalog(Path(tmp), {
+                "targets": [{**VALID_TARGET, "budget_minutes": {"Ha": 90.0}}],
+            })
+            cat = load_dso_catalog(path)
+            self.assertEqual(cat.targets[0].budget_minutes["Ha"], 90)
+
     def test_out_of_range_dec_rejected(self) -> None:
         with TemporaryDirectory() as tmp:
             path = _write_catalog(Path(tmp), {
@@ -131,6 +175,20 @@ class DsoCatalogShippedTests(TestCase):
     """Validate the actual shipped catalog at data/dso_catalog/sho_targets.yaml.
     Lightweight sanity check — every target must parse, no duplicates, all
     dec >= -25 (we're targeting from Jersey City at lat ~40N)."""
+
+    def test_all_shipped_catalogs_load_under_strict_ra_range(self) -> None:
+        # The loader now rejects ra_deg outside [0, 360); every shipped
+        # catalog must comply (i.e. keep loading) under the strict rule.
+        for rel in ("data/dso_catalog/sho_targets.yaml",
+                    "data/dso_catalog/galaxies.yaml",
+                    "data/dso_catalog/emission_nebulae.yaml"):
+            path = Path(rel)
+            if not path.exists():
+                self.skipTest(f"shipped catalog not present at {path}")
+            cat = load_dso_catalog(path)
+            for target in cat.targets:
+                with self.subTest(catalog=rel, target=target.name):
+                    self.assertTrue(0.0 <= target.ra_deg < 360.0)
 
     def test_shipped_catalog_loads_and_is_jc_friendly(self) -> None:
         path = Path("data/dso_catalog/sho_targets.yaml")
@@ -194,13 +252,42 @@ class RenderResearchNotesTests(TestCase):
         )
 
     def test_includes_every_target_with_anchor(self) -> None:
-        from mira.dso.research import render_research_notes, _slug
+        # The index anchor must slug the FULL heading ("name — common"), not
+        # just the name — a name-only slug is a dead link in GitHub-style
+        # renderers. Pin the exact expected anchors (hand-computed per
+        # GitHub's algorithm: em-dash dropped, flanking spaces → "--").
+        from mira.dso.research import render_research_notes
         md = render_research_notes(self._catalog())
-        for name in ("NGC 6888", "IC 1396", "NGC 7023"):
+        expected = {
+            "NGC 6888": ("Crescent Nebula", "ngc-6888--crescent-nebula"),
+            "IC 1396": ("Elephant's Trunk", "ic-1396--elephants-trunk"),
+            "NGC 7023": ("Iris Nebula", "ngc-7023--iris-nebula"),
+        }
+        for name, (common, anchor) in expected.items():
             with self.subTest(name=name):
-                self.assertIn(f"### {name}", md, f"missing detail header for {name}")
-                anchor = _slug(name)
-                self.assertIn(f"#{anchor}", md, f"missing index anchor for {name}")
+                self.assertIn(
+                    f"### {name} — {common}", md,
+                    f"missing detail header for {name}",
+                )
+                self.assertIn(
+                    f"](#{anchor})", md, f"missing index anchor for {name}",
+                )
+
+    def test_slug_matches_github_algorithm(self) -> None:
+        # Hand-verified GitHub anchor behavior: lowercase; word chars and
+        # hyphens kept (underscore is a word char — preserved, NOT mapped to
+        # a hyphen); spaces → hyphens; all other punctuation dropped. The
+        # em-dash is punctuation, so " — " yields "--" (its two flanking
+        # spaces survive as hyphens).
+        from mira.dso.research import _slug
+        self.assertEqual(
+            _slug("NGC 6888 — Crescent Nebula"), "ngc-6888--crescent-nebula",
+        )
+        self.assertEqual(
+            _slug("IC 1396 — Elephant's Trunk"), "ic-1396--elephants-trunk",
+        )
+        self.assertEqual(_slug("Sh2-101 — Tulip"), "sh2-101--tulip")
+        self.assertEqual(_slug("foo_bar Baz"), "foo_bar-baz")
 
     def test_mosaic_flagged_in_detail(self) -> None:
         from mira.dso.research import render_research_notes
@@ -319,6 +406,24 @@ class DsoTargetPropsTests(TestCase):
             budget_minutes={"L": 240, "R": 180, "G": 180, "B": 180},
         )
         self.assertFalse(t.is_narrowband)
+
+    def test_lp_budget_does_not_make_narrowband(self) -> None:
+        # The emission catalog budgets LP for the S30 alongside Ha/OIII/SII.
+        # is_narrowband checks Ha/OIII/SII ONLY — an LP key must neither
+        # grant narrowband status on its own nor revoke it when present
+        # next to a real narrowband budget.
+        lp_only = DsoTarget(
+            name="x", common_name="y", object_type="GALAXY",
+            ra_deg=0, dec_deg=0, size_arcmin=(1, 1), constellation="",
+            budget_minutes={"LP": 180},
+        )
+        self.assertFalse(lp_only.is_narrowband)
+        nb_plus_lp = DsoTarget(
+            name="x", common_name="y", object_type="HII",
+            ra_deg=0, dec_deg=0, size_arcmin=(1, 1), constellation="",
+            budget_minutes={"Ha": 150, "OIII": 150, "LP": 180},
+        )
+        self.assertTrue(nb_plus_lp.is_narrowband)
 
     def test_total_budget_minutes(self) -> None:
         t = DsoTarget(

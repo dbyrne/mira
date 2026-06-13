@@ -162,7 +162,12 @@ def parse_ipac_table(text: str) -> list[dict[str, str]]:
     if header_index is None:
         return []
     header = [part.strip() for part in lines[header_index].strip("|").split("|")]
-    data_start = header_index + 4
+    # IPAC tables carry a variable number of "|"-prefixed sub-header lines
+    # (type/unit/null) after the column names. The loop below skips any
+    # "|"-prefixed line, so start right after the header instead of assuming
+    # exactly 3 more — a hardcoded +4 silently dropped leading data rows
+    # whenever the sub-header was shorter.
+    data_start = header_index + 1
     rows: list[dict[str, str]] = []
     for line in lines[data_start:]:
         if line.startswith("\\") or line.startswith("|"):

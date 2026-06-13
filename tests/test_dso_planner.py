@@ -219,6 +219,92 @@ class BuildDsoCandidatesTests(TestCase):
         self.assertEqual(len(cands[0].observabilities), 2)
 
 
+class RelaxMoonAllTests(TestCase):
+    """relax_moon_all — the engine half of `mira galaxies plan --relax-moon`.
+
+    The narrowband-only relax above is pinned and stays the default; but
+    every shipped galaxy is broadband, so without an explicit force the
+    --relax-moon flag was a silent no-op on the galaxy path. These tests
+    are deterministic regardless of where the moon happens to be: forcing
+    the relax on a fully-moon-blocked site must reproduce a moon-free
+    site's result exactly (``_maybe_relax_moon`` replaces the moon gates
+    with exactly the moon-free values)."""
+
+    DATE = date(2026, 8, 15)
+
+    def _strict_moon_site(self) -> SiteConfig:
+        # Any sky is blocked whenever the moon is above the horizon.
+        return _make_site(
+            min_moon_separation_deg=180.0,
+            max_moon_altitude_deg=0.0,
+            max_moon_illumination=0.0,
+        )
+
+    def _moon_free_site(self) -> SiteConfig:
+        # The exact permissive values _maybe_relax_moon installs.
+        return _make_site(
+            min_moon_separation_deg=0.0,
+            max_moon_altitude_deg=90.0,
+            max_moon_illumination=1.01,
+        )
+
+    def test_relax_moon_all_relaxes_broadband(self) -> None:
+        broadband = _make_target(name="BB", budget={"IR": 240})
+        catalog = DsoCatalog(version="t", defaults={}, targets=(broadband,))
+        forced = build_dso_candidates(
+            catalog, _make_config(self._strict_moon_site()),
+            start_date=self.DATE, relax_moon_all=True,
+        )
+        free = build_dso_candidates(
+            catalog, _make_config(self._moon_free_site()),
+            start_date=self.DATE,
+        )
+        self.assertEqual(len(forced), 1)
+        self.assertEqual(len(free), 1)
+        self.assertEqual(forced[0].score, free[0].score)
+        self.assertEqual(
+            forced[0].best_observability.minutes_above_minimum,
+            free[0].best_observability.minutes_above_minimum,
+        )
+        # The reason must not claim the galaxy is narrowband.
+        self.assertIn("moon-relaxed (forced)", forced[0].reasons)
+        self.assertNotIn("moon-relaxed (narrowband)", forced[0].reasons)
+
+    def test_relax_moon_all_covers_narrowband_even_with_relax_moon_off(self) -> None:
+        nb = _make_target(name="NB", budget={"Ha": 600})
+        catalog = DsoCatalog(version="t", defaults={}, targets=(nb,))
+        forced = build_dso_candidates(
+            catalog, _make_config(self._strict_moon_site()),
+            start_date=self.DATE, relax_moon=False, relax_moon_all=True,
+        )
+        free = build_dso_candidates(
+            catalog, _make_config(self._moon_free_site()),
+            start_date=self.DATE, relax_moon=False,
+        )
+        self.assertEqual(len(forced), 1)
+        self.assertEqual(forced[0].score, free[0].score)
+        # Narrowband keeps its honest label even when force-relaxed.
+        self.assertIn("moon-relaxed (narrowband)", forced[0].reasons)
+
+    def test_default_false_keeps_broadband_strict(self) -> None:
+        # The documented no-op the kwarg exists to fix: with relax_moon_all
+        # left at its default, a broadband target on a moon-strict site is
+        # bit-for-bit identical whether relax_moon is True or False.
+        broadband = _make_target(name="BB", budget={"IR": 240})
+        catalog = DsoCatalog(version="t", defaults={}, targets=(broadband,))
+        config = _make_config(self._strict_moon_site())
+        with_relax = build_dso_candidates(
+            catalog, config, start_date=self.DATE, relax_moon=True,
+        )
+        without = build_dso_candidates(
+            catalog, config, start_date=self.DATE, relax_moon=False,
+        )
+        self.assertEqual(
+            [(c.target.name, c.score, c.reasons) for c in with_relax],
+            [(c.target.name, c.score, c.reasons) for c in without],
+        )
+
+
 class DsoConfigDefaultsTests(TestCase):
     def test_default_dsoconfig_present_on_scoutconfig(self) -> None:
         # ScoutConfig.dso must always have a value — even on configs that

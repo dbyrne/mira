@@ -22,12 +22,17 @@
 #   size_arcmin    — [major, minor] of the D25 isophote
 #   magnitude      — integrated visual magnitude (the galaxy-specific field)
 #   constellation  — IAU 3-letter
-#   budget_minutes — {LP: minutes}. LP = the S30's light-pollution filter,
-#                    the broadband-from-city workhorse. Keeping it broadband
-#                    (no Ha/OIII/SII) means the planner applies the strict
-#                    moon gate, which is correct for galaxies. Budgets scale
-#                    with surface brightness: bright/high-SB ~120-180,
-#                    medium ~240, faint low-SB ~300-360.
+#   budget_minutes — {IR: minutes}. IR = the S30's IR-cut broadband filter,
+#                    the slot galaxies are shot through per the galaxy
+#                    doctrine (the slot named "LP" is the dual-band
+#                    Ha+OIII filter, for emission targets only — and the
+#                    ledger only books minutes against budgeted filter
+#                    keys, so the key here MUST match the filter actually
+#                    used). Keeping it broadband (no Ha/OIII/SII) means the
+#                    planner applies the strict moon gate, which is correct
+#                    for galaxies. Budgets scale with surface brightness:
+#                    bright/high-SB ~120-180, medium ~240, faint low-SB
+#                    ~300-360.
 #   notes          — morphology + a capture tip
 #
 # Coordinates are J2000 from SIMBAD/NED, ~arcmin precision (plate-solve does
@@ -43,7 +48,7 @@ catalog_version: "2026-05-28"
 defaults:
   gain: 80            # S30 Pro IMX585 HCG point (see memory: s30-pro-imx585-gain)
   exposure_s: 30      # 30s OSC subs in EQ mode — galaxies want depth + dither
-  filter: LP          # broadband-from-city; the only sensible galaxy filter on the S30
+  filter: IR          # the S30's IR-cut broadband — the galaxy doctrine slot (LP = dual-band, emission only)
 
 targets:
   # ================================================================
@@ -57,7 +62,7 @@ targets:
     size_arcmin: [26.9, 14.1]
     magnitude: 6.9
     constellation: UMa
-    budget_minutes: {LP: 150}
+    budget_minutes: {IR: 150}
     notes: "Grand-design spiral, bright core. Circumpolar from JC — usable most of the year. Frames with M82."
 
   - name: "M82"
@@ -68,7 +73,7 @@ targets:
     size_arcmin: [11.2, 4.3]
     magnitude: 8.4
     constellation: UMa
-    budget_minutes: {LP: 150}
+    budget_minutes: {IR: 150}
     notes: "Edge-on starburst, very high SB — excellent from the city. Red Ha plume shows even in OSC LP."
 
   - name: "M106"
@@ -79,7 +84,7 @@ targets:
     size_arcmin: [18.6, 7.2]
     magnitude: 8.4
     constellation: CVn
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Bright Seyfert spiral with anomalous arms. Bright core, easy from JC."
 
   - name: "M94"
@@ -90,7 +95,7 @@ targets:
     size_arcmin: [11.2, 9.1]
     magnitude: 8.2
     constellation: CVn
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Compact bright core + faint outer ring. High inner SB — core is easy, outer ring needs depth."
 
   - name: "M63"
@@ -101,7 +106,7 @@ targets:
     size_arcmin: [12.6, 7.2]
     magnitude: 8.6
     constellation: CVn
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Flocculent spiral, mottled arms. Rewards integration time."
 
   - name: "M51"
@@ -112,7 +117,7 @@ targets:
     size_arcmin: [11.2, 6.9]
     magnitude: 8.4
     constellation: CVn
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Face-on grand-design + NGC 5195 companion. The showpiece. High SB core, fainter arms — the more subs the better the bridge."
 
   - name: "M101"
@@ -123,7 +128,7 @@ targets:
     size_arcmin: [28.8, 26.9]
     magnitude: 7.9
     constellation: UMa
-    budget_minutes: {LP: 360}
+    budget_minutes: {IR: 360}
     notes: "Big, beautiful, LOW surface brightness face-on. Bright mag is deceptive — hard from the city, wants a dark site."
 
   - name: "M102"
@@ -134,7 +139,7 @@ targets:
     size_arcmin: [4.7, 1.9]
     magnitude: 9.9
     constellation: Dra
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Edge-on lenticular with sharp dust lane. Small but high SB — tiny on the S30's wide field."
 
   - name: "M108"
@@ -145,7 +150,7 @@ targets:
     size_arcmin: [8.7, 2.2]
     magnitude: 10.0
     constellation: UMa
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Edge-on with mottled dust. Pairs in-frame with the Owl Nebula (M97) on a wide field."
 
   - name: "M109"
@@ -156,7 +161,7 @@ targets:
     size_arcmin: [7.6, 4.7]
     magnitude: 9.8
     constellation: UMa
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Barred spiral just off Phecda (γ UMa) — watch the bright star's glare."
 
   - name: "NGC2841"
@@ -167,7 +172,7 @@ targets:
     size_arcmin: [8.1, 3.5]
     magnitude: 9.2
     constellation: UMa
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Tight flocculent spiral, bright nucleus. High SB inner disk."
 
   - name: "NGC2903"
@@ -178,7 +183,7 @@ targets:
     size_arcmin: [12.6, 6.0]
     magnitude: 9.0
     constellation: Leo
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Big barred spiral off Leo's nose — a Messier-grade object Messier missed. Easy."
 
   - name: "M65"
@@ -189,7 +194,7 @@ targets:
     size_arcmin: [8.7, 2.2]
     magnitude: 9.3
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Leo Triplet member. All three (M65/M66/NGC 3628) fit one S30 frame — center between them."
 
   - name: "M66"
@@ -200,7 +205,7 @@ targets:
     size_arcmin: [9.1, 4.2]
     magnitude: 8.9
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Brightest of the Leo Triplet, asymmetric arms. Frame all three together."
 
   - name: "NGC3628"
@@ -211,7 +216,7 @@ targets:
     size_arcmin: [14.8, 3.0]
     magnitude: 9.5
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Edge-on with thick dust lane + faint tidal tail. The Triplet's edge-on; tail needs depth."
 
   - name: "M95"
@@ -222,7 +227,7 @@ targets:
     size_arcmin: [7.4, 5.0]
     magnitude: 9.7
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Barred ring spiral. Frames with M96/M105 (Leo I group) on a wide field."
 
   - name: "M96"
@@ -233,7 +238,7 @@ targets:
     size_arcmin: [7.6, 5.2]
     magnitude: 9.2
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Brightest of the Leo I group. Asymmetric dusty arms."
 
   - name: "M105"
@@ -244,7 +249,7 @@ targets:
     size_arcmin: [5.4, 4.8]
     magnitude: 9.3
     constellation: Leo
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Elliptical; trio with NGC 3384/3389. Small and featureless on the S30 — a wide-field group shot."
 
   - name: "M64"
@@ -255,7 +260,7 @@ targets:
     size_arcmin: [10.0, 5.4]
     magnitude: 8.5
     constellation: Com
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Bright spiral with a dramatic dark dust cap over the core. High SB — the dust lane shows quickly."
 
   - name: "M85"
@@ -266,7 +271,7 @@ targets:
     size_arcmin: [7.1, 5.5]
     magnitude: 9.1
     constellation: Com
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Lenticular at the north end of the Virgo Cluster. Bright, smooth."
 
   - name: "M88"
@@ -277,7 +282,7 @@ targets:
     size_arcmin: [6.9, 3.7]
     magnitude: 9.6
     constellation: Com
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Multi-arm spiral, one of the brighter Virgo Cluster members."
 
   - name: "M98"
@@ -288,7 +293,7 @@ targets:
     size_arcmin: [9.8, 2.8]
     magnitude: 10.1
     constellation: Com
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Near-edge-on spiral, blueshifted (approaching). Lowish SB."
 
   - name: "M99"
@@ -299,7 +304,7 @@ targets:
     size_arcmin: [5.4, 4.8]
     magnitude: 9.9
     constellation: Com
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Face-on one-armed spiral. Small on the S30."
 
   - name: "M100"
@@ -310,7 +315,7 @@ targets:
     size_arcmin: [7.4, 6.3]
     magnitude: 9.3
     constellation: Com
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Grand-design face-on, one of the largest Virgo Cluster spirals."
 
   - name: "M87"
@@ -321,7 +326,7 @@ targets:
     size_arcmin: [8.3, 6.6]
     magnitude: 8.6
     constellation: Vir
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Giant elliptical, the Virgo Cluster's heart. Bright; the famous jet needs aperture, but it anchors a Markarian's Chain wide field."
 
   - name: "M84"
@@ -332,7 +337,7 @@ targets:
     size_arcmin: [6.5, 5.6]
     magnitude: 9.1
     constellation: Vir
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "West end of Markarian's Chain. The S30's wide field can frame the whole Chain (M84/M86/NGC 4438...) — a signature OSC-scout shot."
 
   - name: "M86"
@@ -343,7 +348,7 @@ targets:
     size_arcmin: [8.9, 5.8]
     magnitude: 8.9
     constellation: Vir
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Lenticular, Markarian's Chain. Center the Chain, not the single galaxy."
 
   - name: "M90"
@@ -354,7 +359,7 @@ targets:
     size_arcmin: [9.5, 4.4]
     magnitude: 9.5
     constellation: Vir
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Large Virgo spiral, blueshifted. Dust detail with depth."
 
   - name: "M49"
@@ -365,7 +370,7 @@ targets:
     size_arcmin: [9.8, 8.2]
     magnitude: 8.4
     constellation: Vir
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Brightest Virgo Cluster galaxy (giant elliptical). Bright but smooth."
 
   - name: "M60"
@@ -376,7 +381,7 @@ targets:
     size_arcmin: [7.6, 6.2]
     magnitude: 8.8
     constellation: Vir
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Elliptical; pairs with spiral NGC 4647 in-frame."
 
   - name: "M61"
@@ -387,7 +392,7 @@ targets:
     size_arcmin: [6.5, 5.8]
     magnitude: 9.7
     constellation: Vir
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Face-on barred starburst spiral, southern Virgo Cluster. Low from JC — grab near transit."
 
   - name: "NGC4565"
@@ -398,7 +403,7 @@ targets:
     size_arcmin: [15.8, 2.1]
     magnitude: 9.6
     constellation: Com
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "The definitive edge-on: knife-thin disk, central bulge, dust lane. High SB — superb from the city."
 
   - name: "NGC4631"
@@ -409,7 +414,7 @@ targets:
     size_arcmin: [15.5, 2.7]
     magnitude: 9.2
     constellation: CVn
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Warped edge-on 'whale' + dwarf companion NGC 4627. Frames with the Hockey Stick (NGC 4656)."
 
   - name: "NGC4656"
@@ -420,7 +425,7 @@ targets:
     size_arcmin: [13.5, 2.8]
     magnitude: 10.5
     constellation: CVn
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Hooked, tidally distorted edge-on. Lowish SB; pairs with the Whale in one wide frame."
 
   - name: "NGC4490"
@@ -431,7 +436,7 @@ targets:
     size_arcmin: [6.3, 3.1]
     magnitude: 9.8
     constellation: CVn
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Interacting starburst with companion NGC 4485. Distorted, blue."
 
   - name: "NGC2683"
@@ -442,7 +447,7 @@ targets:
     size_arcmin: [9.3, 2.2]
     magnitude: 9.8
     constellation: Lyn
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Near-edge-on with a saucer profile and patchy dust. Good high-SB edge-on."
 
   # ================================================================
@@ -456,7 +461,7 @@ targets:
     size_arcmin: [178, 63]
     magnitude: 3.4
     constellation: And
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Enormous — 3° long. The S30's wide field fits the whole disk + M32 + M110 in one frame (a mosaic on the Esprit). Bright core needs short subs to avoid clipping."
 
   - name: "M32"
@@ -467,7 +472,7 @@ targets:
     size_arcmin: [8.7, 6.5]
     magnitude: 8.1
     constellation: And
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Compact elliptical companion of M31. Captured for free in any M31 frame."
 
   - name: "M110"
@@ -478,7 +483,7 @@ targets:
     size_arcmin: [21.9, 11.0]
     magnitude: 8.5
     constellation: And
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Dwarf elliptical companion of M31. Also free in the M31 frame."
 
   - name: "M33"
@@ -489,7 +494,7 @@ targets:
     size_arcmin: [70.8, 41.7]
     magnitude: 5.7
     constellation: Tri
-    budget_minutes: {LP: 360}
+    budget_minutes: {IR: 360}
     notes: "Big face-on — and notoriously LOW surface brightness. Bright integrated mag lies; very hard from the city, wants a dark site. HII regions (NGC 604) pop with depth."
 
   - name: "M74"
@@ -500,7 +505,7 @@ targets:
     size_arcmin: [10.2, 9.5]
     magnitude: 9.4
     constellation: Psc
-    budget_minutes: {LP: 360}
+    budget_minutes: {IR: 360}
     notes: "Perfect face-on grand-design — and one of the lowest-SB Messiers. 'Phantom' is a warning: dark-site target."
 
   - name: "NGC891"
@@ -511,7 +516,7 @@ targets:
     size_arcmin: [13.5, 2.5]
     magnitude: 9.9
     constellation: And
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Textbook edge-on with a bold central dust lane. High SB — a city-friendly faint-mag target (SB beats mag)."
 
   - name: "NGC1023"
@@ -522,7 +527,7 @@ targets:
     size_arcmin: [8.7, 3.0]
     magnitude: 9.4
     constellation: Per
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Bright barred lenticular, brightest of its group. High SB."
 
   - name: "NGC7331"
@@ -533,7 +538,7 @@ targets:
     size_arcmin: [10.5, 3.7]
     magnitude: 9.5
     constellation: Peg
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Milky-Way-like spiral with a fan of faint background galaxies ('the fleas'). Stephan's Quintet is ~0.5° away — both in one S30 frame."
 
   - name: "NGC7814"
@@ -544,7 +549,7 @@ targets:
     size_arcmin: [6.3, 2.6]
     magnitude: 10.6
     constellation: Peg
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Edge-on with a thin dust lane — a miniature Sombrero. Small; faint-but-high-SB."
 
   - name: "M77"
@@ -555,7 +560,7 @@ targets:
     size_arcmin: [7.1, 6.0]
     magnitude: 8.9
     constellation: Cet
-    budget_minutes: {LP: 240}
+    budget_minutes: {IR: 240}
     notes: "Brightest Seyfert galaxy, intense compact core. At dec ~0 it barely clears the JC floor — grab at transit only."
 
   # ================================================================
@@ -569,7 +574,7 @@ targets:
     size_arcmin: [12.7, 1.4]
     magnitude: 10.4
     constellation: Dra
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Ultra-thin edge-on, faint stellar tidal stream loops around it (needs a dark site). Disk itself is high-SB."
 
   - name: "NGC6503"
@@ -580,7 +585,7 @@ targets:
     size_arcmin: [7.1, 2.4]
     magnitude: 10.2
     constellation: Dra
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Isolated near-edge-on at the edge of the Local Void. High dec — well placed in summer."
 
   - name: "NGC6946"
@@ -591,7 +596,7 @@ targets:
     size_arcmin: [11.5, 9.8]
     magnitude: 8.9
     constellation: Cep
-    budget_minutes: {LP: 300}
+    budget_minutes: {IR: 300}
     notes: "Face-on, prolific supernova factory. Low SB face-on + sits in the Milky Way (star-dense) — better from a dark site, but high all summer."
 
   # ================================================================
@@ -607,7 +612,7 @@ targets:
     size_arcmin: [8.7, 3.5]
     magnitude: 8.0
     constellation: Vir
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Iconic edge-on with the bulge + dust-lane brim. Very high SB. Peaks only ~38° from JC — never clears the 45° floor; here for a southern/travel session."
 
   - name: "NGC253"
@@ -618,5 +623,5 @@ targets:
     size_arcmin: [27.5, 6.8]
     magnitude: 7.1
     constellation: Scl
-    budget_minutes: {LP: 180}
+    budget_minutes: {IR: 180}
     notes: "Huge bright edge-on starburst, dust-mottled. Spectacular — but dec -25° is far below the JC horizon. Travel/southern target."

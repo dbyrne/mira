@@ -93,21 +93,37 @@ def run_tune(
             fs = FrameStat(gain=gain, exposure_s=exp)
             try:
                 client.wait_camera_idle(timeout_s=idle_timeout_s)
+                # Freshness baseline: the newest history Filename BEFORE
+                # this capture. A degraded camera/connection can re-serve
+                # the previous frame (the NoState stale trap flats guards
+                # against); without this check the prior frame's stats get
+                # attributed to the new (gain, exposure) point.
+                before = client.latest_image_stats()
+                before_fn = before.get("Filename") if before else None
                 _emit(f"capture gain={gtag} exp={exp}s ...")
                 client.capture(
                     duration=exp, gain=gain, save=True, solve=False,
                     target_name=target_name, timeout_s=capture_timeout_s,
                 )
                 # Brief settle; the just-saved frame should be newest in
-                # history. Retry the read a few times for history lag.
+                # history. Retry the read a few times for history lag,
+                # accepting stats only once the Filename has ADVANCED
+                # (same freshness predicate as flats.shoot).
                 stats: dict[str, Any] | None = None
+                last_read: dict[str, Any] | None = None
                 for _ in range(5):
-                    stats = client.latest_image_stats()
-                    if stats:
-                        break
+                    last_read = client.latest_image_stats()
+                    if last_read:
+                        fn = last_read.get("Filename")
+                        if fn is not None and fn != before_fn:
+                            stats = last_read
+                            break
                     time.sleep(0.5)
                 if not stats:
-                    fs.error = "no image stats returned"
+                    fs.error = (
+                        "stale frame (history did not advance)"
+                        if last_read else "no image stats returned"
+                    )
                 else:
                     fs.stars = _to_int(_stat_value(stats, "Stars"))
                     fs.hfr = _to_float(_stat_value(stats, "HFR"))

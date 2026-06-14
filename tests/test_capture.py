@@ -115,11 +115,11 @@ class RunCaptureTestBase(TestCase):
 
 
 class TestGracefulStop(RunCaptureTestBase):
-    """A clean stop (stop_event set, exactly as the SIGINT handler does on the
-    first Ctrl-C) finishes the current frame, breaks between frames, and
-    releases the camera — so the next session's plate-solve isn't stranded
-    mid-exposure. The hard second-Ctrl-C path (raise) is the pre-existing
-    BaseException behavior."""
+    """First Ctrl-C / stop_event = a CLEAN stop: finish the current frame,
+    break between frames, leave the camera idle, and DO NOT abort it (a stray
+    abort-exposure drops the Seestar's whole connection — 2026-06-14). The
+    camera is aborted only on a hard interrupt / crash, where an exposure may
+    actually be in flight."""
 
     def _client(self, d):
         c = FakeClient()
@@ -128,23 +128,23 @@ class TestGracefulStop(RunCaptureTestBase):
         c.nina_root = nina
         return c, nina
 
-    def test_clean_stop_finishes_current_frame_then_breaks(self) -> None:
+    def test_clean_stop_finishes_current_frame_no_abort(self) -> None:
         import threading
         ev = threading.Event()
         with TemporaryDirectory() as d:
             c, nina = self._client(d)
-            # Simulate Ctrl-C landing during the 3rd exposure: set the event
-            # mid-capture. The frame must still complete, and the loop must
-            # break at the top of iteration 4 (no 4th capture).
+            # Ctrl-C lands during the 3rd exposure (event set mid-capture): the
+            # frame still completes, the loop breaks at the top of iteration 4
+            # (no 4th), and the idle camera is NOT aborted.
             orig = c.capture
 
-            def capture_then_maybe_interrupt(**kw):
+            def capture_then_request_stop(**kw):
                 r = orig(**kw)
                 if len(c.captures) == 3:
                     ev.set()
                 return r
 
-            c.capture = capture_then_maybe_interrupt
+            c.capture = capture_then_request_stop
             res = run_capture(
                 c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
                 dest_dir=Path(d) / "dest", nina_root=nina,
@@ -154,9 +154,9 @@ class TestGracefulStop(RunCaptureTestBase):
         self.assertEqual(len(c.captures), 3)       # 3rd finished, no 4th
         self.assertEqual(res.captured, 3)
         self.assertIn("clean stop", res.stopped_reason)
-        self.assertGreaterEqual(c.aborts, 1)       # camera released on exit
+        self.assertEqual(c.aborts, 0)              # idle camera -> NO abort
 
-    def test_camera_released_on_normal_completion(self) -> None:
+    def test_no_abort_on_normal_completion(self) -> None:
         with TemporaryDirectory() as d:
             c, nina = self._client(d)
             res = run_capture(
@@ -166,10 +166,33 @@ class TestGracefulStop(RunCaptureTestBase):
                 dither_arcsec=0.0, verify_pointing_deg=0,
             )
         self.assertEqual(res.captured, 2)
-        self.assertGreaterEqual(c.aborts, 1)       # idempotent safety abort
+        self.assertEqual(c.aborts, 0)              # n_max reached -> NO abort
 
-    def test_missing_abort_method_is_tolerated(self) -> None:
-        # A leaner client without abort_capture must not break the run.
+    def test_hard_interrupt_aborts_camera(self) -> None:
+        # A second Ctrl-C / crash mid-exposure DOES release the camera.
+        with TemporaryDirectory() as d:
+            c, nina = self._client(d)
+            orig = c.capture
+
+            def capture_then_raise(**kw):
+                orig(**kw)
+                if len(c.captures) == 2:
+                    raise KeyboardInterrupt
+                return {}
+
+            c.capture = capture_then_raise
+            with self.assertRaises(KeyboardInterrupt):
+                run_capture(
+                    c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                    dest_dir=Path(d) / "dest", nina_root=nina,
+                    rng=random.Random(7), settle_s=0.0, n_max=100,
+                    dither_arcsec=0.0, verify_pointing_deg=0,
+                )
+        self.assertGreaterEqual(c.aborts, 1)       # mid-exposure -> released
+
+    def test_missing_abort_method_tolerated_on_interrupt(self) -> None:
+        # A leaner client without abort_capture must not raise a secondary
+        # error on the hard-stop path (getattr-None guard).
         class LeanClient(FakeClient):
             abort_capture = None  # mask the method
 
@@ -178,13 +201,22 @@ class TestGracefulStop(RunCaptureTestBase):
             nina = Path(d) / "nina"
             nina.mkdir()
             c.nina_root = nina
-            res = run_capture(
-                c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
-                dest_dir=Path(d) / "dest", nina_root=nina,
-                rng=random.Random(7), settle_s=0.0, n_max=2,
-                dither_arcsec=0.0, verify_pointing_deg=0,
-            )
-        self.assertEqual(res.captured, 2)
+            orig = c.capture
+
+            def capture_then_raise(**kw):
+                orig(**kw)
+                if len(c.captures) == 1:
+                    raise KeyboardInterrupt
+                return {}
+
+            c.capture = capture_then_raise
+            with self.assertRaises(KeyboardInterrupt):
+                run_capture(
+                    c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                    dest_dir=Path(d) / "dest", nina_root=nina,
+                    rng=random.Random(7), settle_s=0.0, n_max=100,
+                    dither_arcsec=0.0, verify_pointing_deg=0,
+                )
 
 
 class TestDitherMath(TestCase):

@@ -281,8 +281,9 @@ def run_capture(
     A single Ctrl-C (or setting `stop_event`) requests a *clean* stop: the
     current frame finishes and the loop breaks between frames, leaving the
     camera Idle so the next session's plate-solve isn't stranded mid-exposure.
-    A second Ctrl-C hard-aborts. The camera is released (best-effort) on every
-    exit path."""
+    A second Ctrl-C hard-aborts. The camera is released (best-effort) only on
+    that hard-stop/crash path — never on a clean exit, where it's already idle
+    (a stray abort-exposure drops the Seestar's whole device connection)."""
     rng = rng or random.Random()
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -648,6 +649,13 @@ def run_capture(
                 "interrupted" if isinstance(exc, KeyboardInterrupt)
                 else f"crashed: {exc}"
             )
+        # Release the camera ONLY here — on a hard stop / crash, where an
+        # exposure may be in flight. On clean exits (n_max, guard-stop, the
+        # graceful single Ctrl-C) the loop already finished its last frame and
+        # the camera is idle; a stray abort-exposure there is unnecessary and,
+        # on the Seestar, drops the WHOLE device connection (cam+mount+FW;
+        # observed 2026-06-14 from per-keep-alive aborts).
+        _abort_camera()
         raise
     finally:
         if _sigint_installed and _prev_sigint is not None:
@@ -655,7 +663,6 @@ def run_capture(
                 signal.signal(signal.SIGINT, _prev_sigint)
             except (ValueError, OSError):
                 pass
-        _abort_camera()
         _persist_sidecar()
     return res
 

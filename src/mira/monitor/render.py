@@ -130,6 +130,31 @@ def render_status(snap: MonitorSnapshot, *, color: bool = False) -> str:
                     else f"sets in {_hms(sk.sets_in_min)}")
         L.append(f"  {sets_txt}   dawn in {_hms(sk.dawn_in_min)}{moon}")
 
+    # --- devices (live NINA overlay, Phase 2) ---
+    if snap.nina_reachable:
+        head("- Devices -")
+        cam, mt, fo, gu, fw = (snap.camera, snap.mount, snap.focuser,
+                               snap.guider, snap.filter_wheel)
+        ctemp = f"  {cam.temp_c:.1f}C" if cam.temp_c is not None else ""
+        L.append(f"  camera {cam.state or '?'}{ctemp}")
+        mstate = ("slewing" if mt.slewing else "tracking" if mt.tracking
+                  else "parked" if mt.at_park else "stopped")
+        pier = f"   pier {mt.pier_side}" if mt.pier_side else ""
+        L.append(f"  mount  {mstate}{pier}")
+        if fo.connected:
+            af = ""
+            if fo.last_af_hfr_before is not None and fo.last_af_hfr_after is not None:
+                af = (f"   last AF {fo.last_af_hfr_before:.2f} -> "
+                      f"{fo.last_af_hfr_after:.2f}")
+            L.append(f"  focus  pos {_fmt(fo.position)}{af}")
+        if fw.connected and fw.selected_name:
+            L.append(f"  wheel  {fw.selected_name}")
+        if gu.connected and gu.rms_total_arcsec is not None:
+            L.append(f"  guide  RMS {gu.rms_total_arcsec:.2f}\"")
+    elif snap.nina_error:
+        head("- Devices -")
+        L.append("  " + _paint(f"NINA: {snap.nina_error}", "dim", color))
+
     # --- health ---
     head("- Health -")
     last = frames[0].timestamp_utc if frames else None
@@ -144,3 +169,18 @@ def render_status(snap: MonitorSnapshot, *, color: bool = False) -> str:
     ts = now.astimezone().strftime("%H:%M:%S")
     L.append(_paint(f"  as of {ts}", "dim", color))
     return "\n".join(L)
+
+
+def snapshot_to_json(snap: MonitorSnapshot, *, indent: int | None = None) -> str:
+    """Serialize a MonitorSnapshot to JSON (datetimes -> ISO). Lets scripting
+    and the webapp /monitor consume the same engine that feeds the terminal."""
+    import dataclasses
+    import json
+    from datetime import datetime
+
+    def _default(o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return str(o)
+
+    return json.dumps(dataclasses.asdict(snap), default=_default, indent=indent)

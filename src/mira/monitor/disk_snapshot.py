@@ -267,3 +267,34 @@ def build_snapshot_from_disk(
         ledger_view=None, recent_events=(),
         anomalies=tuple(assess_quality(frames, now)), sky=sky,
     )
+
+
+def _overlay_devices(disk_snap: MonitorSnapshot,
+                     nina_snap: MonitorSnapshot) -> MonitorSnapshot:
+    """Pure merge: live device-state from `nina_snap` onto the disk snapshot.
+
+    The disk path keeps frame quality / sky / session / anomalies (measured
+    from the FITS — better than NINA's image-history HFR); NINA contributes the
+    device states + event log. An unreachable NINA only annotates the error."""
+    import dataclasses
+    if not nina_snap.nina_reachable:
+        return dataclasses.replace(
+            disk_snap, nina_reachable=False, nina_error=nina_snap.nina_error)
+    return dataclasses.replace(
+        disk_snap, mode="live", nina_reachable=True,
+        nina_error=nina_snap.nina_error,
+        mount=nina_snap.mount, camera=nina_snap.camera,
+        filter_wheel=nina_snap.filter_wheel, focuser=nina_snap.focuser,
+        guider=nina_snap.guider, recent_events=nina_snap.recent_events,
+    )
+
+
+def merge_nina_devices(disk_snap: MonitorSnapshot, nina_client) -> MonitorSnapshot:
+    """Overlay LIVE NINA device-state onto a disk snapshot (Phase 2).
+    Fail-soft: an unreachable / erroring NINA leaves the disk snapshot intact."""
+    from .snapshot import build_snapshot
+    try:
+        nina = build_snapshot(nina_client)
+    except Exception:  # noqa: BLE001 — monitoring must never raise
+        return disk_snap
+    return _overlay_devices(disk_snap, nina)

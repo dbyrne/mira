@@ -455,6 +455,8 @@ def main() -> None:
     status_parser.add_argument("--config", default=None, help="Site-config YAML; used only to find a horizon_profile_path for the obstruction check (site lat/lon/floor come from the sidecar).")
     status_parser.add_argument("--horizon", default=None, help="Explicit horizon-profile YAML for the obstruction check (overrides --config).")
     status_parser.add_argument("--no-color", action="store_true", help="Disable ANSI colour (also auto-off when stdout is not a TTY).")
+    status_parser.add_argument("--nina-url", default=None, help="NINA Advanced API base URL (e.g. http://localhost:1888) to OVERLAY live device state (camera/mount/focuser/guider/wheel). Omit for frames-on-disk only. Fail-soft if unreachable.")
+    status_parser.add_argument("--json", action="store_true", help="Emit the snapshot as JSON (for scripting / the webapp) instead of the terminal view. Implies one-shot.")
 
     doctor_parser = subparsers.add_parser(
         "doctor",
@@ -2083,8 +2085,11 @@ def status_cmd(args: argparse.Namespace) -> None:
     import sys
     import time
 
-    from .monitor.disk_snapshot import build_snapshot_from_disk
-    from .monitor.render import render_status
+    from .monitor.disk_snapshot import (
+        build_snapshot_from_disk,
+        merge_nina_devices,
+    )
+    from .monitor.render import render_status, snapshot_to_json
 
     dest = Path(args.dest)
     if not dest.exists():
@@ -2096,11 +2101,21 @@ def status_cmd(args: argparse.Namespace) -> None:
     horizon_points = _load_horizon_points(horizon_path) if horizon_path else None
     color = (not args.no_color) and sys.stdout.isatty()
 
-    def snapshot_text() -> str:
+    def build_snap():
         snap = build_snapshot_from_disk(
             dest, horizon_points=horizon_points, recent_n=args.recent,
         )
-        return render_status(snap, color=color)
+        if args.nina_url:
+            from .webapp.nina_client import NinaClient
+            snap = merge_nina_devices(snap, NinaClient(args.nina_url))
+        return snap
+
+    if args.json:  # JSON is a one-shot dump, not a refresh view
+        print(snapshot_to_json(build_snap(), indent=2))
+        return
+
+    def snapshot_text() -> str:
+        return render_status(build_snap(), color=color)
 
     if args.watch and args.watch > 0:
         try:

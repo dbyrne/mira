@@ -6,9 +6,10 @@ hand-run while babysitting a run. It reads the frames on disk (plus the
 capture sidecar) and renders a one-screen health/progress dashboard.
 
 ```powershell
-mira status --dest captures/ngc7000_20260614              # one-shot snapshot
-mira status --dest captures/ngc7000_20260614 --watch 30   # refresh in place (top-like)
-mira status --dest captures/x --horizon config/horizon_balcony_jc.yaml
+mira status --dest captures/ngc7000_20260614                    # one-shot, frames-on-disk
+mira status --dest captures/ngc7000_20260614 --watch 30         # refresh in place (top-like)
+mira status --dest captures/x --nina-url http://localhost:1888  # + LIVE device state
+mira status --dest captures/x --json                            # machine-readable (one-shot)
 ```
 
 It is **zero-config**: site geometry (lat/lon, altitude floor, dawn cap) and
@@ -57,15 +58,18 @@ scheduling: don't AF into clouds.)
 
 ## Phasing
 
-- **Phase 1 (now)** — frames-on-disk. Works on any capture dir, live or
+- **Phase 1 (done)** — frames-on-disk. Works on any capture dir, live or
   post-hoc, with no rig connection. Built on `fits_stats.compute_frame_quality`
-  (the same per-frame metrics `mira cull --from-fits` uses) +
-  `observability` for the sky clock.
-- **Phase 2 (next)** — live NINA device-state behind `--nina-url`: camera
-  state, mount tracking/slew, focuser position, guider RMS, cooler — merged
-  onto the same `MonitorSnapshot`. The webapp `/monitor` console already
-  renders that snapshot from NINA; `mira status --json` will share it so the
-  CLI and web view are one engine.
+  (the same per-frame metrics `mira cull --from-fits` uses) + `observability`
+  for the sky clock.
+- **Phase 2 (done)** — `--nina-url` overlays **live device-state** (camera
+  state/temp, mount tracking/slew/pier, focuser position + last-AF, guider RMS,
+  filter wheel) onto the disk snapshot via `merge_nina_devices`. The disk path
+  keeps ownership of frame quality / sky (measured from the FITS — better than
+  NINA's image-history HFR); NINA contributes the devices + event log.
+  Fail-soft: an unreachable NINA leaves the disk snapshot intact (mode stays
+  `disk`, with the error noted). `--json` emits the snapshot (datetimes → ISO)
+  for scripting and to feed the webapp `/monitor` from the same engine.
 
 ## Implementation
 

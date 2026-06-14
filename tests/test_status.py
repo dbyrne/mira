@@ -16,9 +16,22 @@ from unittest import TestCase
 import numpy as np
 from astropy.io import fits
 
-from mira.monitor.disk_snapshot import assess_quality, build_snapshot_from_disk
-from mira.monitor.render import render_status
-from mira.monitor.snapshot import FrameStat
+from mira.monitor.disk_snapshot import (
+    _overlay_devices,
+    assess_quality,
+    build_snapshot_from_disk,
+)
+from mira.monitor.render import render_status, snapshot_to_json
+from mira.monitor.snapshot import (
+    CameraState,
+    FilterWheelState,
+    FocuserState,
+    FrameStat,
+    GuiderState,
+    MonitorSnapshot,
+    MountState,
+    SessionState,
+)
 
 NOW = datetime(2026, 6, 14, 5, 0, tzinfo=timezone.utc)
 
@@ -112,3 +125,57 @@ class TestBuildFromDisk(TestCase):
         self.assertEqual(snap.recent_frames, ())
         # renders without raising even with nothing to show
         render_status(snap, color=False)
+
+
+def _disk_snap():
+    with TemporaryDirectory() as d:
+        return build_snapshot_from_disk(Path(d), now_utc=NOW)
+
+
+def _nina_snap(reachable=True):
+    return MonitorSnapshot(
+        generated_utc=NOW, mode="live", nina_reachable=reachable,
+        nina_error="" if reachable else "connection refused",
+        session=SessionState(sequence_running=True),
+        mount=MountState(connected=True, at_park=False, tracking=True,
+                         slewing=False, ra_deg=314.7, dec_deg=44.3,
+                         pier_side="West"),
+        camera=CameraState(connected=True, state="Exposing", temp_c=-10.0),
+        filter_wheel=FilterWheelState(connected=True, selected_name="LP"),
+        focuser=FocuserState(connected=True, position=1340),
+        guider=GuiderState(connected=True, rms_total_arcsec=0.8),
+        recent_frames=(), ledger_view=None, recent_events=(),
+    )
+
+
+class TestPhase2Overlay(TestCase):
+    def test_overlay_brings_live_device_state(self):
+        disk = _disk_snap()  # nina_reachable False, devices disconnected
+        merged = _overlay_devices(disk, _nina_snap(reachable=True))
+        self.assertTrue(merged.nina_reachable)
+        self.assertEqual(merged.mode, "live")
+        self.assertEqual(merged.camera.state, "Exposing")
+        self.assertTrue(merged.mount.tracking)
+        self.assertEqual(merged.focuser.position, 1340)
+        self.assertEqual(merged.filter_wheel.selected_name, "LP")
+        # disk keeps ownership of frames / sky / anomalies
+        self.assertEqual(merged.recent_frames, disk.recent_frames)
+        self.assertEqual(merged.sky, disk.sky)
+        self.assertIn("- Devices -", render_status(merged, color=False))
+
+    def test_overlay_unreachable_preserves_disk(self):
+        disk = _disk_snap()
+        merged = _overlay_devices(disk, _nina_snap(reachable=False))
+        self.assertFalse(merged.nina_reachable)
+        self.assertFalse(merged.camera.connected)   # stays disconnected
+        self.assertEqual(merged.mode, disk.mode)     # NOT promoted to live
+        self.assertIn("refused", merged.nina_error)
+
+
+class TestSnapshotJson(TestCase):
+    def test_serializes_with_iso_datetimes(self):
+        import json
+        data = json.loads(snapshot_to_json(_nina_snap()))
+        self.assertEqual(data["mode"], "live")
+        self.assertEqual(data["camera"]["state"], "Exposing")
+        self.assertIsInstance(data["generated_utc"], str)  # datetime -> ISO

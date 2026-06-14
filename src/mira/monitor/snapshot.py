@@ -44,6 +44,9 @@ class FrameStat:
     hfr: float | None
     mean: float | None
     median: float | None
+    # Disk path (fits_stats) can also measure star roundness; NINA's
+    # image-history doesn't expose it, so it defaults None there.
+    roundness: float | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +100,22 @@ class GuiderState:
 
 
 @dataclass(frozen=True)
+class SkyState:
+    """Where the target sits right now and how the night is closing in.
+    Computed from the site config + the capture's nominal RA/Dec; fields
+    are None when uncomputable (no config / no coords)."""
+    altitude_deg: float | None = None
+    azimuth_deg: float | None = None
+    # Clear of the local horizon-obstruction mask (house/trees), not just
+    # above the altitude floor. None when no horizon profile is configured.
+    clear_of_obstruction: bool | None = None
+    sets_in_min: int | None = None       # until below the altitude floor
+    dawn_in_min: int | None = None       # until the rising sun crosses the window cap
+    moon_alt_deg: float | None = None
+    moon_illum_frac: float | None = None
+
+
+@dataclass(frozen=True)
 class SessionState:
     """Derived "what is the rig doing right now" view."""
     sequence_running: bool
@@ -110,6 +129,10 @@ class SessionState:
     # Minutes until current target drops below the configured altitude floor
     # at the configured site, or None if unobserved/unknown.
     target_sets_in_min: int | None = None
+    # Disk path extras (None on the NINA path): first-frame time (for elapsed)
+    # and the capture's dither cadence from the sidecar.
+    started_utc: datetime | None = None
+    dither_every: int | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +188,7 @@ class MonitorSnapshot:
     ledger_view: TargetLedgerView | None
     recent_events: tuple[EventEntry, ...]     # newest first, max ~20
     anomalies: tuple[Anomaly, ...] = ()       # populated by anomaly.detect_anomalies
+    sky: "SkyState | None" = None             # target position/night clock (disk path)
 
 
 # ---------------------------------------------------------------------------

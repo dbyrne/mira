@@ -438,6 +438,24 @@ def main() -> None:
     solve_parser.add_argument("--astap-cli", default=None, help="Path to astap_cli. Default: MIRA_ASTAP_CLI env / PATH / standard install.")
     solve_parser.add_argument("--timeout-s", type=float, default=120.0, help="Per-frame astap_cli timeout, seconds.")
 
+    status_parser = subparsers.add_parser(
+        "status",
+        help="Live night-progress for an ACTIVE capture session: per-frame "
+        "quality (HFR / stars / sky / roundness), a transparency-gated "
+        "clouds-vs-focus read, the sky clock (altitude, sets-in, dawn-in, "
+        "moon), cadence + integration, and stall detection. Reads the frames "
+        "on disk + the capture sidecar (zero-config — site geometry comes "
+        "from the sidecar). NOTE: distinct from `mira dso/emission/galaxies "
+        "status`, which is the cross-session integration LEDGER. Phase 1 is "
+        "frames-on-disk; live NINA device state lands behind --nina-url next.",
+    )
+    status_parser.add_argument("--dest", required=True, help="The active capture directory (your `mira capture --dest`).")
+    status_parser.add_argument("--watch", type=float, default=0.0, help="Refresh in place every N seconds (top-like). 0 = one-shot snapshot (default).")
+    status_parser.add_argument("--recent", type=int, default=15, help="How many of the most recent frames to measure for the quality block (default 15).")
+    status_parser.add_argument("--config", default=None, help="Site-config YAML; used only to find a horizon_profile_path for the obstruction check (site lat/lon/floor come from the sidecar).")
+    status_parser.add_argument("--horizon", default=None, help="Explicit horizon-profile YAML for the obstruction check (overrides --config).")
+    status_parser.add_argument("--no-color", action="store_true", help="Disable ANSI colour (also auto-off when stdout is not a TTY).")
+
     doctor_parser = subparsers.add_parser(
         "doctor",
         help="Preflight the whole rig: deps, numpy<2.3, Siril, ASTAP, "
@@ -837,6 +855,8 @@ def main() -> None:
         solve(args)
     elif args.command == "cull":
         cull(args)
+    elif args.command == "status":
+        status_cmd(args)
     elif args.command == "doctor":
         doctor(args)
     elif args.command == "migrate-runs":
@@ -2011,6 +2031,89 @@ def flats(args: argparse.Namespace) -> None:
         if r.note:
             line += f"  ({r.note})"
         print(line)
+
+
+def _load_horizon_points(path: str) -> list[tuple[float, float]] | None:
+    """Load a horizon-profile YAML's (az, alt) silhouette, sorted by az."""
+    import io
+
+    import yaml
+    try:
+        with io.open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        pts = sorted(
+            (float(p["az"]), float(p["alt"])) for p in data.get("points", [])
+        )
+        return pts or None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _find_horizon_in_config(config_path: str) -> str | None:
+    """Recursively hunt a `horizon_profile_path` anywhere in a config YAML
+    (its location varies by config), return the first one found."""
+    import io
+
+    import yaml
+    try:
+        with io.open(config_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except (OSError, ValueError):
+        return None
+    found: list[str] = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == "horizon_profile_path" and isinstance(v, str):
+                    found.append(v)
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(data)
+    return found[0] if found else None
+
+
+def status_cmd(args: argparse.Namespace) -> None:
+    """Live night-progress for an active capture session (frames-on-disk).
+    Distinct from the per-path `... status` ledger commands."""
+    import sys
+    import time
+
+    from .monitor.disk_snapshot import build_snapshot_from_disk
+    from .monitor.render import render_status
+
+    dest = Path(args.dest)
+    if not dest.exists():
+        print(f"capture dir not found: {dest}")
+        return
+    horizon_path = args.horizon or (
+        _find_horizon_in_config(args.config) if args.config else None
+    )
+    horizon_points = _load_horizon_points(horizon_path) if horizon_path else None
+    color = (not args.no_color) and sys.stdout.isatty()
+
+    def snapshot_text() -> str:
+        snap = build_snapshot_from_disk(
+            dest, horizon_points=horizon_points, recent_n=args.recent,
+        )
+        return render_status(snap, color=color)
+
+    if args.watch and args.watch > 0:
+        try:
+            while True:
+                text = snapshot_text()
+                sys.stdout.write("\033[2J\033[H")  # clear screen + cursor home
+                sys.stdout.write(text + "\n")
+                sys.stdout.flush()
+                time.sleep(args.watch)
+        except KeyboardInterrupt:
+            sys.stdout.write("\n")
+    else:
+        print(snapshot_text())
 
 
 def cull(args: argparse.Namespace) -> None:

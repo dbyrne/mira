@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +53,9 @@ class FrameQuality:
     sky_sigma: float | None = None
     has_wcs: bool = False
     note: str = ""
+    # Capture time from the FITS DATE-OBS header (UTC). Robust to file mtime
+    # being clobbered by in-place solving — used by `mira status` for cadence.
+    date_obs: datetime | None = None
 
 
 def _to_mono(data: np.ndarray) -> np.ndarray:
@@ -152,6 +156,19 @@ def _hfr_from_aperture_growth(
     return float(np.median(hfrs)) if hfrs else None
 
 
+def _parse_date_obs(header) -> "datetime | None":
+    """Capture timestamp from the FITS header (UTC), or None. Robust to the
+    file mtime being clobbered by in-place solving / processing."""
+    raw = header.get("DATE-OBS") or header.get("DATE_OBS")
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except (ValueError, TypeError):
+        return None
+
+
 def compute_frame_quality(
     path: Path,
     *,
@@ -175,6 +192,7 @@ def compute_frame_quality(
             if hdu is None or header is None:
                 return FrameQuality(p, note="no data HDU")
             data = hdu.data
+            date_obs = _parse_date_obs(header)
             try:
                 wcs = WCS(header)
                 has_wcs = bool(wcs.has_celestial) and wcs.pixel_n_dim >= 2
@@ -197,7 +215,7 @@ def compute_frame_quality(
         return FrameQuality(
             p, stars=0, hfr=None, roundness=None,
             sky_median=float(med_g), sky_sigma=float(sig_g),
-            has_wcs=has_wcs, note="no stars detected",
+            has_wcs=has_wcs, note="no stars detected", date_obs=date_obs,
         )
 
     round1 = np.asarray(sources["roundness1"])
@@ -214,5 +232,5 @@ def compute_frame_quality(
     return FrameQuality(
         p, stars=int(n_stars), hfr=hfr, roundness=round_med,
         sky_median=float(sky_med), sky_sigma=float(sky_sig),
-        has_wcs=has_wcs,
+        has_wcs=has_wcs, date_obs=date_obs,
     )

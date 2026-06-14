@@ -114,6 +114,15 @@ mira inventory --captures-root captures --out output/inventory
 
 Read-only by design: legacy dirs without a `mira_capture.json` are reported from FITS headers/dirnames (filter honestly "?" — FITS carry no FILTER keyword), never backfilled, so `--auto-flats` can never be fed a guessed filter. Regenerate + commit after capture sessions.
 
+Monitor how an **active capture session** is progressing — live night-progress, deliberately distinct from the cross-session integration ledger (`mira dso/emission/galaxies status`):
+
+```powershell
+mira status --dest captures/ngc7000_20260614              # one-shot snapshot
+mira status --dest captures/ngc7000_20260614 --watch 30   # refresh-in-place (top-like)
+```
+
+Zero-config: it reads the frames on disk + the capture sidecar (site geometry comes from the sidecar; `--horizon`/`--config` only add the local obstruction check). Renders capture stats (frames / integration / cadence + efficiency), per-frame quality (HFR / stars / sky / roundness), the sky clock (altitude, sets-in, dawn-in, moon), and a **transparency-gated** clouds-vs-focus read — a *swinging* star count reads as clouds and **suppresses a false defocus flag** (the 2026-06-14 lesson). Keep the two `status` concepts separate: `mira status` is the live **monitor** of one session; `mira <path> status` is the **ledger** ("what's imaged across all nights"). Phase 1 is frames-on-disk; live NINA device-state lands behind `--nina-url` next. Built on `fits_stats.compute_frame_quality` + the `monitor/` snapshot the webapp `/monitor` shares. See `docs/status.md`.
+
 Plan a single observing session for tonight (uses today's date, restricts to next N hours, tuned-for-S30-Pro config):
 
 ```powershell

@@ -1,0 +1,19 @@
+﻿target from sidecar: RA=148.888 Dec=69.065
+Culling C:\mira\captures\m81_20260613 (FITS mode)
+scoring 59 frames from FITS pixels...
+  1/59 scored
+  50/59 scored
+  59/59 scored
+  solve-failed bucket: 0 frame(s) have no WCS in a mostly-solved dir
+medians: stars=296 HFR=0.98 sky=5800 round=0.232
+keep if: stars >= 148, HFR <= 1.47, sky <= 11600, round <= 0.465
+
+rejected — metric thresholds (5): failed stars/HFR/sky/roundness
+  2026-06-13_22-02-24_IR_31.69_60.00_0000.fits: stars=147 HFR=1.22  [stars=147<148]
+  2026-06-13_22-08-49_IR_33.00_60.00_0000.fits: stars=92 HFR=2.82  [stars=92<148, HFR=2.82>1.47]
+  2026-06-13_22-23-46_IR_34.56_60.00_0000.fits: stars=257 HFR=1.15  [round=0.638>0.465]
+  2026-06-13_22-44-07_IR_35.00_60.00_0000.fits: stars=303 HFR=0.96  [round=0.624>0.465]
+  2026-06-13_23-09-19_IR_36.81_60.00_0000.fits: stars=319 HFR=1.06  [round=0.536>0.465]
+  -> C:\mira\captures\m81_20260613\_rejected
+
+DONE: 54 kept, 5 rejected, 0 unscored (of 59).

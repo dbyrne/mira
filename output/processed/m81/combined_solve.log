@@ -1,0 +1,11 @@
+﻿Solving C:\mira\captures\m81_20260613 with C:\Program Files\astap\astap_cli.exe
+hint RA=148.888° Dec=69.065°, search r=5.0°, FOV=4.6°
+59 frames: 1 already solved, 58 to solve
+  1/58: solved 2026-06-13_21-52-12_IR_28.44_60.00_0000.fits
+  10/58: solved 2026-06-13_22-01-07_IR_31.38_60.00_0000.fits
+  20/58: solved 2026-06-13_22-13-57_IR_33.81_60.00_0000.fits
+  30/58: solved 2026-06-13_22-46-20_IR_35.44_60.00_0000.fits
+  40/58: solved 2026-06-13_22-58-31_IR_36.38_60.00_0000.fits
+  50/58: solved 2026-06-13_23-10-26_IR_36.88_60.00_0000.fits
+
+DONE: 58 solved, 1 already solved, 0 failed (of 59).

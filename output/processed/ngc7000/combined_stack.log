@@ -1,0 +1,6 @@
+﻿--auto-flats: matched LP_g80_20260603 -> data\flats\LP_g80_20260603\master_flat.fit
+Stacking 'output\processed\ngc7000\work\combined_20260614' with Siril...
+
+Stacked 121 frames.
+Wrote C:\mira\output\processed\ngc7000\NGC7000_combined_20260614.fit (linear)
+Wrote C:\mira\output\processed\ngc7000\NGC7000_combined_20260614_preview.png (stretched preview)

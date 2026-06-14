@@ -34,6 +34,7 @@ class FakeClient:
         self._fail_autofocus = fail_autofocus
         self._fail_park = fail_park
         self.parked = False
+        self.aborts = 0
         self._n = 0
         self.nina_root: Path | None = None
 
@@ -80,6 +81,10 @@ class FakeClient:
         self.parked = True
         return {"Response": "Parked"}
 
+    def abort_capture(self):
+        self.aborts += 1
+        return {"Response": "Aborted"}
+
 
 class PierClient(FakeClient):
     """FakeClient + a scripted pier side per poll (the last value repeats
@@ -107,6 +112,79 @@ class RunCaptureTestBase(TestCase):
         p = patch("mira.capture.FINAL_SWEEP_SETTLE_S", 0.0)
         p.start()
         self.addCleanup(p.stop)
+
+
+class TestGracefulStop(RunCaptureTestBase):
+    """A clean stop (stop_event set, exactly as the SIGINT handler does on the
+    first Ctrl-C) finishes the current frame, breaks between frames, and
+    releases the camera — so the next session's plate-solve isn't stranded
+    mid-exposure. The hard second-Ctrl-C path (raise) is the pre-existing
+    BaseException behavior."""
+
+    def _client(self, d):
+        c = FakeClient()
+        nina = Path(d) / "nina"
+        nina.mkdir()
+        c.nina_root = nina
+        return c, nina
+
+    def test_clean_stop_finishes_current_frame_then_breaks(self) -> None:
+        import threading
+        ev = threading.Event()
+        with TemporaryDirectory() as d:
+            c, nina = self._client(d)
+            # Simulate Ctrl-C landing during the 3rd exposure: set the event
+            # mid-capture. The frame must still complete, and the loop must
+            # break at the top of iteration 4 (no 4th capture).
+            orig = c.capture
+
+            def capture_then_maybe_interrupt(**kw):
+                r = orig(**kw)
+                if len(c.captures) == 3:
+                    ev.set()
+                return r
+
+            c.capture = capture_then_maybe_interrupt
+            res = run_capture(
+                c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                dest_dir=Path(d) / "dest", nina_root=nina,
+                rng=random.Random(7), settle_s=0.0, n_max=100,
+                dither_arcsec=0.0, verify_pointing_deg=0, stop_event=ev,
+            )
+        self.assertEqual(len(c.captures), 3)       # 3rd finished, no 4th
+        self.assertEqual(res.captured, 3)
+        self.assertIn("clean stop", res.stopped_reason)
+        self.assertGreaterEqual(c.aborts, 1)       # camera released on exit
+
+    def test_camera_released_on_normal_completion(self) -> None:
+        with TemporaryDirectory() as d:
+            c, nina = self._client(d)
+            res = run_capture(
+                c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                dest_dir=Path(d) / "dest", nina_root=nina,
+                rng=random.Random(7), settle_s=0.0, n_max=2,
+                dither_arcsec=0.0, verify_pointing_deg=0,
+            )
+        self.assertEqual(res.captured, 2)
+        self.assertGreaterEqual(c.aborts, 1)       # idempotent safety abort
+
+    def test_missing_abort_method_is_tolerated(self) -> None:
+        # A leaner client without abort_capture must not break the run.
+        class LeanClient(FakeClient):
+            abort_capture = None  # mask the method
+
+        with TemporaryDirectory() as d:
+            c = LeanClient()
+            nina = Path(d) / "nina"
+            nina.mkdir()
+            c.nina_root = nina
+            res = run_capture(
+                c, ra_deg=200.0, dec_deg=40.0, exposure_s=45.0, gain=120,
+                dest_dir=Path(d) / "dest", nina_root=nina,
+                rng=random.Random(7), settle_s=0.0, n_max=2,
+                dither_arcsec=0.0, verify_pointing_deg=0,
+            )
+        self.assertEqual(res.captured, 2)
 
 
 class TestDitherMath(TestCase):

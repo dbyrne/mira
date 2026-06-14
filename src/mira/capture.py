@@ -26,6 +26,8 @@ import math
 import os
 import random
 import shutil
+import signal
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -266,6 +268,7 @@ def run_capture(
     should_continue: Callable[[int], str | None] | None = None,
     on_step: Callable[[str], None] | None = None,
     rng: random.Random | None = None,
+    stop_event: "threading.Event | None" = None,
 ) -> CaptureResult:
     """Capture loop. Per sub: reposition (dither around nominal, or explicit
     re-center) → wait idle → expose+save → incrementally copy the new frame
@@ -273,11 +276,21 @@ def run_capture(
     reason. Reposition slews are always `center=False`.
 
     `nina_root` is scanned (snapshot diff) for new `*.fit*` files to copy
-    out (NINA saves there; the loop owns the stable copy in `dest_dir`)."""
+    out (NINA saves there; the loop owns the stable copy in `dest_dir`).
+
+    A single Ctrl-C (or setting `stop_event`) requests a *clean* stop: the
+    current frame finishes and the loop breaks between frames, leaving the
+    camera Idle so the next session's plate-solve isn't stranded mid-exposure.
+    A second Ctrl-C hard-aborts. The camera is released (best-effort) on every
+    exit path."""
     rng = rng or random.Random()
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
     res = CaptureResult(dest_dir=str(dest_dir))
+    # Clean-stop signal: set by the SIGINT handler installed below (or by an
+    # external caller such as the webapp). Checked at the top of the loop so
+    # the current frame always finishes and the camera is left Idle.
+    stop_event = stop_event if stop_event is not None else threading.Event()
 
     def _emit(m: str) -> None:
         if on_step is not None:
@@ -495,8 +508,54 @@ def run_capture(
 
     last_pier_side = _poll_pier_side()
 
+    # Best-effort camera release. A hard stop (second Ctrl-C) or a crash can
+    # strand the Seestar mid-exposure, which then fails the NEXT session's
+    # plate-solve (device reports not-ready). Aborting on every exit path
+    # returns it to Idle. Optional on the client (getattr) + fail-soft, so a
+    # leaner client or a normal clean stop (camera already idle) is a no-op.
+    def _abort_camera() -> None:
+        aborter = getattr(client, "abort_capture", None)
+        if aborter is None:
+            return
+        try:
+            aborter()
+        except Exception:  # noqa: BLE001 — cleanup must never raise
+            pass
+
+    # Graceful Ctrl-C. First interrupt -> request a clean stop: the blocking
+    # capture() is NOT interrupted (PEP 475 retries it), so the current frame
+    # finishes and the loop breaks at the next top with the camera Idle, ready
+    # for the next session's solve. Second interrupt -> restore the prior
+    # handler and re-raise for an immediate hard abort. signal.signal only
+    # works on the main thread, so a non-main caller (e.g. a webapp worker)
+    # silently keeps the old raise-on-Ctrl-C behavior and can still drive a
+    # clean stop by supplying its own `stop_event`.
+    _prev_sigint = None
+    _sigint_installed = False
+
+    def _on_sigint(signum, frame):  # pragma: no cover - delivered via signal
+        if stop_event.is_set():
+            if _prev_sigint is not None:
+                signal.signal(signal.SIGINT, _prev_sigint)
+            raise KeyboardInterrupt
+        stop_event.set()
+        _emit("Ctrl-C: clean stop requested — finishing the current frame, "
+              "then exiting with the camera idle. Ctrl-C again to abort now.")
+
+    try:
+        _prev_sigint = signal.signal(signal.SIGINT, _on_sigint)
+        _sigint_installed = True
+    except (ValueError, OSError):  # not the main thread (e.g. webapp worker)
+        _sigint_installed = False
+
     try:
         for i in range(1, n_max + 1):
+            if stop_event.is_set():
+                res.stopped_reason = (
+                    "interrupted (clean stop after current frame)"
+                )
+                _emit(f"clean stop: {res.captured} sub(s) captured, camera idle")
+                break
             # Periodic AF (wall-clock). Skipped on i==1 because pre-loop
             # already fired one moments ago; from i=2 onward we just check
             # elapsed time.
@@ -591,6 +650,12 @@ def run_capture(
             )
         raise
     finally:
+        if _sigint_installed and _prev_sigint is not None:
+            try:
+                signal.signal(signal.SIGINT, _prev_sigint)
+            except (ValueError, OSError):
+                pass
+        _abort_camera()
         _persist_sidecar()
     return res
 

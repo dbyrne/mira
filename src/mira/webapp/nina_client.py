@@ -412,6 +412,20 @@ class NinaClient:
             params["targetName"] = target_name
         return self._get("/equipment/camera/capture", params=params, timeout=timeout_s)
 
+    def abort_capture(self) -> dict[str, Any]:
+        """Abort an in-progress exposure so the camera returns to Idle.
+
+        `mira capture`'s graceful Ctrl-C finishes the current frame and leaves
+        the camera idle on its own; this is the safety net for a hard stop /
+        crash that strands it mid-exposure — which otherwise breaks the NEXT
+        session's plate-solve (the device reports not-ready). run_capture calls
+        it on every exit. Fail-soft: never raises (a no-op on an already-idle
+        camera)."""
+        try:
+            return self._get("/equipment/camera/abort-exposure", timeout=10.0)
+        except (requests.RequestException, ValueError, TypeError):
+            return {}
+
     def image_history(self, all_images: bool = True) -> list[dict[str, Any]]:
         """The plugin's image-history list (Stars/HFR/Max/Mean/Median/
         ExposureTime/Gain/Filename per frame). Empty list on any error —

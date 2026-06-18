@@ -195,7 +195,21 @@ def main() -> None:
         "into a stacked image. Separate from photometry — stacking destroys "
         "the per-frame time series.",
     )
-    stack_parser.add_argument("--lights", required=True, help="Directory of light frames (FITS/raw/JPG/TIFF).")
+    stack_parser.add_argument(
+        "--lights", required=True, nargs="+", metavar="DIR",
+        help="Directory of light frames (FITS/raw/JPG/TIFF). Pass MULTIPLE dirs "
+        "to co-stack sessions (e.g. two nights of the same framing) — their "
+        "frames are recomposed into an ephemeral temp dir for the run, so no "
+        "persistent 'combined' dir is needed.",
+    )
+    stack_parser.add_argument(
+        "--register", choices=["auto", "stars", "wcs"], default="auto",
+        help="Frame alignment. 'stars' = Siril Global Star Alignment only; "
+        "'wcs' = register by plate-solved WCS + sigma-clip mean (robust for "
+        "emission-FILLED fields where star detection finds too few stars — "
+        "needs solved frames, applies no calibration); 'auto' (default) = "
+        "Siril GSA, falling back to WCS when it fails and frames are solved.",
+    )
     stack_parser.add_argument("--out", required=True, help="Output image path. The linear stack is written as FITS (.fit) regardless of the extension you give — the .fit preserves the WCS header from the reference frame so the stack is photometry-ready. Optional stretched PNG preview lands alongside.")
     stack_parser.add_argument("--darks", default=None, help="Optional dir of dark frames.")
     stack_parser.add_argument("--flats", default=None, help="Optional dir of raw flat frames (Siril builds the master). Mutually exclusive with --auto-flats.")
@@ -1430,9 +1444,14 @@ def stack(args: argparse.Namespace) -> None:
     from .siril import SirilError, SirilNotFound
     from .siril_pipeline import run_siril_stack
 
-    lights_dir = Path(args.lights)
-    if not lights_dir.is_dir():
-        print(f"Lights directory '{lights_dir}' does not exist.")
+    # argparse (nargs="+") gives a list; tolerate a bare string too.
+    _raw = args.lights
+    lights_dirs = [Path(p) for p in
+                   (_raw if isinstance(_raw, (list, tuple)) else [_raw])]
+    missing = [d for d in lights_dirs if not d.is_dir()]
+    if missing:
+        print("Lights directory does not exist: "
+              + ", ".join(str(m) for m in missing))
         return
 
     if getattr(args, "cull_low_quality", False):
@@ -1445,15 +1464,17 @@ def stack(args: argparse.Namespace) -> None:
         print("--cull-low-quality: querying NINA image-history...")
         try:
             cull_client = NinaClient(base_url="http://localhost:1888")
-            cres = run_cull(
-                lights_dir,
-                history_fetcher=lambda: cull_client.image_history(all_images=True),
-                on_step=lambda m: print(m),
-            )
-            print(
-                f"  cull: {len(cres.kept)} kept, {len(cres.rejected)} "
-                f"rejected to _rejected/, {len(cres.unscored)} unscored."
-            )
+            for d in lights_dirs:
+                cres = run_cull(
+                    d,
+                    history_fetcher=lambda: cull_client.image_history(all_images=True),
+                    on_step=lambda m: print(m),
+                )
+                print(
+                    f"  cull[{d.name}]: {len(cres.kept)} kept, "
+                    f"{len(cres.rejected)} rejected to _rejected/, "
+                    f"{len(cres.unscored)} unscored."
+                )
         except Exception as exc:  # noqa: BLE001 — fail-soft
             print(f"--cull-low-quality: {exc} (continuing with all frames)")
 
@@ -1464,27 +1485,25 @@ def stack(args: argparse.Namespace) -> None:
         # WCS-less FITS that the photometry path will then reject.
         from .solve import AstapNotFound, find_astap_cli, has_wcs, run_solve_dir
 
-        frames = sorted(p for p in lights_dir.glob("*.fit*") if p.is_file())
-        unsolved = [f for f in frames if not has_wcs(f)]
-        if not unsolved:
-            print(f"--auto-solve: all {len(frames)} frames already have WCS, "
-                  "skipping ASTAP")
-        else:
-            print(f"--auto-solve: {len(unsolved)}/{len(frames)} frames "
-                  "missing WCS; running ASTAP first...")
-            try:
-                cli = find_astap_cli()
-            except AstapNotFound as exc:
-                print(f"--auto-solve: {exc}")
-                return
-            res = run_solve_dir(
-                lights_dir, astap_cli=cli,
-                on_step=lambda m: print(m),
-            )
+        try:
+            cli = find_astap_cli()
+        except AstapNotFound as exc:
+            print(f"--auto-solve: {exc}")
+            return
+        for d in lights_dirs:
+            frames = sorted(p for p in d.glob("*.fit*") if p.is_file())
+            unsolved = [f for f in frames if not has_wcs(f)]
+            if not unsolved:
+                print(f"--auto-solve[{d.name}]: all {len(frames)} frames "
+                      "already have WCS, skipping ASTAP")
+                continue
+            print(f"--auto-solve[{d.name}]: {len(unsolved)}/{len(frames)} "
+                  "frames missing WCS; running ASTAP...")
+            res = run_solve_dir(d, astap_cli=cli, on_step=lambda m: print(m))
             if res.failed:
                 print(
-                    f"--auto-solve: {len(res.failed)} frame(s) failed to "
-                    "solve; aborting stack to prevent a WCS-less output. "
+                    f"--auto-solve[{d.name}]: {len(res.failed)} frame(s) failed "
+                    "to solve; aborting stack to prevent a WCS-less output. "
                     "Run `mira solve` manually to investigate."
                 )
                 return
@@ -1496,7 +1515,9 @@ def stack(args: argparse.Namespace) -> None:
             return
         from .flats import resolve_master_for_lights
 
-        master, why = resolve_master_for_lights(lights_dir, Path(args.flats_root))
+        # Co-stack sessions share filter/gain -> resolve the flat from the
+        # first dir and apply it to all.
+        master, why = resolve_master_for_lights(lights_dirs[0], Path(args.flats_root))
         if master is None:
             print(f"--auto-flats: {why}\nAborting (refusing to stack without "
                   "the matched flat — pass --flats explicitly to override).")
@@ -1504,10 +1525,14 @@ def stack(args: argparse.Namespace) -> None:
         flat_master = master
         print(f"--auto-flats: {why} -> {master}")
 
-    print(f"Stacking '{lights_dir}' with Siril...")
+    _reg = getattr(args, "register", "auto")
+    _label = (f"'{lights_dirs[0]}'" if len(lights_dirs) == 1
+              else f"{len(lights_dirs)} session dirs")
+    print(f"Stacking {_label}"
+          + (" by WCS registration..." if _reg == "wcs" else " with Siril..."))
     try:
         result = run_siril_stack(
-            lights_dir=lights_dir,
+            lights_dir=lights_dirs,
             out_path=Path(args.out),
             darks_dir=Path(args.darks) if args.darks else None,
             flats_dir=Path(args.flats) if args.flats else None,
@@ -1515,6 +1540,7 @@ def stack(args: argparse.Namespace) -> None:
             biases_dir=Path(args.biases) if args.biases else None,
             debayer=args.debayer,
             stretch=args.stretch,
+            register_mode=_reg,
         )
     except SirilNotFound as exc:
         print(f"Siril not available: {exc}")
@@ -1524,6 +1550,8 @@ def stack(args: argparse.Namespace) -> None:
         return
 
     print(f"\nStacked {result.n_input_frames} frames.")
+    if getattr(result, "log_tail", "").startswith("WCS-registered"):
+        print(f"  ({result.log_tail})")
     print(f"Wrote {result.output_path} (linear)")
     if result.preview_path is not None:
         print(f"Wrote {result.preview_path} (stretched preview)")

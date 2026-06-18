@@ -1,9 +1,11 @@
 # output/ organization convention
 
-Status: **proposed** (2026-06-05; extended 2026-06-09 with the post-06-05
-additions, a `captures/` convention, and a migration tool). Migration not yet
-executed — run `python scripts/organize_output.py` to see the live move plan
-(dry-run by default; `--apply` executes `git mv` / `mv`, never deletes).
+Status: **executed.** `output/` reorganized 2026-06-09 (commit 41b5404, via
+`scripts/organize_output.py`); `captures/` reorganized into the nested
+`<target>/<rig>_<filter>_<date>/` scheme 2026-06-18 (the integration ledger and
+`mira inventory` were switched to a recursive, `_`-prefix-skipping walk in the
+same change). This doc is the live convention; keep new captures + processing
+consistent with it.
 
 ## Why
 
@@ -46,18 +48,33 @@ output/
 
 ```
 captures/
-  <target>/<YYYY-MM-DD>/       # one night, one dir (FITS + mira_capture.json)
-  <target>/combined_<desc>/    # cross-night hardlink sets fed to `mira stack`
+  _calibration/<set>/               # bias/dark/flat sources (NOT targets)
+  _planetary/<target>_<date>/       # planetary RAW AVI (not deep-sky FITS)
+  mele_nina/                        # raw Syncthing receive mirror (TRANSIENT; see below)
+  <target>/<rig>_<filter>_<date>/   # one session (FITS + mira_capture.json)
+  <target>/_combined_<desc>/        # derived cross-night hardlink set (ledger-skipped)
 ```
 
-This matches what `docs/photometry.md` already documents; today's reality is
-flat `captures/<target>_<date>/`. **Code dependency:** the integration ledger
-walks `<captures_root>/*/mira_capture.json` exactly one level deep — adopting
-the nested layout requires switching `dso/ledger.py` to a recursive walk
-(small change, do it in the same commit as the captures migration). Hardlink
-sets stay intact under same-volume `git mv`/`mv`. Mosaic panels keep the panel
-in the NIGHT dir name, not the target name (`veil/2026-06-18_p1_west/`), so
-the ledger's parent-target grouping (planned) can aggregate them.
+**Executed 2026-06-18.** Sessions nest one level under a canonical target dir; the
+session name `<rig>_<filter>_<date>` (rig ∈ `s30`/`esprit80`/`esprit120`) makes
+combinability self-evident — **matching `<rig>_<filter>` + same framing = stackable**
+(e.g. the Crescent's `esprit80_ha_…` vs `s30_lp_…` are deliberately separate OTAs and
+framings). Underscore-prefixed dirs (`_calibration`, `_planetary`, `_combined_*`,
+`_rejected`) sort first and are **skipped by the ledger + inventory** — a `_combined`
+set is hardlinks of source sessions already counted, so counting it would double-count.
+
+**Code:** `dso/ledger.py:walk_sidecars` and `inventory.py:_iter_session_dirs` walk
+`captures/**` recursively, skipping `_`-prefixed path components and `mele_nina`. Pinned
+by `tests/test_dso_ledger.py` (nested + `_`-skip). Hardlink sets stay intact under
+same-volume `mv`.
+
+**`mele_nina` is the MeLE Syncthing mirror — TRANSIENT, not an archive.** It's
+`receiveonly` + `ignoreDelete=False` + no versioning, so a MeLE-side delete propagates
+here with no trash. Completed sessions are **extracted by hardlink** into
+`captures/<target>/<rig>_<filter>_<date>/` — which survives the propagated delete (the
+data's inode stays alive via the captures/ link) — and mirrored to D:. Before pruning
+the MeLE, confirm with **`scripts/archived_check.ps1`** (SAFE = hardlinked into
+`captures/<target>/` AND present on D:).
 
 Rules:
 

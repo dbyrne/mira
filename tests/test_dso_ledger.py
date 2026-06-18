@@ -109,6 +109,27 @@ class WalkSidecarsTests(TestCase):
             self.assertEqual(s.integration_minutes, 60 * 300 / 60)
             self.assertEqual(s.frame_count_source, "result.copied")
 
+    def test_nested_sessions_and_underscore_dirs_skipped(self) -> None:
+        """New scheme: sessions nest as <target>/<rig>_<filter>_<date>/.
+        The recursive walk finds them; underscore-prefixed derived/non-target
+        dirs (_combined_*, _calibration, _rejected) are skipped so a co-stack's
+        hardlinks don't double-count their already-counted source sessions."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_sidecar(root / "ngc6888" / "s30_lp_20260530",
+                           filter_name="LP", copied=200)
+            _write_sidecar(root / "ngc6888" / "esprit80_ha_20260615",
+                           filter_name="Ha", copied=36)
+            _write_sidecar(root / "ngc6888" / "_combined_s30_lp",
+                           filter_name="LP", copied=278)            # skip
+            _write_sidecar(root / "_calibration" / "bias_g80",
+                           filter_name="LP", copied=25)             # skip
+            _write_sidecar(root / "ngc6888" / "s30_lp_20260530" / "_rejected",
+                           filter_name="LP", copied=9)              # skip
+            sessions = walk_sidecars(root)
+            names = sorted(s.sidecar_path.parent.name for s in sessions)
+            self.assertEqual(names, ["esprit80_ha_20260615", "s30_lp_20260530"])
+
     def test_multiple_sessions_walked(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

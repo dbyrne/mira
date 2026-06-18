@@ -100,8 +100,9 @@ class Ledger:
 
 
 def walk_sidecars(captures_root: Path) -> list[SessionRecord]:
-    """Walk ``<captures_root>/*/mira_capture.json`` (one level deep —
-    sidecars live in per-session dirs). Returns parsed SessionRecords.
+    """Walk ``<captures_root>/**/mira_capture.json`` recursively (sessions
+    nest as ``<target>/<rig>_<filter>_<date>/``; underscore-prefixed dirs are
+    skipped). Returns parsed SessionRecords.
 
     Skipped:
     - Sidecars without a filter (VSX-side variable-star captures don't set
@@ -121,7 +122,14 @@ def walk_sidecars(captures_root: Path) -> list[SessionRecord]:
     if not root.is_dir():
         return []
     records: list[SessionRecord] = []
-    for sidecar_path in sorted(root.glob(f"*/{CAPTURE_SIDECAR}")):
+    # Recursive: sessions nest as captures/<target>/<rig>_<filter>_<date>/.
+    # Skip any path with an underscore-prefixed component — non-target / derived
+    # dirs (_calibration, _planetary, _combined_*, _rejected) whose frames must
+    # NOT count (a _combined dir is hardlinks of already-counted sessions, so
+    # counting it double-counts the integration).
+    for sidecar_path in sorted(root.glob(f"**/{CAPTURE_SIDECAR}")):
+        if any(p.startswith("_") for p in sidecar_path.relative_to(root).parts):
+            continue
         record = _parse_sidecar(sidecar_path)
         if record is not None:
             records.append(record)

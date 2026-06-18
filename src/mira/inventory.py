@@ -126,12 +126,17 @@ def _scan_fits(session_dir: Path) -> tuple[int, int, list[float], str,
     return frames, solved, exptimes, date_obs, dims
 
 
-def inventory_session(session_dir: Path, processed_root: Path) -> SessionInventory:
+def inventory_session(session_dir: Path, processed_root: Path,
+                      *, target_hint: str | None = None) -> SessionInventory:
     sidecar = _read_sidecar(session_dir)
     frames, solved, exptimes, date_obs, dims = _scan_fits(session_dir)
 
     stem, dir_date = split_dirname(session_dir.name)
-    target = str(sidecar.get("target_name") or "").strip() or stem
+    # Nested scheme: target = sidecar target_name, else the PARENT dir name
+    # (captures/<target>/<session>/ -> target_hint), else the dirname stem
+    # (flat/legacy). Without the hint a legacy session reads as "s30_ir".
+    target = (str(sidecar.get("target_name") or "").strip()
+              or (target_hint or "").strip() or stem)
 
     filter_name = str(sidecar.get("filter") or "").strip() or "?"
     try:
@@ -193,10 +198,34 @@ def build_inventory(
     if not root.is_dir():
         return []
     return [
-        inventory_session(d, Path(processed_root))
-        for d in sorted(root.iterdir())
-        if d.is_dir()
+        inventory_session(
+            d, Path(processed_root),
+            target_hint=(d.parent.name if d.parent != root else None),
+        )
+        for d in _iter_session_dirs(root)
     ]
+
+
+def _iter_session_dirs(root: Path) -> list[Path]:
+    """Session dirs at any depth (captures/<target>/<rig>_<filter>_<date>/),
+    each holding frames and/or a sidecar. Skips underscore-prefixed dirs
+    (_calibration, _planetary, _combined_*, _rejected) and the raw `mele_nina`
+    Syncthing mirror — those aren't archived sessions."""
+    seen: set[Path] = set()
+    for f in root.rglob("*.fit*"):
+        if f.is_file():
+            seen.add(f.parent)
+    for sc in root.rglob(CAPTURE_SIDECAR):
+        seen.add(sc.parent)
+    out: list[Path] = []
+    for d in sorted(seen):
+        rel = d.relative_to(root)
+        if any(p.startswith("_") for p in rel.parts):
+            continue
+        if rel.parts and rel.parts[0] == "mele_nina":
+            continue
+        out.append(d)
+    return out
 
 
 def write_inventory(

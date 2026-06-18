@@ -30,8 +30,16 @@ if ($Setup) {
     New-Item -ItemType Directory -Force $logDir | Out-Null
     "mira archive root - created $(Get-Date -Format s). Do not remove this marker; backup_mirror.ps1 refuses to run without it." |
         Set-Content -Encoding utf8 $marker
-    $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\backup_mirror.ps1`" -ArchiveRoot `"$ArchiveRoot`""
-    schtasks /create /tn "Mira nightly archive mirror" /tr $cmd /sc daily /st 10:00 /f | Out-Null
+    # Register-ScheduledTask (not schtasks): schtasks mangled the nested quotes
+    # in /tr and silently failed ("Mandatory option 'sc' is missing"), 2026-06-17.
+    $taskArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\backup_mirror.ps1`" -ArchiveRoot `"$ArchiveRoot`""
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $taskArgs
+    $trigger = New-ScheduledTaskTrigger -Daily -At 10:00am
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 6)
+    Unregister-ScheduledTask -TaskName "Mira nightly archive mirror" -Confirm:$false -ErrorAction SilentlyContinue
+    Register-ScheduledTask -TaskName "Mira nightly archive mirror" -Action $action `
+        -Trigger $trigger -Settings $settings `
+        -Description "Daily robocopy /MIR to the Mira archive drive." | Out-Null
     Write-Host "Setup complete: marker written, daily 10:00 task registered."
     Write-Host "Running the first mirror now (the initial ~150 GB takes a while)..."
 }

@@ -135,6 +135,19 @@ class TestScriptGeneration(TestCase):
         self.assertNotIn("-fitseq", s)
         self.assertEqual(s.count("convert light"), 1)
 
+    def test_stack_weight_noise_default_and_off(self) -> None:
+        # Noise-weighting is ON by default — down-weights noisier frames so a
+        # mixed-exposure (60s+300s) or variable-quality stack isn't diluted.
+        # Siril 1.4 flag is `-weight=noise`, on the LIGHTS stack only.
+        kw = dict(work_dir=Path("/w"), lights_dir=Path("/lights"),
+                  result_stem=Path("/out/result"), preview_path=None,
+                  debayer=False, stretch=False)
+        self.assertIn("stack r_light rej 3 3 -norm=addscale -weight=noise",
+                      build_stack_script(**kw))
+        off = build_stack_script(**kw, weight="none")
+        self.assertNotIn("-weight=", off)
+        self.assertIn("stack r_light rej 3 3 -norm=addscale -output_norm", off)
+
     def test_no_masters_debayer_single_convert(self) -> None:
         # The bug: no-masters + CFA did `convert light` then a second
         # `convert light -debayer`, corrupting the FITSEQ. Must be one

@@ -250,6 +250,15 @@ def main() -> None:
         "--no-stretch", dest="stretch", action="store_false",
         help="Skip the stretched PNG preview; write only the linear FITS.",
     )
+    stack_parser.add_argument(
+        "--weight", choices=["noise", "none"], default="noise",
+        help="Per-frame weighting in the Siril rejection stack. 'noise' "
+        "(default) gives lower-noise frames more weight — makes mixed-exposure "
+        "(e.g. 60s+300s) and variable-quality stacks safe by down-weighting the "
+        "noisier frames instead of letting them dilute the result. 'none' = "
+        "equal weight. Applies to the Siril/GSA path only (the WCS-register "
+        "fallback is an unweighted sigma-clip mean).",
+    )
 
     finish_parser = subparsers.add_parser(
         "finish",
@@ -1541,6 +1550,7 @@ def stack(args: argparse.Namespace) -> None:
             debayer=args.debayer,
             stretch=args.stretch,
             register_mode=_reg,
+            weight=args.weight,
         )
     except SirilNotFound as exc:
         print(f"Siril not available: {exc}")

@@ -74,6 +74,7 @@ def run_siril_stack(
     stretch: bool = True,
     cli_path: Path | None = None,
     register_mode: str = "auto",
+    weight: str = "noise",
 ) -> SirilResult:
     """Convert -> calibrate -> register -> rejection-stack into `out_path`.
     Writes the linear stack as FITS (preserving the WCS from the reference
@@ -125,6 +126,7 @@ def run_siril_stack(
                 biases_dir=biases_dir.resolve() if biases_dir else None,
                 debayer=do_debayer,
                 stretch=stretch,
+                weight=weight,
             )
             log = run_siril(script, work_dir=work_dir, cli_path=cli_path)
             # Append, don't with_suffix: for a multi-dot out name (M51.lrgb.tif

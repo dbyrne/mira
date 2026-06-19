@@ -140,6 +140,7 @@ def build_stack_script(
     biases_dir: Path | None = None,
     debayer: bool,
     stretch: bool,
+    weight: str = "noise",
 ) -> str:
     """Generate the imaging .ssf script: convert -> (build & apply masters)
     -> register -> rejection stack -> save linear result as FITS (+
@@ -225,8 +226,14 @@ def build_stack_script(
     # Stack into a bare work-dir name (cwd is work_dir): -out= can't carry a
     # quoted/space-bearing path. Then load it and save to the real (possibly
     # space-bearing) destination via quoted positional args.
+    # Per-frame weighting: 'noise' gives lower-noise frames more weight, so a
+    # mixed-exposure stack (60s normalized up to 300s is ~5x noisier) or a
+    # variable-quality night down-weights the bad frames instead of letting
+    # them dilute the result. 'none' = equal weight (prior behavior). Only the
+    # lights stack is weighted — calibration masters stay -nonorm above.
+    weight_arg = f" -weight={weight}" if weight and weight != "none" else ""
     lines.append(
-        f"stack r_{reg_seq} rej 3 3 -norm=addscale -output_norm -out=result"
+        f"stack r_{reg_seq} rej 3 3 -norm=addscale{weight_arg} -output_norm -out=result"
     )
     lines.append("load result")
     lines.append(f"cd {_q(result_stem.parent)}")

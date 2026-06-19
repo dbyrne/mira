@@ -205,21 +205,43 @@ def fixed_margin_box(image: np.ndarray, frac: float) -> tuple[int, int, int, int
     return int(w * frac), int(h * frac), int(w * (1 - frac)), int(h * (1 - frac))
 
 
+def _is_mono(path: Path) -> bool:
+    """True if the image at `path` is single-channel. Siril's `satu`
+    (saturation) command hard-errors on monochrome images ("command is not
+    for monochrome images") and aborts the whole script — so the finish
+    pipeline must skip it for mono masters (every narrowband Ha/OIII/SII
+    stack, and any mono-camera luminance). Unknown/unreadable → assume color
+    so prior color behavior is preserved."""
+    p = Path(path)
+    try:
+        if p.suffix.lower() in (".fit", ".fits", ".fts"):
+            from astropy.io import fits
+            with fits.open(p) as hdul:
+                return int(hdul[0].header.get("NAXIS", 2)) < 3
+        from PIL import Image
+        with Image.open(p) as im:
+            return im.mode in ("L", "I", "I;16", "F", "1")
+    except Exception:
+        return False
+
+
 def build_stretch_script(
-    out_dir: Path, in_path: Path, out_stem: str, *, saturation: float
+    out_dir: Path, in_path: Path, out_stem: str, *, saturation: float,
+    color: bool = True,
 ) -> str:
     """Siril script: load the (GraXpert-processed) linear image, linked
     autostretch, optional saturation, save 16-bit TIFF + PNG as bare
     `out_stem` in `out_dir`. `cd` is explicit because siril-cli ignores the
     process cwd; bare save stems because Siril's save* append the extension
-    and don't strip quotes from option args (positional paths are fine)."""
+    and don't strip quotes from option args (positional paths are fine).
+    `satu` is emitted ONLY for color images — Siril rejects it on mono."""
     lines = [
         "requires 1.2.0",
         f"cd {_q(out_dir)}",
         f"load {_q(in_path)}",
         "autostretch -linked",
     ]
-    if saturation and saturation > 0:
+    if color and saturation and saturation > 0:
         lines.append(f"satu {saturation:.2f}")
     lines.append(f"savetif {_q(Path(out_stem))} -deflate")
     lines.append(f"savepng {_q(Path(out_stem))}")
@@ -285,11 +307,14 @@ def run_finish(
                 )
                 steps.append(f"graxpert:{cmd}")
 
-        _emit("Siril autostretch -linked + saturation…")
-        script = build_stretch_script(work, current, "stretched", saturation=saturation)
+        is_color = not _is_mono(current)
+        _emit("Siril autostretch -linked"
+              + (" + saturation…" if is_color else " (mono — saturation skipped)…"))
+        script = build_stretch_script(
+            work, current, "stretched", saturation=saturation, color=is_color)
         log = run_siril(script, work_dir=work, cli_path=siril_cli_path)
         steps.append("siril:autostretch-linked")
-        if saturation and saturation > 0:
+        if is_color and saturation and saturation > 0:
             steps.append(f"siril:satu={saturation:.2f}")
         stretched = work / "stretched.png"
         stretched_tif = work / "stretched.tif"

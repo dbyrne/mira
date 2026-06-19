@@ -175,6 +175,19 @@ class TestStretchScript(TestCase):
         s = build_stretch_script(Path("/o"), Path("/o/in.fits"), "final", saturation=0.0)
         self.assertNotIn("satu", s)
 
+    def test_mono_skips_satu_and_savepng(self) -> None:
+        # Siril's satu AND savepng both break on mono images; both are gated
+        # on color=False (run_finish rebuilds the mono PNG from the .tif).
+        mono = build_stretch_script(Path("/o"), Path("/o/in.fits"), "final",
+                                    saturation=0.2, color=False)
+        self.assertNotIn("satu", mono)
+        self.assertNotIn("savepng", mono)
+        self.assertIn("savetif", mono)          # the .tif is always written
+        color = build_stretch_script(Path("/o"), Path("/o/in.fits"), "final",
+                                     saturation=0.2, color=True)
+        self.assertIn("satu 0.20", color)
+        self.assertIn("savepng", color)
+
 
 class TestRunFinishOrchestration(TestCase):
     def _fake_siril(self, script, *, work_dir, cli_path=None):

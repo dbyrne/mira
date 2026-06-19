@@ -244,7 +244,11 @@ def build_stretch_script(
     if color and saturation and saturation > 0:
         lines.append(f"satu {saturation:.2f}")
     lines.append(f"savetif {_q(Path(out_stem))} -deflate")
-    lines.append(f"savepng {_q(Path(out_stem))}")
+    if color:
+        # Siril's savepng mangles MONO images — it writes a GRAY ICC profile
+        # onto an RGB PNG, which reads back as all-white. For mono, run_finish
+        # regenerates the preview PNG from the (correct) 16-bit .tif instead.
+        lines.append(f"savepng {_q(Path(out_stem))}")
     lines.append("close")
     return "\n".join(lines) + "\n"
 
@@ -318,6 +322,16 @@ def run_finish(
             steps.append(f"siril:satu={saturation:.2f}")
         stretched = work / "stretched.png"
         stretched_tif = work / "stretched.tif"
+        if not is_color and stretched_tif.exists():
+            # Mono: savepng was skipped (Siril mangles mono PNGs to all-white),
+            # so build the preview PNG from the correct 16-bit .tif.
+            import tifffile  # local: keep CLI startup light
+
+            t = tifffile.imread(str(stretched_tif)).astype(np.float32)
+            if t.ndim == 3:  # defensive: collapse a stray replicated 3rd axis
+                t = t[..., 0]
+            Image.fromarray(np.clip(t / 257.0, 0, 255).astype(np.uint8), "L").save(stretched)
+            steps.append("png-from-tif:mono")
         if not stretched.exists():
             raise SirilError(
                 "Siril stretch produced no PNG.\n"
